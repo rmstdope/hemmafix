@@ -1,0 +1,15 @@
+# Lokal utveckling: bara databasen. Kör appen med `pnpm dev`.
+services:
+  db:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_USER: hemmafix
+      POSTGRES_PASSWORD: hemmafix
+      POSTGRES_DB: hemmafix
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata-dev:/var/lib/postgresql/data
+
+volumes:
+  pgdata-dev:
