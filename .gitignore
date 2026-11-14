@@ -44,3 +44,8 @@ next-env.d.ts
 
 # bundled scripts
 /dist
+
+# playwright
+/test-results/
+/playwright-report/
+/blob-report/

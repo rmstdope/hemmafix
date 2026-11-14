@@ -1,5 +1,6 @@
-# Every pull request and push to main: lint, types, unit tests, migrations against a real
-# Postgres and a production build. Main publishes only the exact image that passed the smoke
+# Every pull request and push to main: lint, types, unit tests, integration tests and
+# migrations against a real Postgres, a production build, and end-to-end tests of that build
+# in a browser. Main publishes only the exact image that passed the smoke
 # test, plus the deployment manifest rmstdope-infra reads (artifact `deployment-manifest`).
 name: CI
 
@@ -46,6 +47,8 @@ jobs:
       - run: pnpm run lint
       - run: pnpm run typecheck
       - run: pnpm run test
+      - name: Integration tests (server code against Postgres)
+        run: pnpm run test:int
       - name: Migrations apply to an empty database
         run: pnpm run db:migrate
       - name: Schema and migrations agree
@@ -57,6 +60,44 @@ jobs:
             exit 1
           fi
       - run: pnpm run build
+
+  e2e:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    services:
+      postgres:
+        image: postgres:17-alpine
+        env:
+          POSTGRES_USER: hemmafix
+          POSTGRES_PASSWORD: hemmafix
+          POSTGRES_DB: hemmafix
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U hemmafix -d hemmafix"
+          --health-interval 2s --health-timeout 5s --health-retries 20
+    env:
+      TEST_DATABASE_URL: postgres://hemmafix:hemmafix@localhost:5432/hemmafix
+    steps:
+      - uses: actions/checkout@v5
+      - uses: pnpm/action-setup@v5
+      - uses: actions/setup-node@v6
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Install Chromium for Playwright
+        run: pnpm exec playwright install --with-deps chromium
+      - run: pnpm run build
+      - name: End-to-end tests (production build, mobile and desktop)
+        run: pnpm run test:e2e
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: playwright-report
+          path: |
+            playwright-report/
+            test-results/
+          retention-days: 7
 
   production-image:
     runs-on: ubuntu-latest
@@ -83,7 +124,7 @@ jobs:
           overwrite: true
 
   publish:
-    needs: [checks, production-image]
+    needs: [checks, e2e, production-image]
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     timeout-minutes: 15
