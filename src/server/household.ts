@@ -108,6 +108,14 @@ export async function setMemberRole(actor: Actor, targetUserId: string, role: Ro
     // same moment cannot leave it without an adult.
     await tx.execute(sql`select pg_advisory_xact_lock(hashtext('hemmafix:roles:' || ${actor.householdId}))`);
 
+    // The actor's role as of now, not as of the start of the request: someone who was just
+    // made a child must not change roles while waiting for the lock.
+    const [self] = await tx
+      .select({ role: membership.role })
+      .from(membership)
+      .where(and(eq(membership.householdId, actor.householdId), eq(membership.userId, actor.userId)));
+    assertCan({ role: self?.role ?? "child" }, "member:set-role");
+
     const [current] = await tx
       .select({ role: membership.role })
       .from(membership)

@@ -176,6 +176,14 @@ describe("the home: name, rooms and roles", () => {
       expect(roles).toEqual(["adult", "child"]);
     });
 
+    it("refuses an adult who has just been made a child, even mid-request", async () => {
+      await setMemberRole(adult, child.userId, "adult");
+      await setMemberRole(adult, child.userId, "child");
+      // `child` still claims to be an adult, as a request that started before the change would.
+      await expect(setMemberRole({ ...child, role: "adult" }, adult.userId, "child")).rejects.toThrow(ForbiddenError);
+      expect(await roleOf(adult.userId)).toBe("adult");
+    });
+
     it("cannot change the role of someone in another home", async () => {
       await expect(setMemberRole(adult, neighbour.userId, "child")).rejects.toThrow("finns inte i hemmet");
       expect(await roleOf(neighbour.userId)).toBe("adult");

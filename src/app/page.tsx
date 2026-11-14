@@ -51,7 +51,11 @@ async function Board({ searchParams }: { searchParams: PageProps<"/">["searchPar
         </div>
         <div className="flex items-center gap-1">
           {isAdult && (
-            <Link href="/hemmet" aria-label="Hemmet" className="rounded-lg p-2 text-muted-foreground">
+            <Link
+              href="/hemmet"
+              aria-label="Hemmet"
+              className="flex size-11 items-center justify-center rounded-lg text-muted-foreground"
+            >
               <Settings className="size-5" />
             </Link>
           )}

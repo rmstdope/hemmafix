@@ -51,7 +51,7 @@ describe("as a child", () => {
 
   it("cannot delete a room", async () => {
     const [kok] = await db.insert(room).values({ householdId: adult.householdId, name: "Kök" }).returning();
-    await expect(actions.deleteRoom(kok!.id)).rejects.toThrow(FORBIDDEN);
+    expect(await actions.deleteRoom(kok!.id)).toEqual({ ok: false, error: FORBIDDEN });
     expect(await db.select().from(room)).toHaveLength(1);
   });
 
@@ -99,6 +99,48 @@ describe("as an adult", () => {
     expect((await db.select().from(task))[0]!.assigneeId).toBe(child.userId);
     await actions.deleteTask(t!.id);
     expect(await db.select().from(task)).toHaveLength(0);
+  });
+});
+
+describe("another household's data", () => {
+  let foreignTaskId: string;
+  let foreignRoomId: string;
+  let foreignUserId: string;
+
+  beforeEach(async () => {
+    as(adult);
+    const [other] = await db.insert(household).values({ name: "Grannar" }).returning();
+    const eve = await createUser("Eve");
+    foreignUserId = eve.id;
+    await db.insert(membership).values({ userId: eve.id, householdId: other!.id, role: "adult" });
+    const [t] = await db.insert(task).values({ householdId: other!.id, title: "Grannens disk" }).returning();
+    const [r] = await db.insert(room).values({ householdId: other!.id, name: "Garage" }).returning();
+    foreignTaskId = t!.id;
+    foreignRoomId = r!.id;
+  });
+
+  const foreignTask = async () => (await db.select().from(task).where(eq(task.id, foreignTaskId)))[0];
+
+  it("cannot be ticked off, assigned or deleted by an adult of this household", async () => {
+    await actions.setTaskCompleted(foreignTaskId, true);
+    await actions.assignTask(foreignTaskId, adult.userId);
+    await actions.deleteTask(foreignTaskId);
+    expect(await foreignTask()).toMatchObject({ completedAt: null, assigneeId: null });
+  });
+
+  it("cannot have its rooms deleted or its members' roles changed", async () => {
+    await actions.deleteRoom(foreignRoomId);
+    expect(await db.select().from(room).where(eq(room.id, foreignRoomId))).toHaveLength(1);
+    expect(await actions.setMemberRole(foreignUserId, "child")).toEqual({ ok: false, error: "Personen finns inte i hemmet" });
+  });
+
+  it("cannot be assigned tasks of this household", async () => {
+    const [own] = await db.insert(task).values({ householdId: adult.householdId, title: "Diska" }).returning();
+    await expect(actions.assignTask(own!.id, foreignUserId)).rejects.toThrow("finns inte i hushållet");
+    expect(
+      await actions.createTask({ ok: false }, form({ title: "Diska", assigneeId: foreignUserId })),
+    ).toEqual({ ok: false, error: "Personen finns inte i hushållet" });
+    expect((await db.select().from(task).where(eq(task.id, own!.id)))[0]!.assigneeId).toBeNull();
   });
 });
 

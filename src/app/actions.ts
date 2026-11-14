@@ -36,7 +36,10 @@ async function act(fn: (member: CurrentMember) => Promise<unknown>): Promise<Act
   return { ok: true };
 }
 
-/** For actions called from event handlers: throws, with a message fit to show. */
+/**
+ * For actions whose callers only need to know that they failed. Next hides a thrown error's
+ * message in production, so actions with a message worth showing return `act`'s state instead.
+ */
 async function actOrThrow(fn: (member: CurrentMember) => Promise<unknown>) {
   const result = await act(fn);
   if (!result.ok) throw new Error(result.error);
@@ -61,7 +64,7 @@ export async function addRoom(_prev: ActionState, formData: FormData): Promise<A
 }
 
 export async function deleteRoom(id: string) {
-  await actOrThrow((m) => home.deleteRoom(m, id));
+  return act((m) => home.deleteRoom(m, id));
 }
 
 export async function setMemberRole(userId: string, role: Role) {

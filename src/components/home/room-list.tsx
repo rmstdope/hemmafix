@@ -33,11 +33,8 @@ export function RoomList({ rooms }: { rooms: Room[] }) {
 
   const remove = (room: Room) =>
     startTransition(async () => {
-      try {
-        await deleteRoom(room.id);
-      } catch (e) {
-        toast.error((e as Error).message || "Något gick fel, försök igen");
-      }
+      const result = await deleteRoom(room.id);
+      if (result.error) toast.error(result.error);
     });
 
   return (
@@ -87,7 +84,7 @@ export function RoomList({ rooms }: { rooms: Room[] }) {
               type="button"
               disabled={busy}
               onClick={() => addSuggestion(s)}
-              className="rounded-full border border-dashed px-3 py-1.5 text-sm text-muted-foreground disabled:opacity-50"
+              className="rounded-full border border-dashed px-3.5 py-2.5 text-sm text-muted-foreground disabled:opacity-50"
             >
               + {s}
             </button>

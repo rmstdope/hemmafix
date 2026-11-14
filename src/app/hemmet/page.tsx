@@ -38,7 +38,11 @@ async function HomeSettings() {
     <>
       <LiveUpdates />
       <header className="mb-6 flex items-center gap-2">
-        <Link href="/" aria-label="Tillbaka" className="-ml-2 rounded-lg p-2 text-muted-foreground">
+        <Link
+          href="/"
+          aria-label="Tillbaka"
+          className="-ml-3 flex size-11 items-center justify-center rounded-lg text-muted-foreground"
+        >
           <ArrowLeft className="size-5" />
         </Link>
         <h1 className="text-xl font-semibold">Hemmet</h1>
