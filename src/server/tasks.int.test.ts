@@ -17,7 +17,7 @@ beforeAll(async () => {
   homeId = home!.id;
   otherHomeId = other!.id;
   await db.insert(membership).values([
-    { userId: anna.id, householdId: homeId, role: "admin" },
+    { userId: anna.id, householdId: homeId, role: "adult" },
     { userId: bo.id, householdId: homeId },
     { userId: eve.id, householdId: otherHomeId },
   ]);

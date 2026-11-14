@@ -1,13 +1,6 @@
-import { expect, test } from "@playwright/test";
+import { expect, test } from "./support/test";
 import { E2E_BASE_URL } from "./support/env";
-import { closeDatabase, logIn, resetDatabase } from "./support/family";
-
-test.beforeEach(async () => {
-  await resetDatabase();
-});
-test.afterAll(async () => {
-  await closeDatabase();
-});
+import { logIn } from "./support/family";
 
 test("a visitor who is not logged in is sent to the login page", async ({ page }) => {
   await page.goto("/");
@@ -23,8 +16,8 @@ test("someone who is no longer on the allowlist is logged out at once", async ({
   await expect((await page.request.get("/api/events")).status()).toBe(401);
 });
 
-test("a member adds a task, ticks it off and can undo it", async ({ page, context }) => {
-  await logIn(context, "anna", "admin");
+test("an adult adds a task, ticks it off and can undo it", async ({ page, context }) => {
+  await logIn(context, "anna", "adult");
   await page.goto("/");
   await expect(page.getByText("Inget att göra just nu")).toBeVisible();
 
@@ -42,7 +35,7 @@ test("a member adds a task, ticks it off and can undo it", async ({ page, contex
 });
 
 test("the 'Mina' filter shows only the current member's tasks", async ({ page, context }) => {
-  await logIn(context, "anna", "admin");
+  await logIn(context, "anna", "adult");
   await page.goto("/");
   const title = page.getByRole("textbox", { name: "Ny uppgift" });
 
@@ -62,7 +55,7 @@ test("the 'Mina' filter shows only the current member's tasks", async ({ page, c
 });
 
 test("a change on one device shows up on another without reloading", async ({ page, context, browser }) => {
-  await logIn(context, "anna", "admin");
+  await logIn(context, "anna", "adult");
   // A second device: a context of its own, with its own session.
   const boContext = await browser.newContext({ baseURL: E2E_BASE_URL, locale: "sv-SE" });
   const boPage = await boContext.newPage();

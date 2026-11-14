@@ -1,3 +1,4 @@
+import { sql } from "drizzle-orm";
 import {
   boolean,
   date,
@@ -7,8 +8,10 @@ import {
   primaryKey,
   text,
   timestamp,
+  uniqueIndex,
   uuid,
 } from "drizzle-orm/pg-core";
+import { ROLES } from "@/lib/permissions";
 
 const timestamps = {
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
@@ -91,7 +94,8 @@ export const household = pgTable("household", {
   ...timestamps,
 });
 
-export const memberRole = pgEnum("member_role", ["admin", "member"]);
+/** Adult or child; see src/lib/permissions.ts for what each may do. */
+export const memberRole = pgEnum("member_role", ROLES);
 
 export const membership = pgTable(
   "membership",
@@ -102,13 +106,27 @@ export const membership = pgTable(
     householdId: uuid("household_id")
       .notNull()
       .references(() => household.id, { onDelete: "cascade" }),
-    role: memberRole("role").notNull().default("member"),
+    // Least privilege by default: an adult makes another member an adult.
+    role: memberRole("role").notNull().default("child"),
     ...timestamps,
   },
   (t) => [
     primaryKey({ columns: [t.userId, t.householdId] }),
     index("membership_household_id_idx").on(t.householdId),
   ],
+);
+
+export const room = pgTable(
+  "room",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    householdId: uuid("household_id")
+      .notNull()
+      .references(() => household.id, { onDelete: "cascade" }),
+    name: text("name").notNull(),
+    ...timestamps,
+  },
+  (t) => [uniqueIndex("room_household_name_idx").on(t.householdId, sql`lower(${t.name})`)],
 );
 
 export const task = pgTable(
@@ -131,4 +149,5 @@ export const task = pgTable(
 );
 
 export type Task = typeof task.$inferSelect;
+export type Room = typeof room.$inferSelect;
 export type MemberRole = (typeof memberRole.enumValues)[number];

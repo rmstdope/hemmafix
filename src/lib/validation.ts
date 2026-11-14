@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { ROLES } from "./permissions";
 
 const optionalText = (max: number) =>
   z
@@ -28,3 +29,9 @@ export const assigneeIdInput = z.string().min(1).max(100).nullable();
 
 export const taskFilter = z.enum(["all", "mine", "unassigned"]).catch("all");
 export type TaskFilter = z.infer<typeof taskFilter>;
+
+export const householdName = z.string().trim().min(1, "Hemmet behöver ett namn").max(60, "Max 60 tecken");
+export const roomName = z.string().trim().min(1, "Skriv rummets namn").max(40, "Max 40 tecken");
+export const roomId = z.uuid();
+export const memberId = z.string().min(1).max(100);
+export const roleInput = z.enum(ROLES);
