@@ -1,0 +1,134 @@
+# Every pull request and push to main: lint, types, unit tests, migrations against a real
+# Postgres and a production build. Main publishes only the exact image that passed the smoke
+# test, plus the deployment manifest rmstdope-infra reads (artifact `deployment-manifest`).
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+env:
+  IMAGE_REPOSITORY: ghcr.io/rmstdope/hemmafix
+
+jobs:
+  checks:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    services:
+      postgres:
+        image: postgres:17-alpine
+        env:
+          POSTGRES_USER: hemmafix
+          POSTGRES_PASSWORD: hemmafix
+          POSTGRES_DB: hemmafix
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U hemmafix -d hemmafix"
+          --health-interval 2s --health-timeout 5s --health-retries 20
+    env:
+      DATABASE_URL: postgres://hemmafix:hemmafix@localhost:5432/hemmafix
+    steps:
+      - uses: actions/checkout@v5
+      - uses: pnpm/action-setup@v5
+      - uses: actions/setup-node@v6
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm run lint
+      - run: pnpm run typecheck
+      - run: pnpm run test
+      - name: Migrations apply to an empty database
+        run: pnpm run db:migrate
+      - name: Schema and migrations agree
+        run: |
+          pnpm exec drizzle-kit generate --name ci-drift-check
+          if [ -n "$(git status --porcelain drizzle)" ]; then
+            git status --porcelain drizzle
+            echo "::error::src/db/schema.ts has changes without a migration; run pnpm db:generate"
+            exit 1
+          fi
+      - run: pnpm run build
+
+  production-image:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      REVISION: ${{ github.sha }}
+      IMAGE: ghcr.io/rmstdope/hemmafix:${{ github.sha }}
+    steps:
+      - uses: actions/checkout@v5
+      - name: Build the production image
+        run: docker build --build-arg "GIT_SHA=$REVISION" -t "$IMAGE" .
+      - name: Smoke test the exact image with the bundle's database image
+        run: deploy/smoke-test.sh
+      - name: Export the tested image
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        run: mkdir -p publication && docker save "$IMAGE" -o publication/image.tar
+      - uses: actions/upload-artifact@v4
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        with:
+          name: tested-image
+          path: publication/image.tar
+          retention-days: 2
+          compression-level: 0
+          overwrite: true
+
+  publish:
+    needs: [checks, production-image]
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: read
+      actions: read
+      packages: write
+    env:
+      GH_TOKEN: ${{ github.token }}
+      REVISION: ${{ github.sha }}
+      IMAGE: ghcr.io/rmstdope/hemmafix:${{ github.sha }}
+    steps:
+      - uses: actions/checkout@v5
+      - name: Preserve a manifest already published for this revision
+        id: existing
+        run: deploy/preserve-manifest.sh
+      - uses: actions/download-artifact@v4
+        if: steps.existing.outputs.preserved != 'true'
+        with:
+          name: tested-image
+          path: publication
+      - name: Publish the tested image, without rebuilding
+        if: steps.existing.outputs.preserved != 'true'
+        run: |
+          printf '%s' "$GH_TOKEN" | docker login ghcr.io -u "${{ github.actor }}" --password-stdin
+          docker load -i publication/image.tar
+          # Never repoint a revision tag after a partially completed publication.
+          if docker manifest inspect "$IMAGE" > publication/remote.json 2>/dev/null; then
+            local_id="$(docker image inspect "$IMAGE" --format '{{.Id}}')"
+            [ "$(jq -r .config.digest publication/remote.json)" = "$local_id" ] || {
+              echo "::error::Revision tag already identifies a different image; refusing mutation"
+              exit 1
+            }
+          fi
+          docker push "$IMAGE"
+          web="$(docker image inspect "$IMAGE" --format '{{json .RepoDigests}}' |
+            jq -er --arg prefix "$IMAGE_REPOSITORY@" '.[] | select(startswith($prefix))')"
+          jq -n --arg revision "$REVISION" --arg web "$web" \
+            '{revision: $revision, images: {web: $web}}' > publication/deployment.json
+          cat publication/deployment.json
+      - name: Publish deployment manifest
+        if: steps.existing.outputs.artifact_exists != 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: deployment-manifest
+          path: publication/deployment.json
+          retention-days: 90
+          if-no-files-found: error

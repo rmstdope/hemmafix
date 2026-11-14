@@ -1,0 +1,19 @@
+{
+  "name": "hemmafix",
+  "domain": "hemmafix.rmstdope.eu",
+  "profile": "fullstack",
+  "stateful": true,
+  "migration_policy": "backward-compatible",
+  "deployment": {
+    "repository": "rmstdope/hemmafix",
+    "workflow": "ci.yml",
+    "branch": "main"
+  },
+  "services": {
+    "web": {
+      "repository": "ghcr.io/rmstdope/hemmafix",
+      "port": 8080,
+      "health_path": "/healthz"
+    }
+  }
+}
