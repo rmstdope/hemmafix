@@ -1,9 +1,11 @@
+import { Settings } from "lucide-react";
 import Link from "next/link";
 import { Suspense } from "react";
 import { AddTaskForm } from "@/components/add-task-form";
 import { LiveUpdates } from "@/components/live-updates";
 import { TaskItem } from "@/components/task-item";
 import { UserMenu } from "@/components/user-menu";
+import { can } from "@/lib/permissions";
 import { cn } from "@/lib/utils";
 import { todayIso } from "@/lib/dates";
 import { taskFilter, type TaskFilter } from "@/lib/validation";
@@ -30,6 +32,7 @@ async function Board({ searchParams }: { searchParams: PageProps<"/">["searchPar
   const member = await requireMember();
   const filter = taskFilter.parse((await searchParams).filter);
   const today = todayIso();
+  const isAdult = can(member.role, "task:create");
 
   const [home, members, open, completed] = await Promise.all([
     getHousehold(member.householdId),
@@ -46,12 +49,23 @@ async function Board({ searchParams }: { searchParams: PageProps<"/">["searchPar
           <h1 className="text-xl font-semibold">Hemmafix</h1>
           <p className="text-sm text-muted-foreground">{home?.name}</p>
         </div>
-        <UserMenu name={member.name} image={member.image} />
+        <div className="flex items-center gap-1">
+          {isAdult && (
+            <Link
+              href="/hemmet"
+              aria-label="Hemmet"
+              className="flex size-11 items-center justify-center rounded-lg text-muted-foreground"
+            >
+              <Settings className="size-5" />
+            </Link>
+          )}
+          <UserMenu name={member.name} image={member.image} />
+        </div>
       </header>
 
-      <AddTaskForm members={members} currentUserId={member.userId} />
+      {isAdult && <AddTaskForm members={members} currentUserId={member.userId} />}
 
-      <nav className="mt-6 mb-3 flex gap-1 overflow-x-auto" aria-label="Filter">
+      <nav className={cn("mb-3 flex gap-1 overflow-x-auto", isAdult && "mt-6")} aria-label="Filter">
         {FILTERS.map((f) => (
           <Link
             key={f.value}
@@ -75,7 +89,14 @@ async function Board({ searchParams }: { searchParams: PageProps<"/">["searchPar
       ) : (
         <ul className="space-y-2">
           {open.map((t) => (
-            <TaskItem key={t.id} task={t} members={members} currentUserId={member.userId} today={today} />
+            <TaskItem
+              key={t.id}
+              task={t}
+              members={members}
+              currentUserId={member.userId}
+              today={today}
+              canManage={isAdult}
+            />
           ))}
         </ul>
       )}
@@ -87,7 +108,14 @@ async function Board({ searchParams }: { searchParams: PageProps<"/">["searchPar
           </summary>
           <ul className="mt-2 space-y-2">
             {completed.map((t) => (
-              <TaskItem key={t.id} task={t} members={members} currentUserId={member.userId} today={today} />
+              <TaskItem
+              key={t.id}
+              task={t}
+              members={members}
+              currentUserId={member.userId}
+              today={today}
+              canManage={isAdult}
+            />
             ))}
           </ul>
         </details>

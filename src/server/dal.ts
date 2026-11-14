@@ -4,7 +4,8 @@ import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { cache } from "react";
 import { db } from "@/db";
-import { membership, type MemberRole } from "@/db/schema";
+import { membership } from "@/db/schema";
+import type { Role } from "@/lib/permissions";
 import { decideAccess } from "@/lib/access";
 import { allowedEmails, auth } from "./auth";
 
@@ -13,7 +14,7 @@ export type CurrentMember = {
   name: string;
   image: string | null;
   householdId: string;
-  role: MemberRole;
+  role: Role;
 };
 
 /** Returns the logged-in member, or null. Deduplicated per request. */

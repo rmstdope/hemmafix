@@ -38,8 +38,11 @@ Skapa en OAuth-klient av typen *Web application* i Google Cloud Console
 ## Behörighet
 
 Bara verifierade Google-adresser i `ALLOWED_EMAILS` kan logga in. Första
-personen som loggar in skapar hushållet (`HOUSEHOLD_NAME`) och blir admin;
-övriga blir medlemmar. Datamodellen stöder flera hushåll – inbjudningar
+personen som loggar in skapar hushållet (`HOUSEHOLD_NAME`) och blir **vuxen**;
+övriga blir **barn** tills en vuxen ändrar det under *Hemmet* (kugghjulet). Vuxna
+ändrar hemmet, rummen och uppgifterna; barn bockar av och ser vad de gjort. Reglerna
+finns på ett ställe, `src/lib/permissions.ts`, och kontrolleras på servern i varje
+action. Hemmet har alltid minst en vuxen. Datamodellen stöder flera hushåll – inbjudningar
 ersätter listan längre fram.
 
 **Ta bort någons åtkomst:** ta bort adressen ur `ALLOWED_EMAILS` och starta om

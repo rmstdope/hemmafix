@@ -54,7 +54,7 @@ async function homeId() {
 export async function logIn(
   context: BrowserContext,
   person: Person,
-  role: schema.MemberRole = "member",
+  role: schema.MemberRole = "child",
 ) {
   const { test } = await testAuth.$context;
   const { name, email } = PEOPLE[person];

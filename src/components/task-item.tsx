@@ -14,12 +14,15 @@ export function TaskItem({
   members,
   currentUserId,
   today,
+  canManage,
 }: {
   task: TaskView;
   members: Member[];
   currentUserId: string;
   /** YYYY-MM-DD in the household's time zone, from the server. */
   today: string;
+  /** Adults assign and delete; everyone can tick off. The server enforces the same rule. */
+  canManage: boolean;
 }) {
   const [pending, startTransition] = useTransition();
   const [assigneeId, setOptimisticAssignee] = useOptimistic(task.assigneeId);
@@ -73,7 +76,13 @@ export function TaskItem({
         )}
       </div>
 
-      {!completed && (
+      {!completed && !canManage && assigneeId && (
+        <span className="shrink-0 text-sm text-muted-foreground">
+          {assigneeId === currentUserId ? "Jag" : members.find((m) => m.id === assigneeId)?.name.split(" ")[0]}
+        </span>
+      )}
+
+      {!completed && canManage && (
         <select
           aria-label="Tilldela"
           value={assigneeId ?? ""}
@@ -95,21 +104,23 @@ export function TaskItem({
         </select>
       )}
 
-      <Button
-        variant="ghost"
-        size="icon-lg"
-        aria-label="Ta bort"
-        className="shrink-0 text-muted-foreground"
-        onClick={() =>
-          run(async () => {
-            setHidden(true);
-            await deleteTask(task.id);
-            toast.success(`"${task.title}" togs bort`);
-          })
-        }
-      >
-        <Trash2 />
-      </Button>
+      {canManage && (
+        <Button
+          variant="ghost"
+          size="icon-lg"
+          aria-label="Ta bort"
+          className="shrink-0 text-muted-foreground"
+          onClick={() =>
+            run(async () => {
+              setHidden(true);
+              await deleteTask(task.id);
+              toast.success(`"${task.title}" togs bort`);
+            })
+          }
+        >
+          <Trash2 />
+        </Button>
+      )}
     </li>
   );
 }
