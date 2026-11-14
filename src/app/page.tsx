@@ -5,6 +5,7 @@ import { LiveUpdates } from "@/components/live-updates";
 import { TaskItem } from "@/components/task-item";
 import { UserMenu } from "@/components/user-menu";
 import { cn } from "@/lib/utils";
+import { todayIso } from "@/lib/dates";
 import { taskFilter, type TaskFilter } from "@/lib/validation";
 import { requireMember } from "@/server/dal";
 import { getHousehold, listMembers, listOpenTasks, listRecentlyCompleted } from "@/server/tasks";
@@ -28,6 +29,7 @@ const FILTERS: { value: TaskFilter; label: string }[] = [
 async function Board({ searchParams }: { searchParams: PageProps<"/">["searchParams"] }) {
   const member = await requireMember();
   const filter = taskFilter.parse((await searchParams).filter);
+  const today = todayIso();
 
   const [home, members, open, completed] = await Promise.all([
     getHousehold(member.householdId),
@@ -73,7 +75,7 @@ async function Board({ searchParams }: { searchParams: PageProps<"/">["searchPar
       ) : (
         <ul className="space-y-2">
           {open.map((t) => (
-            <TaskItem key={t.id} task={t} members={members} currentUserId={member.userId} />
+            <TaskItem key={t.id} task={t} members={members} currentUserId={member.userId} today={today} />
           ))}
         </ul>
       )}
@@ -85,7 +87,7 @@ async function Board({ searchParams }: { searchParams: PageProps<"/">["searchPar
           </summary>
           <ul className="mt-2 space-y-2">
             {completed.map((t) => (
-              <TaskItem key={t.id} task={t} members={members} currentUserId={member.userId} />
+              <TaskItem key={t.id} task={t} members={members} currentUserId={member.userId} today={today} />
             ))}
           </ul>
         </details>

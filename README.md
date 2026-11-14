@@ -37,9 +37,19 @@ Skapa en OAuth-klient av typen *Web application* i Google Cloud Console
 
 ## Behörighet
 
-Bara adresser i `ALLOWED_EMAILS` kan logga in. Första personen som loggar in
-skapar hushållet (`HOUSEHOLD_NAME`) och blir admin; övriga blir medlemmar.
-Datamodellen stöder flera hushåll – inbjudningar ersätter listan längre fram.
+Bara verifierade Google-adresser i `ALLOWED_EMAILS` kan logga in. Första
+personen som loggar in skapar hushållet (`HOUSEHOLD_NAME`) och blir admin;
+övriga blir medlemmar. Datamodellen stöder flera hushåll – inbjudningar
+ersätter listan längre fram.
+
+**Ta bort någons åtkomst:** ta bort adressen ur `ALLOWED_EMAILS` och starta om
+appen. Listan kontrolleras vid varje anrop, så personen blir utloggad direkt.
+Hen syns fortfarande som medlem (och kan ha uppgifter tilldelade) tills
+medlemskapet tas bort i databasen:
+
+```sql
+delete from membership where user_id = (select id from "user" where email = 'adress@example.com');
+```
 
 ## Skript
 
@@ -76,3 +86,10 @@ Imagen (`Dockerfile`) kör migreringar vid start och lyssnar på port 8080 med
 `/healthz` och `/release.json` enligt rmstdope-infras applikationskontrakt.
 Sätt `GIT_SHA` som build-arg. Migreringar måste vara bakåtkompatibla
 (`migration_policy: backward-compatible`).
+
+Bygget behöver varken hemligheter eller databas. Better Auth loggar då
+varningar om saknad hemlighet och bas-URL – det är väntat. I drift vägrar
+den starta utan `BETTER_AUTH_SECRET`.
+
+Vid SIGTERM stängs öppna realtidsströmmar så att containern avslutas direkt;
+webbläsarna ansluter om automatiskt.

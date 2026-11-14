@@ -30,11 +30,14 @@ ENV NODE_ENV=production \
 LABEL org.opencontainers.image.revision=${GIT_SHA} \
       org.opencontainers.image.source=https://github.com/rmstdope/hemmafix
 
-COPY --from=build --chown=node:node /app/.next/standalone ./
-COPY --from=build --chown=node:node /app/.next/static ./.next/static
-COPY --from=build --chown=node:node /app/public ./public
-COPY --from=build --chown=node:node /app/drizzle ./drizzle
-COPY --from=build --chown=node:node /app/dist/migrate.mjs ./migrate.mjs
+# App files stay root-owned so the server process cannot rewrite its own code;
+# only Next's cache directory is writable.
+COPY --from=build /app/.next/standalone ./
+COPY --from=build /app/.next/static ./.next/static
+COPY --from=build /app/public ./public
+COPY --from=build /app/drizzle ./drizzle
+COPY --from=build /app/dist/migrate.mjs ./migrate.mjs
+RUN mkdir -p .next/cache && chown node:node .next/cache
 
 USER node
 EXPOSE 8080

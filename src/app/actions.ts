@@ -4,15 +4,17 @@ import { and, eq } from "drizzle-orm";
 import { refresh } from "next/cache";
 import { db } from "@/db";
 import { task } from "@/db/schema";
-import { createTaskInput, taskId } from "@/lib/validation";
+import { assigneeIdInput, completedFlag, createTaskInput, taskId } from "@/lib/validation";
 import { getCurrentMember } from "@/server/dal";
 import { isMember, notifyTasksChanged } from "@/server/tasks";
 
 export type ActionState = { ok: boolean; error?: string };
 
+const LOGGED_OUT = "Du är utloggad – ladda om sidan och logga in igen.";
+
 async function memberOrThrow() {
   const member = await getCurrentMember();
-  if (!member) throw new Error("Inte inloggad");
+  if (!member) throw new Error(LOGGED_OUT);
   return member;
 }
 
@@ -28,7 +30,8 @@ async function done(householdId: string) {
 }
 
 export async function createTask(_prev: ActionState, formData: FormData): Promise<ActionState> {
-  const member = await memberOrThrow();
+  const member = await getCurrentMember();
+  if (!member) return { ok: false, error: LOGGED_OUT };
   const parsed = createTaskInput.safeParse(Object.fromEntries(formData));
   if (!parsed.success) {
     return { ok: false, error: parsed.error.issues[0]?.message ?? "Ogiltig uppgift" };
@@ -50,10 +53,11 @@ export async function createTask(_prev: ActionState, formData: FormData): Promis
 
 export async function setTaskCompleted(id: string, completed: boolean) {
   const member = await memberOrThrow();
+  const isCompleted = completedFlag.parse(completed);
   await db
     .update(task)
     .set(
-      completed
+      isCompleted
         ? { completedAt: new Date(), completedById: member.userId }
         : { completedAt: null, completedById: null },
     )
@@ -61,8 +65,9 @@ export async function setTaskCompleted(id: string, completed: boolean) {
   await done(member.householdId);
 }
 
-export async function assignTask(id: string, assigneeId: string | null) {
+export async function assignTask(id: string, assigneeIdArg: string | null) {
   const member = await memberOrThrow();
+  const assigneeId = assigneeIdInput.parse(assigneeIdArg);
   await assertAssignee(member.householdId, assigneeId);
   await db
     .update(task)

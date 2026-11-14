@@ -6,15 +6,21 @@ import { nextCookies } from "better-auth/next-js";
 import { eq } from "drizzle-orm";
 import { db } from "@/db";
 import * as schema from "@/db/schema";
-import { isEmailAllowed, parseAllowedEmails } from "@/lib/allowlist";
+import { decideAccess, type AccessDecision } from "@/lib/access";
+import { parseAllowedEmails } from "@/lib/allowlist";
 import { ensureMembership } from "./household";
 
-const allowedEmails = () => parseAllowedEmails(process.env.ALLOWED_EMAILS);
+export const allowedEmails = () => parseAllowedEmails(process.env.ALLOWED_EMAILS);
 
-function assertAllowed(email: string | null | undefined) {
-  if (!isEmailAllowed(email, allowedEmails())) {
-    throw new APIError("FORBIDDEN", { message: "Den här e-postadressen har inte tillgång." });
-  }
+const ACCESS_ERRORS: Record<Exclude<AccessDecision, "ok">, { code: string; message: string }> = {
+  "not-allowed": { code: "EMAIL_NOT_ALLOWED", message: "Den här e-postadressen har inte tillgång." },
+  unverified: { code: "EMAIL_NOT_VERIFIED", message: "E-postadressen är inte verifierad hos Google." },
+};
+
+function assertAccess(user: { email: string | null | undefined; emailVerified?: boolean | null }) {
+  const decision = decideAccess(user, allowedEmails());
+  // The OAuth callback redirects to errorCallbackURL?error=<code> only when the error has a code.
+  if (decision !== "ok") throw new APIError("FORBIDDEN", ACCESS_ERRORS[decision]);
 }
 
 export const auth = betterAuth({
@@ -36,7 +42,7 @@ export const auth = betterAuth({
     user: {
       create: {
         before: async (newUser) => {
-          assertAllowed(newUser.email);
+          assertAccess(newUser);
         },
       },
     },
@@ -46,11 +52,11 @@ export const auth = betterAuth({
         // user belongs to the household.
         before: async (newSession) => {
           const [row] = await db
-            .select({ email: schema.user.email })
+            .select({ email: schema.user.email, emailVerified: schema.user.emailVerified })
             .from(schema.user)
             .where(eq(schema.user.id, newSession.userId))
             .limit(1);
-          assertAllowed(row?.email);
+          assertAccess({ email: row?.email, emailVerified: row?.emailVerified });
           await ensureMembership(newSession.userId);
         },
       },

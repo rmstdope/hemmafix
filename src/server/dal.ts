@@ -5,7 +5,8 @@ import { redirect } from "next/navigation";
 import { cache } from "react";
 import { db } from "@/db";
 import { membership, type MemberRole } from "@/db/schema";
-import { auth } from "./auth";
+import { decideAccess } from "@/lib/access";
+import { allowedEmails, auth } from "./auth";
 
 export type CurrentMember = {
   userId: string;
@@ -19,6 +20,8 @@ export type CurrentMember = {
 export const getCurrentMember = cache(async (): Promise<CurrentMember | null> => {
   const session = await auth.api.getSession({ headers: await headers() });
   if (!session) return null;
+  // Re-checked on every request: removing someone from ALLOWED_EMAILS takes effect at once.
+  if (decideAccess(session.user, allowedEmails()) !== "ok") return null;
 
   const [m] = await db
     .select({ householdId: membership.householdId, role: membership.role })

@@ -13,16 +13,19 @@ export function TaskItem({
   task,
   members,
   currentUserId,
+  today,
 }: {
   task: TaskView;
   members: Member[];
   currentUserId: string;
+  /** YYYY-MM-DD in the household's time zone, from the server. */
+  today: string;
 }) {
   const [pending, startTransition] = useTransition();
   const [assigneeId, setOptimisticAssignee] = useOptimistic(task.assigneeId);
   const [hidden, setHidden] = useOptimistic(false);
   const completed = task.completedAt !== null;
-  const due = formatDue(task.dueDate);
+  const due = formatDue(task.dueDate, today);
 
   const run = (fn: () => Promise<void>, onError = "Något gick fel, försök igen") =>
     startTransition(async () => {

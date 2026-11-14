@@ -25,3 +25,11 @@ describe("taskFilter", () => {
     expect(taskFilter.parse(undefined)).toBe("all");
   });
 });
+
+describe("createTaskInput due date", () => {
+  it("rejects dates that do not exist", () => {
+    expect(createTaskInput.safeParse({ title: "x", dueDate: "2026-02-30" }).success).toBe(false);
+    expect(createTaskInput.safeParse({ title: "x", dueDate: "2026-13-01" }).success).toBe(false);
+    expect(createTaskInput.safeParse({ title: "x", dueDate: "2028-02-29" }).success).toBe(true);
+  });
+});

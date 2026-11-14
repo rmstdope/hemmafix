@@ -5,6 +5,11 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { authClient } from "@/lib/auth-client";
 
+const ERRORS: Record<string, string> = {
+  EMAIL_NOT_ALLOWED: "Ditt Google-konto har inte tillgång till Hemmafix. Be den som administrerar appen att lägga till din adress.",
+  EMAIL_NOT_VERIFIED: "Din e-postadress är inte verifierad hos Google.",
+};
+
 export function LoginCard() {
   const error = useSearchParams().get("error");
   const [pending, setPending] = useState(false);
@@ -20,7 +25,7 @@ export function LoginCard() {
 
       {error && (
         <p role="alert" className="rounded-lg bg-destructive/10 p-3 text-sm text-destructive">
-          Inloggningen misslyckades. Har ditt Google-konto fått tillgång?
+          {ERRORS[error] ?? "Inloggningen misslyckades. Försök igen."}
         </p>
       )}
 
