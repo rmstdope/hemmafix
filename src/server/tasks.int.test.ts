@@ -22,11 +22,13 @@ beforeAll(async () => {
     { userId: eve.id, householdId: otherHomeId },
   ]);
   const daysAgo = (n: number) => new Date(Date.now() - n * 86_400_000);
+  // Distinct creation times: undated tasks are ordered by when they were added.
+  const created = (minute: number) => new Date(Date.UTC(2026, 0, 1, 12, minute));
   await db.insert(task).values([
-    { householdId: homeId, title: "Annas", assigneeId: annaId, dueDate: "2026-01-02" },
-    { householdId: homeId, title: "Ingens", dueDate: "2026-01-01" },
-    { householdId: homeId, title: "Utan datum" },
-    { householdId: homeId, title: "Bos", assigneeId: boId },
+    { householdId: homeId, title: "Annas", assigneeId: annaId, dueDate: "2026-01-02", createdAt: created(1) },
+    { householdId: homeId, title: "Ingens", dueDate: "2026-01-01", createdAt: created(2) },
+    { householdId: homeId, title: "Bos", assigneeId: boId, createdAt: created(4) },
+    { householdId: homeId, title: "Utan datum", createdAt: created(3) },
     { householdId: homeId, title: "Nyss klar", completedAt: daysAgo(1), completedById: boId },
     { householdId: homeId, title: "Länge sen", completedAt: daysAgo(30), completedById: boId },
     { householdId: otherHomeId, title: "Grannens" },

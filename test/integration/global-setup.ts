@@ -1,11 +1,21 @@
-import { createMigratedDatabase, dropDatabase } from "../database.mjs";
+import type { TestProject } from "vitest/node";
+import { createMigratedDatabase, dropDatabase, dropStaleDatabases, newRunPrefix } from "../database.mjs";
 
-/** Migrated once per run; every test file gets its own copy (see setup.ts). */
-export const TEMPLATE_DB = "hemmafix_test_template";
+declare module "vitest" {
+  export interface ProvidedContext {
+    /** Prefix for this run's databases; the migrated template is `<prefix>template`. */
+    testDbPrefix: string;
+  }
+}
 
-export default async function setup() {
-  await createMigratedDatabase(TEMPLATE_DB);
+/** Migrates one template per run; every test file gets its own copy (see setup.ts). */
+export default async function setup(project: TestProject) {
+  await dropStaleDatabases();
+  const prefix = newRunPrefix();
+  const template = `${prefix}template`;
+  await createMigratedDatabase(template);
+  project.provide("testDbPrefix", prefix);
   return async () => {
-    await dropDatabase(TEMPLATE_DB);
+    await dropDatabase(template);
   };
 }

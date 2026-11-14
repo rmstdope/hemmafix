@@ -23,6 +23,9 @@ export default defineConfig({
           name: "unit",
           include: ["src/**/*.test.ts"],
           exclude: ["src/**/*.int.test.ts"],
+          // Unit tests have no database; an accidental import of src/db fails loudly
+          // instead of reaching the developer's dev database.
+          env: { DATABASE_URL: "postgres://unit-tests-have-no-database.invalid/none" },
         },
       },
       {

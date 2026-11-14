@@ -24,9 +24,20 @@ const testAuth = betterAuth({
   plugins: [testUtils()],
 });
 
-/** Empties every table, so each test starts with no household and no users. */
+/**
+ * Empties every table in the app's schema, so each test starts with no household and no
+ * users. Tables are looked up, not listed, so new ones cannot leak rows between tests.
+ * (Drizzle's migration journal lives in the `drizzle` schema and is kept.)
+ */
 export async function resetDatabase() {
-  await db.execute(sql`truncate table "user", household, verification restart identity cascade`);
+  await db.execute(sql`
+    do $$ begin
+      execute (
+        select 'truncate table ' || string_agg(format('%I.%I', schemaname, tablename), ', ')
+          || ' restart identity cascade'
+        from pg_tables where schemaname = 'public'
+      );
+    end $$`);
 }
 
 async function homeId() {

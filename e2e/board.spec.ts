@@ -15,6 +15,14 @@ test("a visitor who is not logged in is sent to the login page", async ({ page }
   await expect(page.getByRole("button", { name: "Logga in med Google" })).toBeVisible();
 });
 
+test("someone who is no longer on the allowlist is logged out at once", async ({ page, context }) => {
+  // A valid session for an address not (or no longer) in ALLOWED_EMAILS.
+  await logIn(context, "eve");
+  await page.goto("/");
+  await expect(page).toHaveURL(/\/login$/);
+  await expect((await page.request.get("/api/events")).status()).toBe(401);
+});
+
 test("a member adds a task, ticks it off and can undo it", async ({ page, context }) => {
   await logIn(context, "anna", "admin");
   await page.goto("/");
@@ -59,14 +67,21 @@ test("a change on one device shows up on another without reloading", async ({ pa
   const boContext = await browser.newContext({ baseURL: E2E_BASE_URL, locale: "sv-SE" });
   const boPage = await boContext.newPage();
   await logIn(boContext, "bo");
+  const add = async (title: string) => {
+    await page.getByRole("textbox", { name: "Ny uppgift" }).fill(title);
+    await page.getByRole("button", { name: "Lägg till" }).click();
+  };
 
   await boPage.goto("/");
   await expect(boPage.getByText("Inget att göra just nu")).toBeVisible();
-
   await page.goto("/");
-  await page.getByRole("textbox", { name: "Ny uppgift" }).fill("Tömma diskmaskinen");
-  await page.getByRole("button", { name: "Lägg till" }).click();
 
+  // Bo's page also refreshes once when its event stream opens, which could deliver the first
+  // task even with notifications broken. Once that has shown up the stream is open, so the
+  // second task can only arrive through a live notification.
+  await add("Tömma diskmaskinen");
   await expect(boPage.getByRole("listitem").filter({ hasText: "Tömma diskmaskinen" })).toBeVisible();
+  await add("Vattna blommorna");
+  await expect(boPage.getByRole("listitem").filter({ hasText: "Vattna blommorna" })).toBeVisible();
   await boContext.close();
 });

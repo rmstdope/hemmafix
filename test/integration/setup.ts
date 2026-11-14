@@ -2,12 +2,12 @@
 // points DATABASE_URL (read by src/db when first imported) at it. Files therefore run in
 // parallel without seeing each other's rows.
 import { randomBytes } from "node:crypto";
-import { afterAll } from "vitest";
+import { afterAll, inject } from "vitest";
 import { createDatabase, databaseUrl, dropDatabase } from "../database.mjs";
-import { TEMPLATE_DB } from "./global-setup";
 
-const name = `hemmafix_test_${process.pid}_${randomBytes(4).toString("hex")}`;
-await createDatabase(name, { template: TEMPLATE_DB });
+const prefix = inject("testDbPrefix");
+const name = `${prefix}${randomBytes(4).toString("hex")}`;
+await createDatabase(name, { template: `${prefix}template` });
 process.env.DATABASE_URL = databaseUrl(name);
 
 afterAll(async () => {

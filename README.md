@@ -56,18 +56,21 @@ delete from membership where user_id = (select id from "user" where email = 'adr
 Tre nivåer, alla körs i CI på varje PR och måste passera innan något publiceras:
 
 - **Enhetstester** (`src/**/*.test.ts`): ren logik, ingen databas.
-- **Integrationstester** (`src/**/*.int.test.ts`): serverkod mot en riktig Postgres. Varje
-  testfil får en egen nymigrerad databas (`hemmafix_test_*`, kopierad från en mall), så
-  filerna kör parallellt utan att se varandras rader.
+- **Integrationstester** (`src/**/*.int.test.ts`): serverkod mot en riktig Postgres,
+  inklusive inloggningskrokarna i `src/server/auth.ts`. Varje testfil får en egen
+  nymigrerad databas (kopierad från en mall), så filerna kör parallellt utan att se
+  varandras rader.
 - **End-to-end** (`e2e/`, Playwright): produktionsbygget i Chromium, i mobil- och
-  desktopformat. Servern får en egen databas (`hemmafix_test_e2e`) och en
-  engångshemlighet. Testerna loggar in utan Google via Better Auths `test-utils`-plugin,
+  desktopformat. Servern får en egen databas och en engångshemlighet. Testerna loggar in utan Google via Better Auths `test-utils`-plugin,
   som bara finns i testprocessen: det skriver en riktig session och signerar cookien med
   samma hemlighet. Appen har alltså ingen testinloggning som kan råka vara påslagen.
 
 Integration och e2e skapar databaser på servern i `TEST_DATABASE_URL` (annars
-`DATABASE_URL`) och rör bara databaser som börjar på `hemmafix_test_`. Lokalt räcker
-dev-databasen från *Kom igång*. Första gången: `pnpm exec playwright install chromium`.
+`DATABASE_URL`), bara på localhost om man inte sätter `ALLOW_REMOTE_TEST_DB=1`. De rör
+bara databaser som börjar på `hemmafix_test_`. Varje körning har egna namn, så två
+körningar samtidigt stör inte varandra, och databaser som en avbruten körning lämnat
+efter sig städas bort vid nästa körning. Lokalt räcker dev-databasen från *Kom igång*.
+Första gången: `pnpm exec playwright install chromium`.
 
 ## Skript
 
@@ -77,7 +80,8 @@ dev-databasen från *Kom igång*. Första gången: `pnpm exec playwright install
 | `pnpm build` | Produktionsbygge (standalone) |
 | `pnpm test` | Enhetstester (Vitest) |
 | `pnpm test:int` | Integrationstester mot Postgres (se *Tester*) |
-| `pnpm test:e2e` | End-to-end-tester i webbläsare (kör `pnpm build` först) |
+| `pnpm test:e2e` | End-to-end-tester mot det senaste bygget |
+| `pnpm e2e` | Bygg och kör end-to-end-testerna |
 | `pnpm lint` / `pnpm typecheck` | ESLint / TypeScript |
 | `pnpm db:generate` | Skapa migrering från `src/db/schema.ts` |
 | `pnpm db:migrate` | Kör migreringar |
