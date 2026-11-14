@@ -82,6 +82,9 @@ scripts/          migrate.ts – körs vid containerstart
 
 ## Drift
 
+Se [deploy/README.md](deploy/README.md) för CI, app-paketet till rmstdope-infra,
+hemligheter och kommandona för att registrera och deploya.
+
 Imagen (`Dockerfile`) kör migreringar vid start och lyssnar på port 8080 med
 `/healthz` och `/release.json` enligt rmstdope-infras applikationskontrakt.
 Sätt `GIT_SHA` som build-arg. Migreringar måste vara bakåtkompatibla

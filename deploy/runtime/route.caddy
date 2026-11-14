@@ -1,0 +1,4 @@
+hemmafix.rmstdope.eu {
+	encode zstd gzip
+	reverse_proxy hemmafix-web:8080
+}

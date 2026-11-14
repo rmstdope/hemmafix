@@ -1,0 +1,64 @@
+{
+  "services": {
+    "web": {
+      "image": "${WEB_IMAGE:?Set WEB_IMAGE}",
+      "init": true,
+      "restart": "unless-stopped",
+      "mem_limit": "384m",
+      "cpus": 0.75,
+      "pids_limit": 256,
+      "env_file": ["${SECRETS_DIR}/web.env"],
+      "environment": {
+        "BETTER_AUTH_URL": "https://hemmafix.rmstdope.eu",
+        "PORT": "8080"
+      },
+      "healthcheck": {
+        "test": ["CMD", "wget", "-q", "--spider", "http://127.0.0.1:8080/healthz"],
+        "interval": "10s",
+        "timeout": "5s",
+        "retries": 6,
+        "start_period": "30s"
+      },
+      "networks": {
+        "proxy": { "aliases": ["hemmafix-web"] },
+        "private": {}
+      },
+      "depends_on": { "db": { "condition": "service_healthy" } },
+      "logging": {
+        "driver": "json-file",
+        "options": { "max-size": "10m", "max-file": "3" }
+      }
+    },
+    "db": {
+      "image": "postgres@sha256:d3244e8ce3f165ee3c93d9c4a4b1d0fe48b3a89e2287b717fdcbbde92d405065",
+      "restart": "unless-stopped",
+      "mem_limit": "256m",
+      "cpus": 0.5,
+      "pids_limit": 256,
+      "env_file": ["${SECRETS_DIR}/db.env"],
+      "networks": { "private": {} },
+      "volumes": [
+        {
+          "type": "volume",
+          "source": "db-data",
+          "target": "/var/lib/postgresql/data"
+        }
+      ],
+      "healthcheck": {
+        "test": ["CMD", "pg_isready", "-U", "hemmafix", "-d", "hemmafix"],
+        "interval": "5s",
+        "timeout": "5s",
+        "retries": 12
+      },
+      "logging": {
+        "driver": "json-file",
+        "options": { "max-size": "10m", "max-file": "3" }
+      }
+    }
+  },
+  "networks": {
+    "proxy": { "external": true, "name": "rmstdope-proxy" },
+    "private": { "internal": true }
+  },
+  "volumes": { "db-data": { "name": "rmstdope-hemmafix-db-v1" } }
+}
