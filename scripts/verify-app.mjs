@@ -11,7 +11,7 @@
 // accounts and sessions survive every reset, so the navigator's Google login (60 days, renewed on
 // use) carries over from one look to the next. Everything else in the home is emptied by `reset`.
 import { spawn } from "node:child_process";
-import { cpSync, existsSync } from "node:fs";
+import { cpSync, existsSync, readFileSync } from "node:fs";
 import { randomUUID } from "node:crypto";
 import { drizzle } from "drizzle-orm/postgres-js";
 import { migrate } from "drizzle-orm/postgres-js/migrator";
@@ -19,6 +19,8 @@ import postgres from "postgres";
 
 const VERIFY_DB = "hemmafix_verify";
 const PORT = "3000"; // the only local port Google redirects back to
+// Its own name, so a page showing it is known to be the verify home and not the dev or real one.
+const HOME_NAME = "Familjen (verifiering)";
 const LOCAL_HOSTS = new Set(["localhost", "127.0.0.1", "[::1]", "::1"]);
 
 function verifyUrl() {
@@ -55,7 +57,19 @@ async function ensureDatabase(quiet = false) {
       if (!quiet) console.log(`verify-app: created ${VERIFY_DB}`);
     }
   });
-  await withSql(url, (sql) => migrate(drizzle(sql), { migrationsFolder: "./drizzle" }));
+  await withSql(url, async (sql) => {
+    // Drizzle applies only migrations newer than the newest one recorded, so a migration this tree
+    // does not have (an unmerged pull request's, from a review) would make later ones be skipped.
+    const known = new Set(JSON.parse(readFileSync("drizzle/meta/_journal.json", "utf8")).entries.map((e) => String(e.when)));
+    const [{ exists }] = await sql`select to_regclass('drizzle.__drizzle_migrations') is not null as exists`;
+    const applied = exists ? await sql`select created_at from drizzle.__drizzle_migrations` : [];
+    const foreign = applied.filter((m) => !known.has(String(m.created_at)));
+    if (foreign.length > 0) {
+      fail(`${VERIFY_DB} has ${foreign.length} migration(s) this tree does not know: it was migrated by another branch. ` +
+        `Ask the navigator; recreating the database costs their kept login.`);
+    }
+    await migrate(drizzle(sql), { migrationsFolder: "./drizzle" });
+  });
   if (!quiet) console.log(`verify-app: ${VERIFY_DB} is migrated to this tree`);
   return url;
 }
@@ -68,10 +82,18 @@ async function serve() {
   cpSync(".next/static", ".next/standalone/.next/static", { recursive: true });
   const child = spawn(process.execPath, [".next/standalone/server.js"], {
     stdio: "inherit",
-    env: { ...process.env, DATABASE_URL: url, PORT, HOSTNAME: "127.0.0.1", BETTER_AUTH_URL: `http://localhost:${PORT}` },
+    env: {
+      ...process.env,
+      DATABASE_URL: url,
+      PORT,
+      HOSTNAME: "127.0.0.1",
+      BETTER_AUTH_URL: `http://localhost:${PORT}`,
+      HOUSEHOLD_NAME: HOME_NAME,
+      TZ: "Europe/Stockholm", // as in the image
+    },
   });
   for (const signal of ["SIGINT", "SIGTERM"]) process.on(signal, () => child.kill(signal));
-  child.on("exit", (code) => process.exit(code ?? 0));
+  child.on("exit", (code, signal) => process.exit(code ?? (signal ? 1 : 0)));
   console.log(`verify-app: Open http://localhost:${PORT}/`);
 }
 
@@ -83,7 +105,8 @@ async function status() {
              (select max(s.expires_at) from session s where s.user_id = u.id and s.expires_at > now()) as login_until
       from membership m join "user" u on u.id = m.user_id order by u.created_at`;
     const [counts] = await sql`select (select count(*) from floor) floors, (select count(*) from room) rooms,
-      (select count(*) from chore) chores, (select count(*) from oauth_client) apps`;
+      (select count(*) from chore) chores, (select count(*) from oauth_client) registered_clients,
+      (select count(*) from app_connection_use) connections`;
     console.log(JSON.stringify({ homes: homes.map((h) => h.name), members, ...counts }, null, 2));
   });
 }
@@ -120,8 +143,7 @@ async function reset() {
         oauth_access_token, oauth_refresh_token, oauth_client_assertion, oauth_client_resource, oauth_client cascade`;
       await tx`delete from "user" u where not exists (select 1 from account a where a.user_id = u.id)`;
       await tx`update membership set role = 'adult', updated_at = now()`;
-      const name = process.env.HOUSEHOLD_NAME?.trim() || "Familjen";
-      const homes = await tx`update household set name = ${name}, updated_at = now() returning id`;
+      const homes = await tx`update household set name = ${HOME_NAME}, updated_at = now() returning id`;
       for (const home of homes) await tx`insert into floor (household_id, name, position) values (${home.id}, '1', 1)`;
     });
     console.log("verify-app: the home is empty again; logins kept");

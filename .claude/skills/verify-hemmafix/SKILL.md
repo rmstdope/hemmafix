@@ -75,12 +75,16 @@ other host) and is **never dropped**: its users, Google accounts and sessions su
 That is how the navigator's login carries over: the app keeps a session for 60 days, renewed on use,
 so they log in once and every look after reuses it.
 
-- `verify-app status` shows the home's name, every member with their role, whether they can log in,
-  until when their login lasts, and how many floors, rooms, chores and connected apps there are.
-  Run it before launching and put its output in each report.
+- **Start every look with `verify-app reset`**, then `verify-app status`: whatever an earlier look,
+  or a review of an outside pull request, left in the home is gone, and the home is named
+  **Familjen (verifiering)**. `status` shows every member with their role, whether they can log in,
+  until when their login lasts, and how many floors, rooms, chores, registered clients and
+  connections there are. Put its output in each report. If the helper refuses because the database
+  holds a migration this tree does not know, that is a blocker: ask the navigator, and never drop the
+  database yourself.
 - **No working login** (no member with `logs_in` true and a `login_until` in the future): ask the
-  navigator once, under `prepare`, to log in at `http://localhost:3000` in their Chrome once the
-  server is up. **Never type, fill or see their Google credentials**: the Google pages are theirs.
+  navigator once, under `verify`, right after the server answers `/healthz`, to log in at
+  `http://localhost:3000` in their Chrome. **Never type, fill or see their Google credentials**: the Google pages are theirs.
   The login is shared with any other server on `localhost:3000`, so their own dev server's login
   replaces it, and vice versa; that is expected, not a fault.
 - Build the state a bead needs **through the app**, as a family member would: floors, rooms, chores,
@@ -105,7 +109,11 @@ pid holding it, never stop or reuse it, and wait for them to free it.
 
 **Act only on the server you started**: open `http://localhost:3000/` (not `127.0.0.1`: the login
 cookie belongs to `localhost`), act only in tabs you opened, and before the first action confirm the
-page shows the verify home's name from `verify-app status`.
+page names the home **Familjen (verifiering)**. Any other name means you are not on the verify home:
+stop.
+
+To stop the server, send SIGTERM to the `verify-app serve` process you started (it passes it on to
+the server; the pid on port 3000 is the server's, not yours), then confirm port 3000 is free.
 
 ## The look, for Hemmafix
 
@@ -125,7 +133,8 @@ On top of verify-bead's *Look*, check what the acceptance touches:
   `document.body.innerHTML = '<iframe src="/" style="width:390px;height:844px;border:0"></iframe>'`.
   The frame's media queries answer to its width, and its requests carry the login cookie. Work and
   screenshot inside it; reload the tab for desktop. If a check cannot be done in the frame, fall back
-  as verify-bead says. Say in the report how the sizes were set.
+  as verify-bead says. Say in the report how the sizes were set, and that the frame has the phone's
+  width but not its touch, user agent or safe-area insets.
 - **The words, exactly.** Everything a family member reads is Swedish. An acceptance with *The
   words, exactly* is checked word for word, including bold, punctuation and capitalisation: quote
   the screen's text beside the agreed text in the log. English text, a Swedish typo, or an error that
@@ -151,7 +160,8 @@ Beads that change what Claude can do through `/mcp`, or the login and approval p
 looked at through the official **MCP Inspector**, which speaks the same OAuth and MCP as Claude:
 
 1. Check its ports are free (`lsof -nP -iTCP:6274 -sTCP:LISTEN`, and 6277), then start it in the
-   background: `npx -y @modelcontextprotocol/inspector`. It prints a URL with a session token: open
+   background: `npx -y @modelcontextprotocol/inspector@2.13.0` (pinned; a newer version is a change
+   to this skill, not a choice in a look). It prints a URL with a session token: open
    that exact URL in a tab you opened.
 2. Transport *Streamable HTTP*, URL `http://localhost:3000/mcp`. Use its OAuth flow: it registers
    itself, the browser goes to Hemmafix's login (skipped while logged in) and approval page. Those
@@ -244,7 +254,8 @@ by the recipes in `agents/verifier.md`.
 Run this at **every** end of a look: after the verdicts, after a blocker, and when the navigator is
 away and the pass ends with beads pending.
 
-1. Stop the server you started, the Inspector and any `docs/ui` server you started, and only those.
+1. Stop the server you started (*Launching*), the Inspector and any `docs/ui` server you started,
+   and only those.
 2. `verify-app reset`: it empties the home (floors, rooms, chores, history, connected apps and the
    members the helper added), sets every role back to adult and keeps the logins. Never drop the
    database: that would cost the navigator their login.
