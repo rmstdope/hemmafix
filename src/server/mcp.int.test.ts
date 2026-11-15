@@ -174,6 +174,7 @@ describe("the task tools", () => {
       "lista_oppna_sysslor",
       "lista_vaningar_och_rum",
       "visa_gjort",
+      "visa_rutiner",
       "visa_sysslor_med_id",
     ]);
   });
