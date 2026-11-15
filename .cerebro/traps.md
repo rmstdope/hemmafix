@@ -27,3 +27,12 @@ CI publishes every push to `main` and rmstdope-infra rolls it out to hemmafix.rm
 own. That is why `navigator_gates` holds `merge`: a producer leaves the merge to the navigator. The
 host registration in `deploy/runtime/` is frozen; a change there needs a separate, reviewed
 re-registration and is never part of an ordinary bead.
+
+## The Cerebro submodule looped the build (mounting Cerebro, 2026-11-15)
+
+`.cerebro/cerebro` contains a symlink back into itself, and the fleet's worktrees sit under
+`.cerebro/worktrees/` and `.claude/worktrees/`. Tailwind's automatic class detection followed the
+link and Turbopack panicked (`'.cerebro/cerebro/.cerebro/cerebro' is a symlink ... infinite loop`);
+`tsconfig.json`'s `**/*.ts` and ESLint would have swept in every worktree as well. They are excluded
+in `src/app/globals.css` (`@source not`), `tsconfig.json`, `eslint.config.mjs` and `.dockerignore`.
+Any new tool that globs the repository needs the same two exclusions.

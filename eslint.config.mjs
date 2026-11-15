@@ -12,6 +12,9 @@ const eslintConfig = defineConfig([
     "out/**",
     "build/**",
     "next-env.d.ts",
+    // Cerebro's submodule and the fleet's and Claude Code's worktrees are not this app.
+    ".cerebro/**",
+    ".claude/**",
   ]),
 ]);
 
