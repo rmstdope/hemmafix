@@ -5,14 +5,18 @@ import { captureRedirectToClaude, expectSentToClaudeOnce, REDIRECT_URI } from ".
 import { logIn, seedOAuthClient } from "./support/family";
 
 /** Claude's side of the connection: a registered client and the authorization link it sends the person to. */
-async function claudeStartsConnecting(opts: { clientId?: string; prompt?: string } = {}) {
-  const client_id = opts.clientId ?? (await seedOAuthClient({ name: "Claude", redirectUri: REDIRECT_URI }));
+async function claudeStartsConnecting(
+  opts: { clientId?: string; prompt?: string; name?: string | null; redirectUri?: string } = {},
+) {
+  const redirectUri = opts.redirectUri ?? REDIRECT_URI;
+  const client_id =
+    opts.clientId ?? (await seedOAuthClient({ name: opts.name === undefined ? "Claude" : opts.name, redirectUri }));
   const verifier = randomBytes(32).toString("base64url");
   const url = new URL("/api/auth/oauth2/authorize", E2E_BASE_URL);
   url.search = new URLSearchParams({
     response_type: "code",
     client_id,
-    redirect_uri: REDIRECT_URI,
+    redirect_uri: redirectUri,
     scope: "openid offline_access",
     state: "xyz",
     resource: `${E2E_BASE_URL}/mcp`,
@@ -206,4 +210,74 @@ test("the MCP address refuses an access token it did not issue", async ({ reques
 test("the login page is the plain app login when nobody is connecting an app", async ({ page }) => {
   await page.goto("/login");
   await expect(page.getByText("Logga in för att ansluta")).toHaveCount(0);
+});
+
+const WARNING = /Hemmafix känner inte igen den här adressen\./;
+
+test("the real Claude shows where the approval goes, with no warning and Godkänn first", async ({ page, context }) => {
+  await logIn(context, "anna", "adult");
+  await page.goto((await claudeStartsConnecting()).url);
+
+  await expect(page.getByText("Skickar dig tillbaka till claude.ai")).toBeVisible();
+  await expect(page.getByText(WARNING)).toHaveCount(0);
+  const buttons = page.getByRole("button", { name: /^(Godkänn|Avbryt)$/ });
+  await expect(buttons).toHaveText(["Godkänn", "Avbryt"]);
+});
+
+test("an app on the person's own computer is called that, with no warning", async ({ page, context }) => {
+  await logIn(context, "anna", "adult");
+  await page.goto((await claudeStartsConnecting({ name: "Claude Code", redirectUri: "http://localhost:54321/callback" })).url);
+
+  await expect(page.getByText("Skickar dig tillbaka till den här datorn")).toBeVisible();
+  await expect(page.getByText(WARNING)).toHaveCount(0);
+});
+
+test("an impostor calling itself Claude at an unknown address gets a warning and Avbryt first", async ({ page, context }) => {
+  await logIn(context, "anna", "adult");
+  await page.goto((await claudeStartsConnecting({ redirectUri: "https://claude-hjalp.app/cb" })).url);
+
+  await expect(page.getByRole("heading", { name: "Claude vill ansluta till Hemmafix" })).toBeVisible();
+  await expect(page.getByText("Skickar dig tillbaka till claude-hjalp.app")).toBeVisible();
+  await expect(page.getByText("Hemmafix känner inte igen den här adressen. Godkänn bara om du själv nyss anslöt Hemmafix från claude-hjalp.app.")).toBeVisible();
+  await expect(page.getByRole("button", { name: /^(Godkänn|Avbryt)$/ })).toHaveText(["Avbryt", "Godkänn"]);
+  for (const name of ["Byt konto", "Avbryt", "Godkänn"]) {
+    await page.keyboard.press("Tab");
+    await expect(page.getByRole("button", { name })).toBeFocused();
+  }
+});
+
+test("a nameless app is named after its address everywhere, also on the login step", async ({ page, context }) => {
+  const claude = await claudeStartsConnecting({ name: null, redirectUri: "https://claude-hjalp.app/cb" });
+  await page.goto(claude.url);
+  await expect(page.getByText("Logga in för att ansluta claude-hjalp.app till ditt hem.")).toBeVisible();
+
+  await logIn(context, "anna", "adult");
+  await page.goto(claude.url);
+  await expect(page.getByRole("heading", { name: "claude-hjalp.app vill ansluta till Hemmafix" })).toBeVisible();
+  await expect(page.getByText("Du kan koppla från claude-hjalp.app när som helst.")).toBeVisible();
+  await expect(page.getByText(WARNING)).toBeVisible();
+});
+
+test("a nameless app on the person's own computer", async ({ page, context }) => {
+  const claude = await claudeStartsConnecting({ name: null, redirectUri: "http://127.0.0.1:5000/cb" });
+  await page.goto(claude.url);
+  await expect(page.getByText("Logga in för att ansluta en app på den här datorn till ditt hem.")).toBeVisible();
+
+  await logIn(context, "anna", "adult");
+  await page.goto(claude.url);
+
+  await expect(page.getByRole("heading", { name: "En app på den här datorn vill ansluta till Hemmafix" })).toBeVisible();
+  await expect(page.getByText("Om du godkänner kan en app på den här datorn, i hemmet")).toBeVisible();
+  await expect(page.getByText("Du kan koppla från en app på den här datorn när som helst.")).toBeVisible();
+  await expect(page.getByText(WARNING)).toHaveCount(0);
+});
+
+test("a very long address wraps inside the card", async ({ page, context }) => {
+  await logIn(context, "anna", "adult");
+  const host = `${"a".repeat(60)}.${"b".repeat(60)}.example.com`;
+  await page.goto((await claudeStartsConnecting({ redirectUri: `https://${host}/cb` })).url);
+
+  await expect(page.getByText(`Skickar dig tillbaka till ${host}`)).toBeVisible();
+  const overflow = await page.evaluate(() => document.documentElement.scrollWidth > document.documentElement.clientWidth);
+  expect(overflow).toBe(false);
 });

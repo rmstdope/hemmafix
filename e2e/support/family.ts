@@ -176,7 +176,7 @@ export async function seedDone(opts: { title: string; roomId: string; completedB
  * Registers an app the way Claude does (a public client with PKCE), straight in the database:
  * the register endpoint is rate limited, and every test starts from an empty database.
  */
-export async function seedOAuthClient(opts: { name: string; redirectUri: string }) {
+export async function seedOAuthClient(opts: { name: string | null; redirectUri: string }) {
   const clientId = `e2e-${crypto.randomUUID()}`;
   await db.insert(schema.oauthClient).values({
     id: crypto.randomUUID(),
@@ -211,6 +211,7 @@ export async function seedConnection(opts: {
   icon?: string | null;
   connectedAt?: Date;
   lastUsedAt?: Date;
+  redirectUri?: string;
 }) {
   const clientId = `e2e-${crypto.randomUUID()}`;
   const family = `fam-${crypto.randomUUID()}`;
@@ -219,7 +220,7 @@ export async function seedConnection(opts: {
     clientId,
     name: opts.name,
     icon: opts.icon ?? null,
-    redirectUris: ["https://claude.ai/api/mcp/auth_callback"],
+    redirectUris: [opts.redirectUri ?? "https://claude.ai/api/mcp/auth_callback"],
   });
   await db.insert(schema.oauthRefreshToken).values({
     id: crypto.randomUUID(),
