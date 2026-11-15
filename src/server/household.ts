@@ -296,13 +296,16 @@ export async function listMembersWithRoles(householdId: string): Promise<MemberW
     .orderBy(asc(user.name));
 }
 
-/** Makes a member an adult or a child. The household always keeps at least one adult. */
-export async function setMemberRole(actor: Actor, targetUserId: string, role: Role) {
+/**
+ * Makes a member an adult or a child. The household always keeps at least one adult.
+ * Resolves to whether the role changed (false when the member already had it).
+ */
+export async function setMemberRole(actor: Actor, targetUserId: string, role: Role): Promise<boolean> {
   assertCan(actor, "member:set-role");
   const target = memberId.parse(targetUserId);
   const next = roleInput.parse(role);
 
-  await db.transaction(async (tx) => {
+  return db.transaction(async (tx) => {
     // Serialize role changes in the household, so two adults demoting each other at the
     // same moment cannot leave it without an adult.
     await tx.execute(sql`select pg_advisory_xact_lock(hashtext('hemmafix:roles:' || ${actor.householdId}))`);
@@ -320,6 +323,8 @@ export async function setMemberRole(actor: Actor, targetUserId: string, role: Ro
       .from(membership)
       .where(and(eq(membership.householdId, actor.householdId), eq(membership.userId, target)));
     if (!current) throw new UserError("Personen finns inte i hemmet");
+
+    if (current.role === next) return false;
 
     if (current.role === "adult" && next === "child") {
       const [{ others }] = (await tx
@@ -339,5 +344,6 @@ export async function setMemberRole(actor: Actor, targetUserId: string, role: Ro
       .update(membership)
       .set({ role: next })
       .where(and(eq(membership.householdId, actor.householdId), eq(membership.userId, target)));
+    return true;
   });
 }
