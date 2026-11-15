@@ -12,6 +12,7 @@ import { boardFilter } from "@/lib/validation";
 import { requireMember } from "@/server/dal";
 import { canUndo, getHousehold, listMembers, listOpenInstances, listRecentlyCompleted } from "@/server/chores";
 import { listFloors, listRooms } from "@/server/household";
+import { listRoutinesWithTasks } from "@/server/routines";
 
 export default function Home({ searchParams }: PageProps<"/">) {
   return (
@@ -45,6 +46,7 @@ async function Board({ searchParams }: { searchParams: PageProps<"/">["searchPar
     roomId: rooms.some((r) => r.id === requested.roomId) ? requested.roomId : undefined,
     floorId: floors.some((f) => f.id === requested.floorId) ? requested.floorId : undefined,
   };
+  const routines = isAdult ? await listRoutinesWithTasks(member) : [];
   const open = await listOpenInstances(member, filter);
   const filtered = Boolean(filter.roomId || filter.floorId || filter.who);
   const showFloors = floors.length > 1;
@@ -78,7 +80,7 @@ async function Board({ searchParams }: { searchParams: PageProps<"/">["searchPar
         </div>
       </header>
 
-      {isAdult && <AddChoreForm floors={floors} rooms={rooms} members={members} currentUserId={member.userId} today={today} />}
+      {isAdult && <AddChoreForm floors={floors} rooms={rooms} routines={routines} members={members} currentUserId={member.userId} today={today} />}
 
       <BoardFilters
         floors={floors}
