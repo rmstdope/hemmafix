@@ -3,6 +3,7 @@
 import { refresh } from "next/cache";
 import { z } from "zod";
 import { UserError } from "@/lib/errors";
+import { SAVE_FAILED } from "@/lib/routine-texts";
 import type { Role } from "@/lib/permissions";
 import { getCurrentMember, type CurrentMember } from "@/server/dal";
 import * as home from "@/server/household";
@@ -10,7 +11,7 @@ import * as chores from "@/server/chores";
 import * as connections from "@/server/connections";
 import * as routines from "@/server/routines";
 
-export type ActionState = { ok: boolean; error?: string; id?: string };
+export type ActionState = { ok: boolean; error?: string; id?: string; count?: number };
 
 const LOGGED_OUT = "Du är utloggad – ladda om sidan och logga in igen.";
 
@@ -111,6 +112,21 @@ export async function updateRoutineTask(routineId: string, taskId: string, title
 
 export async function removeRoutineTask(routineId: string, taskId: string) {
   return act((m) => routines.removeRoutineTask(m, routineId, taskId));
+}
+
+/** Adds every task of a routine to a room (adults); resolves with how many were added. */
+export async function addRoutine(_prev: ActionState, formData: FormData): Promise<ActionState> {
+  let count = 0;
+  try {
+    const result = await act(async (m) => {
+      count = (await routines.addRoutineToHome(m, Object.fromEntries(formData))).count;
+    });
+    return result.ok ? { ok: true, count } : result;
+  } catch (e) {
+    // Not something the person can fix: say so the agreed way instead of showing the error page.
+    console.error("addRoutine failed", e);
+    return { ok: false, error: SAVE_FAILED };
+  }
 }
 
 // ---------------------------------------------------------------------------

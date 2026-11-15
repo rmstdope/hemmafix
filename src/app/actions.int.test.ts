@@ -232,3 +232,44 @@ describe("when logged out", () => {
     expect((await openInstance(t.choreId))!.completedAt).toBeNull();
   });
 });
+
+describe("addRoutine", () => {
+  const routines = async () => import("@/server/routines");
+  const fields = (routineId: string, extra: Record<string, string> = {}) =>
+    form({ mode: "routine", routineId, roomId: f.kitchen.id, kind: "once", ...extra });
+
+  it("adds the routine's tasks for an adult and says how many", async () => {
+    as(f.adult);
+    const r = await routines();
+    const { id } = await r.createRoutine(f.adult, "Städa");
+    await r.addRoutineTask(f.adult, id, "A");
+    await r.addRoutineTask(f.adult, id, "B");
+    expect(await actions.addRoutine({ ok: false }, fields(id))).toEqual({ ok: true, count: 2 });
+    expect(await db.select().from(chore).where(eq(chore.householdId, f.homeId))).toHaveLength(2);
+  });
+
+  it("refuses a child, and a routine that is gone", async () => {
+    as(f.child);
+    expect(await actions.addRoutine({ ok: false }, fields("00000000-0000-4000-8000-000000000000"))).toEqual(FORBIDDEN);
+    as(f.adult);
+    expect(await actions.addRoutine({ ok: false }, fields("00000000-0000-4000-8000-000000000000"))).toEqual({
+      ok: false,
+      error: "Rutinen finns inte längre",
+    });
+  });
+
+  it("answers an unexpected failure with the agreed notice", async () => {
+    as(f.adult);
+    const r = await routines();
+    const { id } = await r.createRoutine(f.adult, "Städa");
+    await r.addRoutineTask(f.adult, id, "A");
+    const spy = vi.spyOn(chores, "notifyHouseholdChanged").mockRejectedValueOnce(new Error("down"));
+    const quiet = vi.spyOn(console, "error").mockImplementation(() => {});
+    expect(await actions.addRoutine({ ok: false }, fields(id))).toEqual({
+      ok: false,
+      error: "Det gick inte att spara. Försök igen.",
+    });
+    spy.mockRestore();
+    quiet.mockRestore();
+  });
+});

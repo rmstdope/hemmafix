@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { boardFilter, createChoreInput, routineName, routineTaskTitle } from "./validation";
+import { addRoutineInput, boardFilter, createChoreInput, routineName, routineTaskTitle } from "./validation";
 
 const ROOM = "6f1c3b0e-5f8a-4c7e-9d2a-1b3c4d5e6f70";
 const parse = (fields: Record<string, string>) => createChoreInput.safeParse(fields);
@@ -99,5 +99,47 @@ describe("routineTaskTitle", () => {
     expect(routineTaskTitle.safeParse("").error?.issues[0]?.message).toBe("Skriv vad som ska göras");
     expect(routineTaskTitle.safeParse("x".repeat(200)).success).toBe(true);
     expect(routineTaskTitle.safeParse("x".repeat(201)).error?.issues[0]?.message).toBe("Max 200 tecken");
+  });
+});
+
+describe("addRoutineInput", () => {
+  const ROUTINE = "7a2d4c1e-1f8a-4c7e-9d2a-1b3c4d5e6f71";
+
+  it("takes a recurring cadence with its start date and person", () => {
+    expect(
+      addRoutineInput.parse({
+        routineId: ROUTINE,
+        roomId: ROOM,
+        kind: "recurring",
+        interval: "2",
+        unit: "week",
+        startDate: "2026-12-01",
+        assigneeId: "u1",
+        title: "ignored",
+      }),
+    ).toEqual({
+      routineId: ROUTINE,
+      roomId: ROOM,
+      recurrence: { unit: "week", interval: 2 },
+      firstDueDate: "2026-12-01",
+      assigneeId: "u1",
+    });
+  });
+
+  it("takes a one-off with a due date, or none, and no person as null", () => {
+    const once = { routineId: ROUTINE, roomId: ROOM, kind: "once", assigneeId: "" };
+    expect(addRoutineInput.parse({ ...once, dueDate: "2026-12-24" })).toMatchObject({
+      recurrence: null,
+      firstDueDate: "2026-12-24",
+      assigneeId: null,
+    });
+    expect(addRoutineInput.parse({ ...once, dueDate: "" }).firstDueDate).toBeNull();
+  });
+
+  it("explains a missing routine, room or cadence in Swedish", () => {
+    const msg = (fields: Record<string, string>) => addRoutineInput.safeParse(fields).error?.issues[0]?.message;
+    expect(msg({ routineId: "", roomId: ROOM, kind: "once" })).toBe("Rutinen finns inte längre");
+    expect(msg({ routineId: ROUTINE, roomId: "", kind: "once" })).toBe("Välj ett rum");
+    expect(msg({ routineId: ROUTINE, roomId: ROOM, kind: "recurring" })).toBe("Ange hur ofta");
   });
 });
