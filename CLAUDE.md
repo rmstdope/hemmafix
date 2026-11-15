@@ -33,7 +33,8 @@ request: it leaves the merge to the navigator.
 
 ## Work tracking
 
-Planned work is tracked in beads (`bd`), prefix `hf`; `skills/beads-workflow` carries the commands.
+Planned work is tracked in beads (`bd`), prefix `hf`; the `beads-workflow` skill
+(`.claude/skills/beads-workflow`) carries the commands.
 GitHub issues are the inbox for outside requests and bug reports only. Every bead is created unranked
 and ranked later with the navigator; a bead is planned in one session and implemented in another.
 
@@ -63,8 +64,9 @@ their instructions to the letter.
   `src/components/` (`ui/` is shadcn's); the Drizzle schema and client in `src/db/`; pure logic
   (validation, dates, the allowlist) in `src/lib/`; auth, the data access layer and queries in
   `src/server/`. SQL migrations are in `drizzle/`.
-- Permissions are decided in one place, `src/lib/permissions.ts`, and checked on the server in every
-  action. Never rely on the UI hiding a button. A home always keeps at least one adult.
+- What a role may do is decided in one place, `src/lib/permissions.ts`, and who may log in at all in
+  `src/lib/access.ts` (`ALLOWED_EMAILS`); both are checked on the server in every action. Never rely
+  on the UI hiding a button. A home always keeps at least one adult.
 - Live updates go through Server-Sent Events (`src/app/api/events/`) on Postgres `LISTEN/NOTIFY`.
 - The data model supports several households; today one household is created on first login.
 - Validate every input at the boundary with Zod.
@@ -102,10 +104,14 @@ e2e port through `E2E_PORT`.
 
 ## Pre-merge checklist
 
-Before opening a pull request, run the full gate locally; it mirrors `.github/workflows/ci.yml`:
+Before opening a pull request, run the full gate locally. It mirrors `.github/workflows/ci.yml`
+except CI's `pnpm run db:migrate` on an empty database, which locally would migrate the dev
+database; the integration tests already migrate a fresh database per file. If the drift check fails
+it leaves a `*_ci-drift-check.sql` behind in `drizzle/`: delete it and run `pnpm db:generate`.
 
 ```sh
 pnpm install --frozen-lockfile
+pnpm exec playwright install chromium   # once per machine
 pnpm run lint
 pnpm run typecheck
 pnpm run test
