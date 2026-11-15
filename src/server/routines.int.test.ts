@@ -102,6 +102,16 @@ describe("routines", () => {
     await createRoutine(f.neighbour, "Tvätta");
   });
 
+  it("two renames to one name at once leave one, with the friendly message", async () => {
+    const a = await createRoutine(f.adult, "A");
+    const b = await createRoutine(f.adult, "B");
+    const results = await Promise.allSettled([renameRoutine(f.adult, a.id, "Samma"), renameRoutine(f.adult, b.id, "samma")]);
+    expect(results.filter((r) => r.status === "fulfilled")).toHaveLength(1);
+    expect(String((results.find((r) => r.status === "rejected") as PromiseRejectedResult).reason)).toContain(
+      "Det finns redan en rutin som heter",
+    );
+  });
+
   it("refuse an empty name and one over 40 characters", async () => {
     await expect(createRoutine(f.adult, "   ")).rejects.toThrow("Skriv rutinens namn");
     await expect(createRoutine(f.adult, "x".repeat(41))).rejects.toThrow("Max 40 tecken");
@@ -162,6 +172,13 @@ describe("tasks in a routine", () => {
     await expect(addRoutineTask(f.adult, id, "En till")).rejects.toThrow("En rutin kan ha högst 30 uppgifter");
   });
 
+  it("cannot be changed once removed", async () => {
+    const task = await addRoutineTask(f.adult, id, "Moppa");
+    await removeRoutineTask(f.adult, id, task.id);
+    await expect(updateRoutineTask(f.adult, id, task.id, "Ny")).rejects.toThrow("Uppgiften finns inte längre.");
+    await expect(updateRoutineTask(f.adult, id, "inte-ett-id", "Ny")).rejects.toThrow("Uppgiften finns inte längre.");
+  });
+
   it("cannot be added to a routine that is gone", async () => {
     await deleteRoutine(f.adult, id);
     await expect(addRoutineTask(f.adult, id, "Moppa")).rejects.toThrow("Den här rutinen finns inte längre.");
@@ -192,6 +209,7 @@ describe("who may", () => {
     expect(await getRoutine(f.neighbour, mine.id)).toBeNull();
     await expect(renameRoutine(f.neighbour, mine.id, "Deras")).rejects.toThrow("finns inte längre");
     await expect(addRoutineTask(f.neighbour, mine.id, "X")).rejects.toThrow("finns inte längre");
+    await expect(updateRoutineTask(f.neighbour, mine.id, task.id, "X")).rejects.toThrow("finns inte längre");
     await deleteRoutine(f.neighbour, mine.id);
     await removeRoutineTask(f.neighbour, mine.id, task.id);
     expect(await titles(mine.id)).toEqual(["Moppa"]);

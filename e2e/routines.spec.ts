@@ -167,3 +167,26 @@ test("another adult's changes show up live, also when the routine is removed", a
   await expect(page.getByText("Den här rutinen finns inte längre.")).toBeVisible();
   await other.close();
 });
+
+test("with no routines the list says so, and a new routine shows live on another adult's Hemmet", async ({ page, context }) => {
+  await logIn(context, "anna", "adult");
+  const other = await context.browser()!.newContext();
+  const otherPage = await other.newPage();
+  await logIn(other, "bo", "adult");
+
+  await openHome(page);
+  for (const name of ["Städa badrum", "Städa kök", "Städa sovrum"]) {
+    await section(page).getByRole("link", { name: new RegExp(name) }).click();
+    await page.getByRole("button", { name: "Ta bort rutinen" }).click();
+    await page.getByRole("dialog").getByRole("button", { name: "Ta bort", exact: true }).click();
+    await expect(page.getByRole("heading", { name: "Hemmet", level: 1 })).toBeVisible();
+  }
+  await expect(page.getByText("Inga rutiner ännu.")).toBeVisible();
+
+  await otherPage.goto("/hemmet");
+  await expect(otherPage.getByText("Inga rutiner ännu.")).toBeVisible();
+  await addRoutine(page, "Ny rutin hemma");
+  await expect(page.getByRole("heading", { name: "Ny rutin hemma", level: 1 })).toBeVisible();
+  await expect(otherPage.getByRole("link", { name: /Ny rutin hemma/ })).toContainText("Inga uppgifter");
+  await other.close();
+});

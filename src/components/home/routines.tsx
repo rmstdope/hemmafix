@@ -8,9 +8,7 @@ import { toast } from "sonner";
 import { createRoutine } from "@/app/actions";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { taskCountLabel } from "@/lib/routine-texts";
-
-export const SAVE_FAILED = "Det gick inte att spara. Försök igen.";
+import { SAVE_FAILED, taskCountLabel } from "@/lib/routine-texts";
 
 type RoutineRow = { id: string; name: string; taskCount: number };
 

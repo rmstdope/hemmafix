@@ -15,7 +15,7 @@ import {
 } from "@/app/actions";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { SAVE_FAILED } from "./routines";
+import { SAVE_FAILED } from "@/lib/routine-texts";
 
 type Routine = { id: string; name: string; tasks: { id: string; title: string }[] };
 
