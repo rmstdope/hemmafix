@@ -7,8 +7,8 @@ import { logIn, seedOAuthClient } from "./support/family";
 const REDIRECT_URI = "https://claude.ai/api/mcp/auth_callback";
 
 /** Claude's side of the connection: a registered client and the authorization link it sends the person to. */
-async function claudeStartsConnecting() {
-  const client_id = await seedOAuthClient({ name: "Claude", redirectUri: REDIRECT_URI });
+async function claudeStartsConnecting(opts: { clientId?: string; prompt?: string } = {}) {
+  const client_id = opts.clientId ?? (await seedOAuthClient({ name: "Claude", redirectUri: REDIRECT_URI }));
   const verifier = randomBytes(32).toString("base64url");
   const url = new URL("/api/auth/oauth2/authorize", E2E_BASE_URL);
   url.search = new URLSearchParams({
@@ -20,6 +20,7 @@ async function claudeStartsConnecting() {
     resource: `${E2E_BASE_URL}/mcp`,
     code_challenge: createHash("sha256").update(verifier).digest("base64url"),
     code_challenge_method: "S256",
+    ...(opts.prompt ? { prompt: opts.prompt } : {}),
   }).toString();
   return { clientId: client_id as string, verifier, url: url.toString() };
 }
@@ -82,9 +83,76 @@ test("an adult approves, and Claude can then list what is left to do", async ({ 
   expect(call.status()).toBe(200);
   expect(await call.text()).toContain("Inget är kvar att göra just nu.");
 
-  // The approval is asked every time someone connects, never remembered.
-  await page.goto((await claudeStartsConnecting()).url);
+});
+
+test("the approval is asked every time, also of an app that was approved before", async ({ page, context }) => {
+  await logIn(context, "anna", "adult");
+  const sent = await captureRedirectToClaude(page);
+  const first = await claudeStartsConnecting();
+  await page.goto(first.url);
+  await page.getByRole("button", { name: "Godkänn" }).click();
+  await expect.poll(() => sent.length).toBe(1);
+
+  // The same app connects again: the person is asked again.
+  await page.goto((await claudeStartsConnecting({ clientId: first.clientId })).url);
   await expect(page.getByRole("heading", { name: "Claude vill ansluta till Hemmafix" })).toBeVisible();
+
+  // An app that asks not to show anything is refused rather than waved through on the old approval.
+  const silent = await context.request.get((await claudeStartsConnecting({ clientId: first.clientId, prompt: "none" })).url, {
+    maxRedirects: 0,
+  });
+  const location = new URL(silent.headers()["location"]!);
+  expect(location.searchParams.get("code")).toBeNull();
+  expect(location.searchParams.get("error")).toBe("consent_required");
+});
+
+test("a child cannot get a code by calling the approval directly", async ({ page, context }) => {
+  await logIn(context, "bo", "child");
+  await page.goto((await claudeStartsConnecting()).url);
+  await expect(page.getByRole("heading", { name: "Bara vuxna kan ansluta appar" })).toBeVisible();
+
+  const answer = await page.evaluate(async () => {
+    const res = await fetch("/api/auth/oauth2/consent", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ accept: true, oauth_query: window.location.search.slice(1) }),
+    });
+    return { status: res.status, body: await res.text() };
+  });
+  expect(answer.status).toBeGreaterThanOrEqual(400);
+  expect(answer.body).not.toContain("code=");
+});
+
+test("the approval page tabs through Byt konto, Godkänn, Avbryt", async ({ page, context }) => {
+  await logIn(context, "anna", "adult");
+  await page.goto((await claudeStartsConnecting()).url);
+  await expect(page.getByRole("button", { name: "Godkänn" })).toBeVisible();
+  for (const name of ["Byt konto", "Godkänn", "Avbryt"]) {
+    await page.keyboard.press("Tab");
+    await expect(page.getByRole("button", { name })).toBeFocused();
+  }
+});
+
+test("the child page tabs through the account switch, then back to Claude", async ({ page, context }) => {
+  await logIn(context, "bo", "child");
+  await page.goto((await claudeStartsConnecting()).url);
+  await expect(page.getByRole("button", { name: "Tillbaka till Claude" })).toBeVisible();
+  for (const name of ["Logga in med ett annat konto", "Tillbaka till Claude"]) {
+    await page.keyboard.press("Tab");
+    await expect(page.getByRole("button", { name })).toBeFocused();
+  }
+});
+
+test("a link that is signed but has expired shows the explanation", async ({ page, context }) => {
+  await logIn(context, "anna", "adult");
+  const { url } = await claudeStartsConnecting();
+  await page.goto(url);
+  await expect(page.getByRole("button", { name: "Godkänn" })).toBeVisible();
+  // Same signed link with its expiry moved into the past: the signature no longer matches.
+  const expired = new URL(page.url());
+  expired.searchParams.set("exp", "1");
+  await page.goto(expired.toString());
+  await expect(page.getByRole("heading", { name: "Anslutningen gick inte att slutföra" })).toBeVisible();
 });
 
 test("Avbryt sends the adult back to Claude with nothing granted", async ({ page, context }) => {
@@ -135,7 +203,15 @@ test("a broken or expired link shows an explanation and no buttons", async ({ pa
 test("the MCP address refuses a call without an access token", async ({ request }) => {
   const res = await request.post("/mcp", { data: { jsonrpc: "2.0", id: 1, method: "tools/list" } });
   expect(res.status()).toBe(401);
-  expect(res.headers()["www-authenticate"]).toContain("resource_metadata");
+  expect(res.headers()["www-authenticate"]).toContain(`${E2E_BASE_URL}/.well-known/oauth-protected-resource/mcp`);
+});
+
+test("the MCP address refuses an access token it did not issue", async ({ request }) => {
+  const res = await request.post("/mcp", {
+    headers: { authorization: "Bearer not-a-real-token" },
+    data: { jsonrpc: "2.0", id: 1, method: "tools/list" },
+  });
+  expect(res.status()).toBe(401);
 });
 
 test("the login page is the plain app login when nobody is connecting an app", async ({ page }) => {

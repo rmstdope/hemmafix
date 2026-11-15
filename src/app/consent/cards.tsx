@@ -14,17 +14,20 @@ const Card = ({ children, left = false }: { children: ReactNode; left?: boolean 
 
 const HemmafixIcon = () => <Image src="/icon.svg" alt="" width={64} height={64} className="size-16" />;
 
-/** Sends the browser back to the app: the redirect the server answers with, grant or refusal. */
-async function answer(accept: boolean) {
+/** Sends the browser back to the app with the server's answer; false when the link no longer works. */
+async function answer(accept: boolean): Promise<boolean> {
   const { data } = await authClient.oauth2.consent({ accept });
-  if (data?.url) window.location.href = data.url;
+  if (!data?.url) return false;
+  window.location.href = data.url;
+  return true;
 }
 
 /** Logs out and starts the connection over from the login step, keeping the signed request. */
-function useSwitchAccount() {
+function useSwitchAccount(onFailed: () => void) {
   const router = useRouter();
   return async () => {
-    await authClient.signOut();
+    const { error } = await authClient.signOut();
+    if (error) return onFailed();
     router.push(`/login${window.location.search}`);
   };
 }
@@ -38,12 +41,15 @@ export function ApprovalCard({
   homeName: string;
   person: { name: string; firstName: string; image: string | null };
 }) {
-  const switchAccount = useSwitchAccount();
   const [pending, setPending] = useState(false);
+  // The signed link only lasts a few minutes: when the server no longer accepts it, say so.
+  const [expired, setExpired] = useState(false);
+  const switchAccount = useSwitchAccount(() => setExpired(true));
   const respond = async (accept: boolean) => {
     setPending(true);
-    await answer(accept);
+    if (!(await answer(accept))) setExpired(true);
   };
+  if (expired) return <ExpiredCard />;
 
   return (
     <Card left>
@@ -89,8 +95,10 @@ export function ApprovalCard({
 }
 
 export function ChildCard({ firstName }: { firstName: string }) {
-  const switchAccount = useSwitchAccount();
   const [pending, setPending] = useState(false);
+  const [expired, setExpired] = useState(false);
+  const switchAccount = useSwitchAccount(() => setExpired(true));
+  if (expired) return <ExpiredCard />;
   return (
     <Card>
       <HemmafixIcon />
@@ -111,7 +119,7 @@ export function ChildCard({ firstName }: { firstName: string }) {
           disabled={pending}
           onClick={async () => {
             setPending(true);
-            await answer(false);
+            if (!(await answer(false))) setExpired(true);
           }}
         >
           Tillbaka till Claude

@@ -1,7 +1,7 @@
 import "server-only";
 import { betterAuth } from "better-auth";
 import { drizzleAdapter } from "better-auth/adapters/drizzle";
-import { APIError } from "better-auth/api";
+import { APIError, createAuthMiddleware, getSessionFromCtx } from "better-auth/api";
 import { nextCookies } from "better-auth/next-js";
 import { jwt } from "better-auth/plugins";
 import { cimd } from "@better-auth/cimd";
@@ -12,6 +12,7 @@ import { db } from "@/db";
 import * as schema from "@/db/schema";
 import { decideAccess, type AccessDecision } from "@/lib/access";
 import { parseAllowedEmails } from "@/lib/allowlist";
+import { can } from "@/lib/permissions";
 import { ensureMembership } from "./household";
 
 export const allowedEmails = () => parseAllowedEmails(process.env.ALLOWED_EMAILS);
@@ -46,6 +47,37 @@ export const auth = betterAuth({
   session: {
     expiresIn: 60 * 60 * 24 * 60, // 60 days – a family app should rarely ask you to log in.
     updateAge: 60 * 60 * 24,
+  },
+  hooks: {
+    before: createAuthMiddleware(async (ctx) => {
+      // Only adults may approve an app, whatever page the request came from.
+      if (ctx.path === "/oauth2/consent" && ctx.body?.accept === true) {
+        const session = await getSessionFromCtx(ctx);
+        const [m] = session
+          ? await db.select({ role: schema.membership.role }).from(schema.membership).where(eq(schema.membership.userId, session.user.id)).limit(1)
+          : [];
+        if (!m || !can(m.role, "app:connect")) {
+          throw new APIError("FORBIDDEN", { error: "access_denied", error_description: "Only adults can connect apps" });
+        }
+      }
+    }),
+    // The approval is asked every time an app connects, never remembered: once an authorization
+    // has been answered (a code issued, or the approval asked for again), forget the stored
+    // approval. The approval itself continues the authorization inside the server, so the
+    // code it issues consumes the approval it has just stored.
+    after: createAuthMiddleware(async (ctx) => {
+      if (ctx.path !== "/oauth2/authorize") return;
+      const clientId = ctx.query?.client_id ?? ctx.body?.client_id;
+      const session = await getSessionFromCtx(ctx);
+      if (!session || typeof clientId !== "string") return;
+      await ctx.context.adapter.deleteMany({
+        model: "oauthConsent",
+        where: [
+          { field: "clientId", value: clientId },
+          { field: "userId", value: session.user.id },
+        ],
+      });
+    }),
   },
   databaseHooks: {
     user: {

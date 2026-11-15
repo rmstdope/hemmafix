@@ -21,7 +21,6 @@ export async function resolveMcpMember(userId: string): Promise<McpAccess> {
     .where(eq(user.id, userId))
     .limit(1);
   if (!row || !row.householdId || decideAccess(row, allowedEmails()) !== "ok") return { denied: "removed" };
-  // "task:create" is an adult-only action: only adults may use the app through Claude.
-  if (!can(row.role!, "task:create")) return { denied: "child" };
+  if (!can(row.role!, "app:connect")) return { denied: "child" };
   return { actor: { userId, householdId: row.householdId, role: row.role! } };
 }

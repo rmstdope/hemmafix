@@ -1,8 +1,9 @@
 import { redirect } from "next/navigation";
 import { Suspense } from "react";
+import { can } from "@/lib/permissions";
 import { getCurrentMember } from "@/server/dal";
 import { getHousehold } from "@/server/chores";
-import { readConnectingApp } from "@/server/oauth-request";
+import { readConnectingApp, toQueryString } from "@/server/oauth-request";
 import { ApprovalCard, ChildCard, ExpiredCard } from "./cards";
 
 export const metadata = { title: "Anslut – Hemmafix" };
@@ -23,10 +24,10 @@ async function Consent({ searchParams }: { searchParams: PageProps<"/consent">["
   if (!app) return <ExpiredCard />;
 
   const member = await getCurrentMember();
-  if (!member) redirect(`/login?${new URLSearchParams(params as Record<string, string>).toString()}`);
+  if (!member) redirect(`/login?${toQueryString(params)}`);
 
   const firstName = member.name.split(/\s+/)[0] ?? member.name;
-  if (member.role !== "adult") return <ChildCard firstName={firstName} />;
+  if (!can(member.role, "app:connect")) return <ChildCard firstName={firstName} />;
 
   const home = await getHousehold(member.householdId);
   return (
