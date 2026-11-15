@@ -107,8 +107,8 @@ const taskCall = async (userId: string, name: string, args: Record<string, unkno
 };
 const said = (r: { content: { text: string }[] }) => r.content[0]!.text;
 
-async function seedKitchen() {
-  const [f] = await db.insert(floor).values({ householdId: homeId, name: "Plan 1", position: 1 }).returning({ id: floor.id });
+async function seedKitchen(floorName = "Plan 1") {
+  const [f] = await db.insert(floor).values({ householdId: homeId, name: floorName, position: 1 }).returning({ id: floor.id });
   const [r] = await db.insert(room).values({ householdId: homeId, floorId: f!.id, name: "Kök" }).returning({ id: room.id });
   return r!.id;
 }
@@ -165,6 +165,20 @@ describe("the task tools", () => {
     expect(tools.flatMap((t) => arrays(t.inputSchema, t.name))).toEqual([]);
   });
 
+  it("marks every tool that only reads as read-only", async () => {
+    const res = await rpc("anna", "tools/list");
+    const tools = res.result.tools as { name: string; annotations?: { readOnlyHint?: boolean } }[];
+    const readOnly = tools.filter((t) => t.annotations?.readOnlyHint === true).map((t) => t.name).sort();
+    expect(readOnly).toEqual([
+      "lista_familjen",
+      "lista_oppna_sysslor",
+      "lista_vaningar_och_rum",
+      "visa_gjort",
+      "visa_rutiner",
+      "visa_sysslor_med_id",
+    ]);
+  });
+
   it("shows the ids Claude needs", async () => {
     const roomId = await seedKitchen();
     const { choreId, instanceId } = await createDiska(roomId);
@@ -172,6 +186,11 @@ describe("the task tools", () => {
     expect(text).toContain(`(syssla ${choreId}, tillfälle ${instanceId}, kind recurring, interval 1, unit day, dueDate ${todayIso()})`);
     expect(text).toContain(`- Kök, Plan 1 (id ${roomId})`);
     expect(text).toContain("- Bo, barn (id bo)");
+  });
+
+  it("names a numbered floor in the lookup as the app does", async () => {
+    const roomId = await seedKitchen("1");
+    expect(said(await taskCall("anna", "visa_sysslor_med_id"))).toContain(`- Kök, Plan 1 (id ${roomId})`);
   });
 
   it("creates a recurring task from a predefined one, due today", async () => {
