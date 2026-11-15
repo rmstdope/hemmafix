@@ -4,10 +4,8 @@ import { z } from "zod";
 import { todayIso } from "@/lib/dates";
 import { UserError } from "@/lib/errors";
 import {
-  ACCESS_REMOVED_TEXT,
   alreadyRoleText,
   ambiguousMemberText,
-  CHILD_TEXT,
   findMemberByName,
   firstName,
   formatDone,
@@ -29,12 +27,9 @@ import {
   type HistoryPeriod,
 } from "./chores";
 import { listFloors, listRooms, setMemberRole, type Actor } from "./household";
-import { resolveMcpMember } from "./mcp-access";
+import { DENIED_TEXT, resolveMcpMember, text } from "./mcp-access";
+import { registerHomeTools } from "./mcp-home";
 import { registerTaskTools } from "./mcp-tasks";
-
-const text = (message: string, isError = false) => ({ content: [{ type: "text" as const, text: message }], isError });
-
-const DENIED_TEXT = { removed: ACCESS_REMOVED_TEXT, child: CHILD_TEXT } as const;
 
 const isHistoryPeriod = (n: number): n is HistoryPeriod => (HISTORY_PERIODS as readonly number[]).includes(n);
 
@@ -189,6 +184,8 @@ export function createHemmafixMcpServer(userId: string): McpServer {
       }
     },
   );
+
+  registerHomeTools(server, userId);
 
   return server;
 }

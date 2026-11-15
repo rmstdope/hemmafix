@@ -159,3 +159,16 @@ export function formatDone(
   const body = days.map((g) => `${formatDay(g.day, opts.today)}\n${g.lines.join("\n")}`).join("\n\n");
   return `${opts.who} har gjort, ${opts.period}:\n\n${body}${opts.truncated ? `\n\nVisar de ${done.length} senaste.` : ""}`;
 }
+
+export const ROOM_RENAMED_TEXT = "Rummet har bytt namn.";
+export const ROOM_REMOVED_TEXT = "Rummet togs bort.";
+export const FLOOR_RENAMED_TEXT = "Våningen har bytt namn.";
+export const FLOOR_MOVED_TEXT = "Våningen flyttades.";
+export const FLOOR_REMOVED_TEXT = "Våningen togs bort.";
+export const FLOOR_AT_TOP_TEXT = "Våningen är redan överst.";
+export const FLOOR_AT_BOTTOM_TEXT = "Våningen är redan nederst.";
+
+export const homeRenamedText = (name: string) => `Hemmet heter nu ${name}.`;
+export const roomAddedText = (room: string, floorName: string) =>
+  `Rummet ${room} lades till på ${floorLabel(floorName)}.`;
+export const floorAddedText = (floorName: string) => `${floorLabel(floorName)} lades till.`;
