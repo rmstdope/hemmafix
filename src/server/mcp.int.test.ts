@@ -151,6 +151,20 @@ describe("the task tools", () => {
     expect(tools.find((t) => t.name === "visa_sysslor_med_id")?.annotations?.readOnlyHint).toBe(true);
   });
 
+  it("describes no input with a type array, which some clients refuse", async () => {
+    const res = await rpc("anna", "tools/list");
+    const arrays = (node: unknown, path: string): string[] =>
+      Array.isArray(node)
+        ? node.flatMap((n, i) => arrays(n, `${path}[${i}]`))
+        : node && typeof node === "object"
+          ? Object.entries(node).flatMap(([k, v]) =>
+              k === "type" && Array.isArray(v) ? [path] : arrays(v, `${path}.${k}`),
+            )
+          : [];
+    const tools = res.result.tools as { name: string; inputSchema: unknown }[];
+    expect(tools.flatMap((t) => arrays(t.inputSchema, t.name))).toEqual([]);
+  });
+
   it("shows the ids Claude needs", async () => {
     const roomId = await seedKitchen();
     const { choreId, instanceId } = await createDiska(roomId);
@@ -223,7 +237,7 @@ describe("the task tools", () => {
     expect(c2!.assigneeId).toBe("anna");
     expect((await openOf(choreId))[0]!.assigneeId).toBe("anna");
 
-    expect(said(await taskCall("anna", "tilldela_syssla", { id: choreId, assigneeId: null, scope: "varje_gang" }))).toBe(
+    expect(said(await taskCall("anna", "tilldela_syssla", { id: choreId, scope: "varje_gang" }))).toBe(
       "Diska är inte längre tilldelad någon varje gång.",
     );
   });
@@ -347,7 +361,7 @@ describe("the task tools", () => {
   it("answers a bad scope, kind or unit in Swedish", async () => {
     const roomId = await seedKitchen();
     const { instanceId } = await createDiska(roomId);
-    expect(said(await taskCall("anna", "tilldela_syssla", { id: instanceId, assigneeId: null, scope: "alla" }))).toBe("Välj denna_gang eller varje_gang");
+    expect(said(await taskCall("anna", "tilldela_syssla", { id: instanceId, scope: "alla" }))).toBe("Välj denna_gang eller varje_gang");
     expect(said(await taskCall("anna", "skapa_syssla", { title: "X", roomId, kind: "weekly" }))).toBe("Välj återkommande eller en gång");
     expect(said(await taskCall("anna", "skapa_syssla", { title: "X", roomId, kind: "recurring", interval: 1, unit: "weeks" }))).toBe("Välj dag, vecka eller månad");
   });
@@ -370,7 +384,7 @@ describe("the task tools", () => {
     ["skapa_syssla", { title: "X", roomId: "00000000-0000-4000-8000-000000000000", kind: "once" }],
     ["andra_syssla", { instanceId: "00000000-0000-4000-8000-000000000000", title: "X", roomId: "00000000-0000-4000-8000-000000000000", kind: "once" }],
     ["ta_bort_syssla", { choreId: "00000000-0000-4000-8000-000000000000" }],
-    ["tilldela_syssla", { id: "00000000-0000-4000-8000-000000000000", assigneeId: null, scope: "denna_gang" }],
+    ["tilldela_syssla", { id: "00000000-0000-4000-8000-000000000000", scope: "denna_gang" }],
     ["bocka_av_syssla", { instanceId: "00000000-0000-4000-8000-000000000000" }],
     ["angra_avbockning", { instanceId: "00000000-0000-4000-8000-000000000000" }],
   ])("%s refuses a child and a removed address", async (name, args) => {

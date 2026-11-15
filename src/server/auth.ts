@@ -116,7 +116,6 @@ export const auth = betterAuth({
     },
   },
   plugins: [
-    nextCookies(),
     jwt({ disableSettingJwtHeader: true }),
     // Claude connects over OAuth 2.1: it registers itself (dynamically or by metadata document),
     // sends the person here to log in and approve, and gets a token for the MCP resource.
@@ -128,5 +127,7 @@ export const auth = betterAuth({
       allowUnauthenticatedClientRegistration: true,
     }),
     cimd({ fetchClientMetadataResource, metadataProfile: "mcp-2026-07-28" }),
+    // Must stay last: it forwards cookies set by the other plugins' hooks to the Next.js cookie store.
+    nextCookies(),
   ],
 });
