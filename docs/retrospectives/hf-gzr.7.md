@@ -16,10 +16,10 @@
 
 **What happened**: "Avbryt sends the adult back to Claude with nothing granted" saw the redirect captured twice (expected 1) on one CI run; 30 of 30 local repeats passed, and the CI re-run passed.
 
-**Why**: not established.
+**Why**: it recurred later with a per-test `x-forwarded-for` header sent on cross-origin requests too, and went away once the header was scoped to requests to the app only (`e2e/support/test.ts`); that header on the redirect to Claude was the likely cause.
 
 **Cost**: One CI re-run (of two allowed).
 
-**Prevent by**: not established; if it recurs, keep the trace and check whether the redirect is requested twice by the page.
+**Prevent by**: send per-test headers only on requests to the app origin (done in `e2e/support/test.ts`).
 
 **Seen before**: nothing like it yet.

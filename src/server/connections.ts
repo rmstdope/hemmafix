@@ -61,7 +61,8 @@ export async function listConnections(userId: string): Promise<Connection[]> {
       const connectedAt = h.id ? firstAt.get(h.id) : null;
       if (!h.id || !connectedAt) return [];
       const address = registeredAddress(h.redirectUris);
-      const display = address ? appDisplayName(h.name, address) : { heading: h.name?.trim() || UNKNOWN_APP_NAME, inline: h.name?.trim() || UNKNOWN_APP_NAME };
+      const ownName = h.name?.trim() || UNKNOWN_APP_NAME;
+      const display = address ? appDisplayName(h.name, address) : { heading: ownName, inline: ownName };
       return [
         {
           id: h.id,
