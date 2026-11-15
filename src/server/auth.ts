@@ -13,6 +13,7 @@ import * as schema from "@/db/schema";
 import { decideAccess, type AccessDecision } from "@/lib/access";
 import { parseAllowedEmails } from "@/lib/allowlist";
 import { can } from "@/lib/permissions";
+import { onTokenIssued } from "./connections";
 import { ensureMembership } from "./household";
 
 export const allowedEmails = () => parseAllowedEmails(process.env.ALLOWED_EMAILS);
@@ -67,6 +68,16 @@ export const auth = betterAuth({
     // code it issues consumes the approval it has just stored. It deletes by person and app, not
     // by flow: two connections of the same app open at once may make one see the approval again.
     after: createAuthMiddleware(async (ctx) => {
+      if (ctx.path === "/oauth2/token") {
+        // Remember which connection the new access token belongs to, so disconnecting an app
+        // refuses its tokens at once. Never let this fail the token response.
+        try {
+          await onTokenIssued(ctx.context.returned);
+        } catch (e) {
+          ctx.context.logger.error("could not record an issued access token", e);
+        }
+        return;
+      }
       if (ctx.path !== "/oauth2/authorize") return;
       const clientId = ctx.query?.client_id ?? ctx.body?.client_id;
       const session = await getSessionFromCtx(ctx);

@@ -24,8 +24,8 @@ look at `pg_stat_activity` before changing anything.
 ## A merge to main is a production deploy
 
 CI publishes every push to `main` and rmstdope-infra rolls it out to hemmafix.rmstdope.eu on its
-own. That is why `navigator_gates` holds `merge`: a producer leaves the merge to the navigator. The
-host registration in `deploy/runtime/` is frozen; a change there needs a separate, reviewed
+own. So a producer merges its own pull request only once its review is addressed and every check
+is green; nothing merges with a finding open or a check red or missing. The host registration in `deploy/runtime/` is frozen; a change there needs a separate, reviewed
 re-registration and is never part of an ordinary bead.
 
 ## The Cerebro submodule looped the build (mounting Cerebro, 2026-11-15)
