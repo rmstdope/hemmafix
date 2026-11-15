@@ -30,14 +30,14 @@ export const createChoreInput = z
       .transform((v) => v || null)
       .refine((v) => v === null || findTemplate(v) !== undefined, "Okänd fördefinierad uppgift"),
     roomId: z.uuid({ error: "Välj ett rum" }),
-    kind: z.enum(["recurring", "once"]).default("recurring"),
+    kind: z.enum(["recurring", "once"], { error: "Välj återkommande eller en gång" }).default("recurring"),
     interval: z.coerce
       .number({ error: "Ange hur ofta" })
       .int("Ange ett heltal")
       .min(1, "Minst 1")
       .max(MAX_INTERVAL, `Högst ${MAX_INTERVAL}`)
       .optional(),
-    unit: z.enum(RECURRENCE_UNITS).optional(),
+    unit: z.enum(RECURRENCE_UNITS, { error: "Välj dag, vecka eller månad" }).optional(),
     startDate: optionalDate,
     dueDate: optionalDate,
     assigneeId: optionalText(100),
@@ -71,14 +71,14 @@ export const editChoreInput = z
   .object({
     title: choreTitle,
     roomId: z.uuid({ error: "Välj ett rum" }),
-    kind: z.enum(["recurring", "once"]).default("recurring"),
+    kind: z.enum(["recurring", "once"], { error: "Välj återkommande eller en gång" }).default("recurring"),
     interval: z.coerce
       .number({ error: "Ange hur ofta" })
       .int("Ange ett heltal")
       .min(1, "Minst 1")
       .max(MAX_INTERVAL, `Högst ${MAX_INTERVAL}`)
       .optional(),
-    unit: z.enum(RECURRENCE_UNITS).optional(),
+    unit: z.enum(RECURRENCE_UNITS, { error: "Välj dag, vecka eller månad" }).optional(),
     dueDate: optionalDate,
   })
   .transform((v, ctx) => {

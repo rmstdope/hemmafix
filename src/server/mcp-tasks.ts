@@ -209,14 +209,17 @@ export function registerTaskTools(server: McpServer, userId: string): void {
         "Tilldelar en syssla till en person, eller till ingen (assigneeId null). scope denna_gang: id är ett tillfälle; varje_gang: id är sysslan. Skriver över den som var tilldelad.",
       inputSchema: z.object({
         id,
-        assigneeId: z.string().min(1).nullable(),
-        scope: z.enum(["denna_gang", "varje_gang"]),
+        assigneeId: z.string().nullable(),
+        scope: z.string().describe("denna_gang (id är ett tillfälle) eller varje_gang (id är sysslan)"),
       }),
       annotations: OVERWRITES,
     },
     (args) =>
       runAsMember(userId, true, async (actor) => {
         assertIds(args.id);
+        if (args.scope !== "denna_gang" && args.scope !== "varje_gang") {
+          throw new UserError("Välj denna_gang eller varje_gang");
+        }
         const everyTime = args.scope === "varje_gang";
         const title = await titleOf(actor, everyTime ? { choreId: args.id } : { instanceId: args.id });
         if (everyTime) await chores.assignChore(actor, args.id, args.assigneeId);

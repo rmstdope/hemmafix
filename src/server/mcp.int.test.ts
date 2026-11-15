@@ -321,6 +321,14 @@ describe("the task tools", () => {
     expect(said(child)).toBe("Bara vuxna kan använda Hemmafix via Claude. Be en vuxen i familjen om hjälp.");
   });
 
+  it("answers a bad scope, kind or unit in Swedish", async () => {
+    const roomId = await seedKitchen();
+    const { instanceId } = await createDiska(roomId);
+    expect(said(await call("anna", "tilldela_syssla", { id: instanceId, assigneeId: null, scope: "alla" }))).toBe("Välj denna_gang eller varje_gang");
+    expect(said(await call("anna", "skapa_syssla", { title: "X", roomId, kind: "weekly" }))).toBe("Välj återkommande eller en gång");
+    expect(said(await call("anna", "skapa_syssla", { title: "X", roomId, kind: "recurring", interval: 1, unit: "weeks" }))).toBe("Välj dag, vecka eller månad");
+  });
+
   it("tells every other household device that something changed", async () => {
     const roomId = await seedKitchen();
     let resolveHeard!: (payload: string) => void;
