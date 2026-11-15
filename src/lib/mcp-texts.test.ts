@@ -5,16 +5,24 @@ import {
   ambiguousMemberText,
   CHILD_TEXT,
   findMemberByName,
+  FLOOR_MOVED_TEXT,
+  FLOOR_REMOVED_TEXT,
+  FLOOR_RENAMED_TEXT,
+  floorAddedText,
   formatDone,
   formatFamily,
   formatFloorsAndRooms,
   formatOpenTasks,
   formatTaskLookup,
+  homeRenamedText,
   NO_FLOORS_TEXT,
   noSuchMemberText,
   NOTHING_DONE_TEXT,
   NOTHING_OPEN_TEXT,
   roleChangedText,
+  ROOM_REMOVED_TEXT,
+  ROOM_RENAMED_TEXT,
+  roomAddedText,
 } from "./mcp-texts";
 
 describe("what Claude is told", () => {
@@ -194,5 +202,19 @@ describe("what someone has done", () => {
       { today: "2026-11-15", who: "Anna", period: "senaste året", truncated: true, showFloors: false },
     );
     expect(text.endsWith("Visar de 500 senaste.")).toBe(true);
+  });
+});
+
+describe("what Claude is told about the home", () => {
+  it("confirms each change in Swedish", () => {
+    expect(homeRenamedText("Villa Solgläntan")).toBe("Hemmet heter nu Villa Solgläntan.");
+    expect(roomAddedText("Kök", "2")).toBe("Rummet Kök lades till på Plan 2.");
+    expect(roomAddedText("Kök", "Suterräng")).toBe("Rummet Kök lades till på Suterräng.");
+    expect(ROOM_RENAMED_TEXT).toBe("Rummet har bytt namn.");
+    expect(ROOM_REMOVED_TEXT).toBe("Rummet togs bort.");
+    expect(floorAddedText("3")).toBe("Plan 3 lades till.");
+    expect(FLOOR_RENAMED_TEXT).toBe("Våningen har bytt namn.");
+    expect(FLOOR_MOVED_TEXT).toBe("Våningen flyttades.");
+    expect(FLOOR_REMOVED_TEXT).toBe("Våningen togs bort.");
   });
 });

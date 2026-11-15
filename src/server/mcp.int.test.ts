@@ -49,6 +49,14 @@ describe("the open-tasks tool", () => {
     const res = await rpc("anna", "tools/list");
     expect(res.result.tools.map((t: { name: string }) => t.name)).toEqual(
       expect.arrayContaining([
+        "byt_namn_pa_hemmet",
+        "byt_namn_pa_rum",
+        "byt_namn_pa_vaning",
+        "flytta_vaning",
+        "lagg_till_rum",
+        "lagg_till_vaning",
+        "ta_bort_rum",
+        "ta_bort_vaning",
         "andra_roll",
         "lista_familjen",
         "lista_oppna_sysslor",
