@@ -53,6 +53,7 @@ describe("a refused token", () => {
     const challenge = res.headers.get("www-authenticate");
     expect(challenge).toContain(`error="invalid_token"`);
     expect(challenge).toContain(METADATA);
+    expect(await res.json()).toEqual({ jsonrpc: "2.0", error: { code: -32000, message: "the app was disconnected" }, id: null });
   });
 
   it("answers a valid token without a jti the same way", async () => {

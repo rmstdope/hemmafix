@@ -8,10 +8,11 @@ import { handleMcpRequest } from "@/server/mcp";
 /**
  * A 401 for a token that verified but is no longer honoured, shaped like requireMcpAuth's own:
  * the `WWW-Authenticate` challenge names the resource metadata, so the app can send the person
- * back through login and approval.
+ * back through login and approval. A copy of `toChallengeResponse` in @better-auth/mcp 1.7.25,
+ * which is not exported; compare against it when upgrading.
  */
 function invalidToken(request: Request, description: string): Response {
-  const error = new APIError("UNAUTHORIZED", { error: "invalid_token", error_description: description });
+  const error = new APIError("UNAUTHORIZED", { error: "invalid_token", error_description: description, message: description });
   const challenge = createResourceServerChallenge(error, MCP_RESOURCE, { request });
   if (!challenge) throw error;
   const headers = new Headers(challenge.headers);
