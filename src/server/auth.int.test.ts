@@ -67,3 +67,10 @@ describe("logging in", () => {
     }
   });
 });
+
+describe("the plugin order", () => {
+  it("keeps next-cookies last, so cookies set by other plugins' hooks reach the browser", () => {
+    const ids = (auth.options.plugins ?? []).map((plugin) => plugin.id);
+    expect(ids.at(-1)).toBe("next-cookies");
+  });
+});
