@@ -81,7 +81,8 @@ test("a routine removed while the form is open is answered with a notice and not
   await form.getByRole("combobox", { name: "Rutin" }).selectOption({ label: "Städa kök" });
   await form.getByRole("combobox", { name: "Rum" }).selectOption({ label: "Badrum" });
 
-  await db.delete(routine);
+  // Only the chosen one: a live refresh may or may not have arrived, the form stays filled in either way.
+  await db.delete(routine).where(eq(routine.name, "Städa kök"));
   await form.getByRole("button", { name: /^Lägg till/ }).click();
   await expect(page.getByText("Rutinen finns inte längre")).toBeVisible();
   await expect(form).toBeVisible();
