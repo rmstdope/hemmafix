@@ -121,6 +121,22 @@ drizzle/          SQL-migreringar
 scripts/          migrate.ts – körs vid containerstart
 ```
 
+## Utveckling med Cerebro
+
+Arbetet planeras och byggs av en flotta AI-agenter, [Cerebro](https://github.com/rmstdope/cerebro),
+monterad som submodul i `.cerebro/cerebro`. Projektets deklarationer ligger bredvid:
+`.cerebro/project.conf` (grindar, portar, att varje merge görs av en människa eftersom den
+driftsätter), `roster.conf` (agenterna), `agents.conf` (modeller) och `traps.md` (lärdomar).
+Agenternas instruktioner står i `CLAUDE.md`. Arbetet spåras som beads (`bd`, prefix `hf`).
+
+```sh
+git submodule update --init --recursive
+bd bootstrap                         # en gång per klon; sedan bd dolt pull / bd dolt push
+.cerebro/cerebro/scripts/cerebro-tui # flottvyn
+```
+
+Nyare Cerebro: `git submodule update --remote --merge .cerebro/cerebro`.
+
 ## Drift
 
 Se [deploy/README.md](deploy/README.md) för CI, app-paketet till rmstdope-infra,

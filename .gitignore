@@ -49,3 +49,11 @@ next-env.d.ts
 /test-results/
 /playwright-report/
 /blob-report/
+
+# Cerebro writes these while the fleet runs; the declarations beside them are tracked.
+.cerebro/worktrees
+.cerebro/state
+.cerebro/scratch
+
+# Claude Code worktrees
+.claude/worktrees/
