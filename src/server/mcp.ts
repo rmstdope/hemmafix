@@ -4,6 +4,7 @@ import { todayIso } from "@/lib/dates";
 import { ACCESS_REMOVED_TEXT, CHILD_TEXT, formatOpenTasks } from "@/lib/mcp-texts";
 import { listMembers, listOpenInstances } from "./chores";
 import { resolveMcpMember } from "./mcp-access";
+import { registerTaskTools } from "./mcp-tasks";
 
 const text = (message: string, isError = false) => ({ content: [{ type: "text" as const, text: message }], isError });
 
@@ -37,6 +38,8 @@ export function createHemmafixMcpServer(userId: string): McpServer {
       );
     },
   );
+
+  registerTaskTools(server, userId);
 
   return server;
 }

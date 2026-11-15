@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { ACCESS_REMOVED_TEXT, CHILD_TEXT, formatOpenTasks, NOTHING_OPEN_TEXT } from "./mcp-texts";
+import { ACCESS_REMOVED_TEXT, CHILD_TEXT, formatOpenTasks, formatTaskLookup, NOTHING_OPEN_TEXT } from "./mcp-texts";
 
 describe("what Claude is told", () => {
   it("has the agreed fixed texts", () => {
@@ -23,5 +23,42 @@ describe("what Claude is told", () => {
       "2026-11-15",
     );
     expect(text).toBe("- Dammsug – Vardagsrum, Anna, Idag\n- Byt glödlampa – ingen tilldelad, inget datum");
+  });
+});
+
+describe("the lookup of ids", () => {
+  it("shows ids for open tasks, rooms, family and recent ticks, marking the latest tick", () => {
+    const text = formatTaskLookup(
+      {
+        open: [{ id: "i1", choreId: "c1", title: "Diska", roomName: "Kök", assigneeName: "Anna", dueDate: "2026-11-15" }],
+        rooms: [{ id: "r1", name: "Kök", floorName: "Plan 1" }],
+        members: [{ id: "anna", name: "Anna", role: "adult" }],
+        recentlyDone: [
+          { id: "i2", title: "Dammsuga", doneByName: "Bo", isLatestTick: true },
+          { id: "i3", title: "Tvätta", doneByName: null, isLatestTick: false },
+        ],
+      },
+      "2026-11-15",
+    );
+    expect(text).toBe(
+      [
+        "Öppna sysslor:",
+        "- Diska – Kök, Anna, Idag (syssla c1, tillfälle i1)",
+        "Rum:",
+        "- Kök, Plan 1 (id r1)",
+        "Familj:",
+        "- Anna, vuxen (id anna)",
+        "Nyligen avbockade:",
+        "- Dammsuga, av Bo (tillfälle i2, kan ångras)",
+        "- Tvätta (tillfälle i3)",
+      ].join("\n"),
+    );
+  });
+
+  it("says so for sections with nothing in them", () => {
+    const text = formatTaskLookup({ open: [], rooms: [], members: [], recentlyDone: [] }, "2026-11-15");
+    expect(text).toBe(
+      ["Öppna sysslor:", "(inga)", "Rum:", "(inga)", "Familj:", "(inga)", "Nyligen avbockade:", "(inga)"].join("\n"),
+    );
   });
 });
