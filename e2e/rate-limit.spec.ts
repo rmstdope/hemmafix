@@ -1,7 +1,8 @@
+import type { APIRequestContext } from "@playwright/test";
 import { test, expect } from "./support/test";
 
 /** An authorize request with nothing valid in it: the rate limiter counts it before anything else looks. */
-const authorize = (request: import("@playwright/test").APIRequestContext) =>
+const authorize = (request: APIRequestContext) =>
   request.get("/api/auth/oauth2/authorize", { maxRedirects: 0, failOnStatusCode: false });
 
 test("a test has an authorize allowance of its own", async ({ request }) => {

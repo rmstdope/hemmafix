@@ -7,7 +7,7 @@ import { closeDatabase, resetDatabase } from "./family";
 /**
  * Better Auth keeps one rate-limit bucket per client address and path, and without a forwarded
  * address every request lands in one shared bucket, so the suite as a whole is held to
- * /oauth2/authorize's 30 requests a minute. Each test presents itself as its own client, which
+ * /oauth2/authorize's 30 requests (the counter resets only after 60 s with no request at all). Each test presents itself as its own client, which
  * gives it the full allowance; the app's limit is untouched.
  */
 export const test = base.extend<{ freshDatabase: void }, { database: void }>({
