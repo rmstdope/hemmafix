@@ -6,7 +6,10 @@ import { LiveUpdates } from "@/components/live-updates";
 import { MemberRoles } from "@/components/home/member-roles";
 import { RenameForm } from "@/components/home/rename-form";
 import { FloorsAndRooms } from "@/components/home/floors-and-rooms";
+import { ConnectedApps } from "@/components/home/connected-apps";
+import { formatConnectedDate, formatLastUsed } from "@/lib/dates";
 import { can } from "@/lib/permissions";
+import { listConnections } from "@/server/connections";
 import { requireMember } from "@/server/dal";
 import { listFloors, listMembersWithRoles, listRooms } from "@/server/household";
 import { getHousehold } from "@/server/chores";
@@ -28,12 +31,14 @@ async function HomeSettings() {
   // Only adults manage the home; the actions refuse children as well.
   if (!can(member.role, "household:rename")) redirect("/");
 
-  const [home, floors, rooms, members] = await Promise.all([
+  const [home, floors, rooms, members, connections] = await Promise.all([
     getHousehold(member.householdId),
     listFloors(member.householdId),
     listRooms(member.householdId),
     listMembersWithRoles(member.householdId),
+    listConnections(member.userId),
   ]);
+  const now = new Date();
 
   return (
     <>
@@ -73,6 +78,16 @@ async function HomeSettings() {
         </p>
         <MemberRoles members={members} currentUserId={member.userId} />
       </section>
+
+      <ConnectedApps
+        apps={connections.map((c) => ({
+          id: c.id,
+          name: c.appName,
+          icon: c.icon,
+          connectedText: formatConnectedDate(c.connectedAt),
+          lastUsedLine: c.lastUsedAt ? `Senast använd ${formatLastUsed(c.lastUsedAt, now)}` : formatLastUsed(null, now),
+        }))}
+      />
     </>
   );
 }
