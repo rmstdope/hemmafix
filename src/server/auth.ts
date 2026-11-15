@@ -29,7 +29,7 @@ function assertAccess(user: { email: string | null | undefined; emailVerified?: 
 }
 
 /** The MCP server's address; tokens are issued for it. */
-export const MCP_RESOURCE = `${process.env.BETTER_AUTH_URL ?? "http://localhost:3000"}/mcp`;
+export const MCP_RESOURCE = `${process.env.BETTER_AUTH_URL || "http://localhost:3000"}/mcp`;
 
 export const auth = betterAuth({
   baseURL: process.env.BETTER_AUTH_URL,
