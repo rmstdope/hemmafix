@@ -157,6 +157,11 @@ export function registerRoutineTools(server: McpServer, userId: string): void {
     },
     (args) =>
       runTool(userId, true, async (actor) => {
+        if (!z.uuid().safeParse(args.roomId).success) {
+          throw new UserError("Ogiltigt rum-id. Hämta id:n med lista_vaningar_och_rum.");
+        }
+        const found = await routines.getRoutine(actor, args.routineId);
+        if (found && found.tasks.length === 0) throw new UserError("Rutinen har inga uppgifter ännu.");
         const { count } = await routines.addRoutineToHome(actor, args);
         const room = (await listRooms(actor.householdId)).find((r) => r.id === args.roomId);
         return routineAddedToRoomText(count, room?.name ?? "rummet");

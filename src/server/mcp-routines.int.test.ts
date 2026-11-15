@@ -155,7 +155,9 @@ describe("adding a routine to a room", () => {
     expect(res.isError).toBeFalsy();
     expect(textOf(res)).toBe("2 uppgifter är tillagda i Kök.");
     const chores = await db.select().from(chore).where(eq(chore.householdId, homeId));
-    expect(chores.map((c) => c.title).sort()).toEqual(["Dammsug", "Torka"]);
+    chores.sort((a, b) => a.createdAt.getTime() - b.createdAt.getTime());
+    expect(chores.map((c) => c.title)).toEqual(["Dammsug", "Torka"]);
+    expect(chores.every((c) => c.recurrenceInterval === 2 && c.recurrenceUnit === "week")).toBe(true);
     expect(chores.every((c) => c.roomId === roomId && c.assigneeId === "bo")).toBe(true);
     const instances = await db.select().from(choreInstance).where(eq(choreInstance.householdId, homeId));
     expect(instances.map((i) => i.dueDate)).toEqual(["2026-12-01", "2026-12-01"]);
@@ -182,10 +184,19 @@ describe("adding a routine to a room", () => {
     expect(textOf(bad)).toBe("Ange hur ofta");
     const foreign = await call("anna", "lagg_till_rutin_i_hemmet", { routineId: otherHomeRoutine, roomId, kind: "once" });
     expect(textOf(foreign)).toBe("Rutinen finns inte längre");
-    const noRoom = await call("anna", "lagg_till_rutin_i_hemmet", { routineId: id, roomId: "nope", kind: "once" });
-    expect(noRoom.isError).toBe(true);
-    const stranger = await call("anna", "lagg_till_rutin_i_hemmet", { routineId: id, roomId, kind: "once", assigneeId: "nobody" });
+    const noRoom = await call("anna", "lagg_till_rutin_i_hemmet", { routineId: id, roomId: "Kök", kind: "once" });
+    expect(textOf(noRoom)).toBe("Ogiltigt rum-id. Hämta id:n med lista_vaningar_och_rum.");
+    const [neighbour] = await db.select().from(household).where(eq(household.name, "Grannen"));
+    const [nf] = await db.insert(floor).values({ householdId: neighbour!.id, name: "1", position: 1 }).returning({ id: floor.id });
+    const [nr] = await db.insert(room).values({ householdId: neighbour!.id, floorId: nf!.id, name: "Grannkök" }).returning({ id: room.id });
+    const foreignRoom = await call("anna", "lagg_till_rutin_i_hemmet", { routineId: id, roomId: nr!.id, kind: "once" });
+    expect(foreignRoom.isError).toBe(true);
+    expect(textOf(foreignRoom)).toBe("Rummet finns inte i hemmet");
+    await db.insert(user).values({ id: "nils", name: "Nils", email: "nils@example.com", emailVerified: true });
+    await db.insert(membership).values({ userId: "nils", householdId: neighbour!.id, role: "adult" });
+    const stranger = await call("anna", "lagg_till_rutin_i_hemmet", { routineId: id, roomId, kind: "once", assigneeId: "nils" });
     expect(stranger.isError).toBe(true);
+    expect(textOf(stranger)).toBe("Personen finns inte i hemmet");
     expect(await db.select().from(chore)).toHaveLength(0);
     await settle();
     // Only the setup writes were announced; none of the refusals.
@@ -193,6 +204,15 @@ describe("adding a routine to a room", () => {
     await call("anna", "lagg_till_rutin_i_hemmet", { routineId: id, roomId, kind: "once", assigneeId: "nobody" });
     await settle();
     expect(notified.length).toBe(before);
+  });
+});
+
+describe("an empty routine", () => {
+  it("says it has no tasks yet instead of asking to retry", async () => {
+    const id = await makeRoutine("Tom", []);
+    const res = await call("anna", "lagg_till_rutin_i_hemmet", { routineId: id, roomId, kind: "once" });
+    expect(res.isError).toBe(true);
+    expect(textOf(res)).toBe("Rutinen har inga uppgifter ännu.");
   });
 });
 
