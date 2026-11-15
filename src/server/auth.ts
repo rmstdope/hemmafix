@@ -64,7 +64,8 @@ export const auth = betterAuth({
     // The approval is asked every time an app connects, never remembered: once an authorization
     // has been answered (a code issued, or the approval asked for again), forget the stored
     // approval. The approval itself continues the authorization inside the server, so the
-    // code it issues consumes the approval it has just stored.
+    // code it issues consumes the approval it has just stored. It deletes by person and app, not
+    // by flow: two connections of the same app open at once may make one see the approval again.
     after: createAuthMiddleware(async (ctx) => {
       if (ctx.path !== "/oauth2/authorize") return;
       const clientId = ctx.query?.client_id ?? ctx.body?.client_id;

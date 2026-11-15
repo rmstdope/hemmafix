@@ -1,9 +1,10 @@
 import { redirect } from "next/navigation";
 import { Suspense } from "react";
+import { toQueryString } from "@/lib/query-string";
 import { can } from "@/lib/permissions";
 import { getCurrentMember } from "@/server/dal";
 import { getHousehold } from "@/server/chores";
-import { readConnectingApp, toQueryString } from "@/server/oauth-request";
+import { readConnectingApp } from "@/server/oauth-request";
 import { ApprovalCard, ChildCard, ExpiredCard } from "./cards";
 
 export const metadata = { title: "Anslut – Hemmafix" };

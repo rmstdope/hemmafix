@@ -143,15 +143,16 @@ test("the child page tabs through the account switch, then back to Claude", asyn
   }
 });
 
-test("a link that is signed but has expired shows the explanation", async ({ page, context }) => {
+test("an approval the server no longer accepts shows the explanation", async ({ page, context }) => {
   await logIn(context, "anna", "adult");
-  const { url } = await claudeStartsConnecting();
-  await page.goto(url);
-  await expect(page.getByRole("button", { name: "Godkänn" })).toBeVisible();
-  // Same signed link with its expiry moved into the past: the signature no longer matches.
-  const expired = new URL(page.url());
-  expired.searchParams.set("exp", "1");
-  await page.goto(expired.toString());
+  await page.goto((await claudeStartsConnecting()).url);
+  // The signed link only lasts a few minutes: the server then refuses the approval.
+  await page.route("**/api/auth/oauth2/consent", (route) =>
+    route.fulfill({ status: 400, contentType: "application/json", body: JSON.stringify({ error: "invalid_signature" }) }),
+  );
+
+  await page.getByRole("button", { name: "Godkänn" }).click();
+
   await expect(page.getByRole("heading", { name: "Anslutningen gick inte att slutföra" })).toBeVisible();
 });
 
