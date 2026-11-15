@@ -153,7 +153,8 @@ test("a connected app is listed, and stops working at once when it is disconnect
       headers: { authorization: `Bearer ${access_token}`, accept: "application/json, text/event-stream" },
       data: { jsonrpc: "2.0", id: 1, method: "tools/call", params: { name: "lista_oppna_sysslor", arguments: {} } },
     });
-  expect((await callMcp()).status()).toBe(200);
+  const first = await callMcp();
+  expect(first.status(), await first.text()).toBe(200);
 
   await openHome(page);
   await expect(section(page).getByRole("listitem")).toHaveCount(1);
