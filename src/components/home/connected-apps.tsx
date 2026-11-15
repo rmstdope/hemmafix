@@ -30,7 +30,9 @@ function AppIcon({ name, icon }: { name: string; icon: string | null }) {
 export function ConnectedApps({ apps }: { apps: ConnectedApp[] }) {
   const [asking, setAsking] = useState<ConnectedApp | null>(null);
   const [pending, startTransition] = useTransition();
-  const focusAfterDisconnect = useRef(false);
+  // The list length once the disconnect shows: focus moves when the list shrinks to it.
+  const focusWhenLengthIs = useRef<number | null>(null);
+  const cancelRef = useRef<HTMLButtonElement>(null);
   const dialogRef = useRef<HTMLDialogElement>(null);
   const openerRef = useRef<HTMLButtonElement | null>(null);
   const headingRef = useRef<HTMLHeadingElement>(null);
@@ -39,14 +41,18 @@ export function ConnectedApps({ apps }: { apps: ConnectedApp[] }) {
   useEffect(() => {
     const dialog = dialogRef.current;
     if (!dialog) return;
-    if (asking && !dialog.open) dialog.showModal();
+    if (asking && !dialog.open) {
+      dialog.showModal();
+      // Never the red button: a stray Enter must not disconnect.
+      cancelRef.current?.focus();
+    }
     if (!asking && dialog.open) dialog.close();
   }, [asking]);
 
   // After a disconnect the row is gone: put focus on the heading, or on the empty line.
   useEffect(() => {
-    if (!focusAfterDisconnect.current || asking) return;
-    focusAfterDisconnect.current = false;
+    if (focusWhenLengthIs.current === null || asking || apps.length > focusWhenLengthIs.current) return;
+    focusWhenLengthIs.current = null;
     (emptyRef.current ?? headingRef.current)?.focus();
   }, [asking, apps.length]);
 
@@ -61,7 +67,7 @@ export function ConnectedApps({ apps }: { apps: ConnectedApp[] }) {
     if (!app) return;
     startTransition(async () => {
       const result = await disconnectApp(app.id);
-      if (result.ok) focusAfterDisconnect.current = true;
+      if (result.ok) focusWhenLengthIs.current = apps.length - 1;
       setAsking(null);
       if (result.ok) {
         toast.success(`${app.name} är frånkopplad`);
@@ -143,7 +149,7 @@ export function ConnectedApps({ apps }: { apps: ConnectedApp[] }) {
               </button>
               <button
                 type="button"
-                autoFocus
+                ref={cancelRef}
                 onClick={close}
                 disabled={pending}
                 className="h-11 rounded-xl border font-semibold disabled:opacity-50"

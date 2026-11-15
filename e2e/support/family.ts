@@ -43,6 +43,7 @@ export async function resetDatabase() {
         await tx.execute(sql`delete from oauth_client`);
         await tx.execute(sql`delete from oauth_resource`);
         await tx.execute(sql`delete from jwks`);
+        await tx.execute(sql`delete from app_token`);
       });
       break;
     } catch (err) {
@@ -199,4 +200,37 @@ export async function seedOAuthClient(opts: { name: string; redirectUri: string 
     createdAt: new Date(),
   });
   return clientId;
+}
+
+/** A connected app of `userId`: one live refresh token (its family is the returned id). */
+export async function seedConnection(opts: {
+  userId: string;
+  name: string | null;
+  icon?: string | null;
+  connectedAt?: Date;
+  lastUsedAt?: Date;
+}) {
+  const clientId = `e2e-${crypto.randomUUID()}`;
+  const family = `fam-${crypto.randomUUID()}`;
+  await db.insert(schema.oauthClient).values({
+    id: crypto.randomUUID(),
+    clientId,
+    name: opts.name,
+    icon: opts.icon ?? null,
+    redirectUris: ["https://claude.ai/api/mcp/auth_callback"],
+  });
+  await db.insert(schema.oauthRefreshToken).values({
+    id: crypto.randomUUID(),
+    token: crypto.randomUUID(),
+    clientId,
+    userId: opts.userId,
+    authorizationCodeId: family,
+    scopes: ["openid"],
+    createdAt: opts.connectedAt ?? new Date(),
+    expiresAt: new Date(Date.now() + 30 * 86_400_000),
+  });
+  if (opts.lastUsedAt) {
+    await db.insert(schema.appConnectionUse).values({ connectionId: family, userId: opts.userId, lastUsedAt: opts.lastUsedAt });
+  }
+  return family;
 }

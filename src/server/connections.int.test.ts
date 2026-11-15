@@ -6,7 +6,7 @@ process.env.ALLOWED_EMAILS = "anna@example.com, bo@example.com";
 process.env.BETTER_AUTH_SECRET = "integration-secret-not-for-production-0123456789";
 process.env.BETTER_AUTH_URL = "http://localhost:3000";
 
-const { listConnections, revokeConnection, resolveConnection, recordUse, onTokenIssued } = await import("./connections");
+const { listConnections, revokeConnection, resolveConnection, recordUse, onTokenIssued, hashToken } = await import("./connections");
 
 const adult = (userId: string) => ({ userId, householdId: "h", role: "adult" as const });
 const at = (iso: string) => new Date(iso);
@@ -22,7 +22,7 @@ async function client(name: string | null, icon: string | null = null) {
 async function refresh(o: { userId: string; clientId: string; family: string; createdAt: string; revoked?: boolean; expiresAt?: Date }) {
   await db.insert(oauthRefreshToken).values({
     id: `r${++n}`,
-    token: `t${n}`,
+    token: hashToken(`t${n}`),
     clientId: o.clientId,
     userId: o.userId,
     authorizationCodeId: o.family,
@@ -157,6 +157,7 @@ describe("when the token endpoint issues tokens", () => {
     const exp = Math.floor(Date.now() / 1000) + 3600;
 
     await onTokenIssued({ access_token: jwt({ jti: "j9", exp }), refresh_token: `t${n}` });
+    // The provider stores a hash of the refresh token it hands out.
 
     expect(await resolveConnection("anna", "j9")).toBe("f");
   });

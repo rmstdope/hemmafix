@@ -1,4 +1,5 @@
 import "server-only";
+import { createHash } from "node:crypto";
 import { and, eq, gt, inArray, isNull, lt, min, sql } from "drizzle-orm";
 import { db } from "@/db";
 import { appConnectionUse, appToken, membership, oauthClient, oauthRefreshToken } from "@/db/schema";
@@ -131,13 +132,18 @@ export async function onTokenIssued(body: unknown): Promise<void> {
   const [row] = await db
     .select({ family: oauthRefreshToken.authorizationCodeId, userId: oauthRefreshToken.userId })
     .from(oauthRefreshToken)
-    .where(eq(oauthRefreshToken.token, refreshToken))
+    .where(eq(oauthRefreshToken.token, hashToken(refreshToken)))
     .limit(1);
   if (!row?.family) return;
   await recordToken(claims.jti, row.family, new Date(claims.exp * 1000));
 
   const [m] = await db.select({ householdId: membership.householdId }).from(membership).where(eq(membership.userId, row.userId)).limit(1);
   if (m) await notifyHouseholdChanged(m.householdId);
+}
+
+/** How the OAuth provider stores tokens by default (`storeTokens: "hashed"`): SHA-256, unpadded base64url. */
+export function hashToken(token: string): string {
+  return createHash("sha256").update(token).digest("base64url");
 }
 
 function decodeJwtClaims(jwt: string): { jti: string; exp: number } | null {
