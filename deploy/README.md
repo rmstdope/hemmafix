@@ -114,16 +114,26 @@ Efter första releasen:
   ```
 
   Förvara dumpar utanför VPS:en. Dumpar på samma disk skyddar inte mot att värden går förlorad.
-- **Automatisk dump före varje release:** `deploy/runtime/app.json` har fältet
-  `pre_release_backup`. Före varje release, manuell eller automatisk, kör rmstdope-infra
-  `pg_dump` i `db` i den release som körs och sparar dumpen som `pre-release.dump` i den
-  nya releasens katalog på VPS:en. Misslyckas dumpen startar releasen inte, och den gamla
-  fortsätter köra. `timeout 290` stoppar `pg_dump` inne i containern strax före infras
-  gräns på 300 sekunder, eftersom infra bara kan döda sin egen klient.
-  - Förutsättningar: rmstdope-infra PR #24 är installerad på VPS:en, och hemmafix är
+- **Automatisk dump före releaser:** `deploy/runtime/app.json` har fältet
+  `pre_release_backup`. Före en release, manuell eller automatisk, kör rmstdope-infra
+  `pg_dump` i `db`-tjänsten i den release som är igång och sparar dumpen som
+  `pre-release.dump` i den nya releasens katalog på VPS:en. `timeout 290` stoppar `pg_dump`
+  inne i containern strax före rmstdope-infras gräns på 300 sekunder, eftersom
+  rmstdope-infra bara kan döda sin egen klient.
+  - Förutsättningar: rmstdope-infra PR #24 är installerad både i operatörs-CLI:t (manuella
+    kommandon skickar CLI:ts egen worker) och på VPS:en (pollern), och hemmafix är
     omregistrerad från den här versionen av `deploy/runtime` (registreringen är fryst).
-  - Återställning görs alltid för hand, eftersom den kastar allt som skrivits efter dumpen.
+  - Ingen dump tas vid den allra första releasen, eller när releasen körs med `--skip-backup`.
+  - Misslyckas dumpen startar releasen inte, den gamla fortsätter köra och automatiska
+    uppdateringar pausas. En trasig backup stoppar alla releaser, även den som ska laga den.
+    Vägen förbi är `rmstdope-deploy release hemmafix … --skip-backup`, som ger en release
+    utan dump. Automatiska uppdateringar hoppar aldrig över dumpen.
+  - Dumpen raderas tillsammans med sin release: misslyckade releaser efter sju dagar,
+    lyckade när de inte längre är aktuell, föregående eller bland de fem senaste.
+  - Återställning görs alltid för hand, eftersom den raderar allt som skrivits efter dumpen.
     Följ rmstdope-infras runbook, *Restore a pre-release database dump* i
-    `docs/operations.md`. `rollback` och en misslyckad release skriver ut sökvägen till dumpen.
+    `docs/operations.md`. `rollback` och en misslyckad release skriver ut sökvägen när
+    dumpen går att återställa till den release som då körs. Annars varnar de för att
+    återställa den.
   - Dumparna ligger på samma disk som databasen. De skyddar mot en dålig migrering, inte mot
     att värden går förlorad, så den manuella dumpen ovan ska fortfarande förvaras utanför VPS:en.
