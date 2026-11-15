@@ -39,6 +39,10 @@ export async function resetDatabase() {
         await tx.execute(sql`delete from household`);
         await tx.execute(sql`delete from "user"`);
         await tx.execute(sql`delete from verification`);
+        // Clients register themselves without a user, so deleting users does not reach them.
+        await tx.execute(sql`delete from oauth_client`);
+        await tx.execute(sql`delete from oauth_resource`);
+        await tx.execute(sql`delete from jwks`);
       });
       break;
     } catch (err) {
@@ -163,4 +167,36 @@ export async function seedDone(opts: { title: string; roomId: string; completedB
     .set({ completedById: opts.completedById, completedAt: opts.completedAt ?? new Date() })
     .where(sql`${schema.choreInstance.choreId} = ${c.id}`);
   return c;
+}
+
+/**
+ * Registers an app the way Claude does (a public client with PKCE), straight in the database:
+ * the register endpoint is rate limited, and every test starts from an empty database.
+ */
+export async function seedOAuthClient(opts: { name: string; redirectUri: string }) {
+  const clientId = `e2e-${crypto.randomUUID()}`;
+  await db.insert(schema.oauthClient).values({
+    id: crypto.randomUUID(),
+    clientId,
+    name: opts.name,
+    redirectUris: [opts.redirectUri],
+    tokenEndpointAuthMethod: "none",
+    grantTypes: ["authorization_code", "refresh_token"],
+    responseTypes: ["code"],
+    requirePKCE: true,
+    createdAt: new Date(),
+    updatedAt: new Date(),
+  });
+  // What registering through the endpoint does: the client may ask for tokens for the MCP server.
+  await db
+    .insert(schema.oauthResource)
+    .values({ id: "e2e-mcp", identifier: `${E2E_BASE_URL}/mcp`, name: "Hemmafix MCP" })
+    .onConflictDoNothing();
+  await db.insert(schema.oauthClientResource).values({
+    id: crypto.randomUUID(),
+    clientId,
+    resourceId: `${E2E_BASE_URL}/mcp`,
+    createdAt: new Date(),
+  });
+  return clientId;
 }

@@ -20,6 +20,7 @@ const ADULTS_ONLY = new Set<Action>([
   "task:delete",
   "task:uncomplete-others",
   "history:view-anyone",
+  "app:connect",
 ]);
 
 export type Action =
@@ -35,7 +36,9 @@ export type Action =
   | "task:uncomplete-others"
   | "task:view"
   | "history:view-own"
-  | "history:view-anyone";
+  | "history:view-anyone"
+  /** Let an app such as Claude act on the home, through its approval page. */
+  | "app:connect";
 
 export function can(role: Role, action: Action): boolean {
   return role === "adult" || !ADULTS_ONLY.has(action);
