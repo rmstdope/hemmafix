@@ -57,6 +57,23 @@ describe("what Claude is told", () => {
 });
 
 describe("the lookup of ids", () => {
+  it("names a numbered floor the way the app does", () => {
+    const text = formatTaskLookup(
+      {
+        open: [],
+        rooms: [
+          { id: "r1", name: "Kök", floorName: "1" },
+          { id: "r2", name: "Källare", floorName: "Suterräng" },
+        ],
+        members: [],
+        recentlyDone: [],
+      },
+      "2026-11-15",
+    );
+    expect(text).toContain("- Kök, Plan 1 (id r1)");
+    expect(text).toContain("- Källare, Suterräng (id r2)");
+  });
+
   it("shows ids for open tasks, rooms, family and recent ticks, marking the latest tick", () => {
     const text = formatTaskLookup(
       {

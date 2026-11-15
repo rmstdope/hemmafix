@@ -165,6 +165,19 @@ describe("the task tools", () => {
     expect(tools.flatMap((t) => arrays(t.inputSchema, t.name))).toEqual([]);
   });
 
+  it("marks every tool that only reads as read-only", async () => {
+    const res = await rpc("anna", "tools/list");
+    const tools = res.result.tools as { name: string; annotations?: { readOnlyHint?: boolean } }[];
+    const readOnly = tools.filter((t) => t.annotations?.readOnlyHint === true).map((t) => t.name).sort();
+    expect(readOnly).toEqual([
+      "lista_familjen",
+      "lista_oppna_sysslor",
+      "lista_vaningar_och_rum",
+      "visa_gjort",
+      "visa_sysslor_med_id",
+    ]);
+  });
+
   it("shows the ids Claude needs", async () => {
     const roomId = await seedKitchen();
     const { choreId, instanceId } = await createDiska(roomId);
