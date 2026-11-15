@@ -3,18 +3,18 @@
 import { eq } from "drizzle-orm";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { db } from "@/db";
-import { household, membership, room, task } from "@/db/schema";
+import { chore, choreInstance, household, room } from "@/db/schema";
 import type { CurrentMember } from "@/server/dal";
-import { createUser } from "../../test/integration/factories";
+import { createFamily } from "../../test/integration/factories";
 
 let current: CurrentMember | null = null;
 vi.mock("@/server/dal", () => ({ getCurrentMember: async () => current }));
 vi.mock("next/cache", () => ({ refresh: () => {} }));
 
 const actions = await import("./actions");
+const chores = await import("@/server/chores");
 
-let adult: CurrentMember;
-let child: CurrentMember;
+let f: Awaited<ReturnType<typeof createFamily>>;
 
 const form = (fields: Record<string, string>) => {
   const data = new FormData();
@@ -24,130 +24,161 @@ const form = (fields: Record<string, string>) => {
 const as = (who: CurrentMember | null) => {
   current = who;
 };
+const FORBIDDEN = { ok: false, error: "Det här får bara vuxna göra." };
+const OK = { ok: true };
+
+/** A weekly kitchen task created by the adult, and its open instance. */
+async function weeklyTask(title = "Diska") {
+  const { id } = await chores.createChore(f.adult, { title, roomId: f.kitchen.id, interval: "1", unit: "week" });
+  const [instance] = await db.select().from(choreInstance).where(eq(choreInstance.choreId, id));
+  return { choreId: id, instanceId: instance!.id };
+}
+const openInstance = async (choreId: string) =>
+  (await db.select().from(choreInstance).where(eq(choreInstance.choreId, choreId))).find((i) => !i.completedAt);
 
 beforeEach(async () => {
   await db.delete(household);
-  const [home] = await db.insert(household).values({ name: "Hemma" }).returning();
-  const [anna, bo] = [await createUser("Anna"), await createUser("Bo")];
-  await db.insert(membership).values([
-    { userId: anna.id, householdId: home!.id, role: "adult" },
-    { userId: bo.id, householdId: home!.id, role: "child" },
-  ]);
-  adult = { userId: anna.id, name: "Anna", image: null, householdId: home!.id, role: "adult" };
-  child = { userId: bo.id, name: "Bo", image: null, householdId: home!.id, role: "child" };
+  f = await createFamily();
 });
 
-const FORBIDDEN = "Det här får bara vuxna göra.";
-
 describe("as a child", () => {
-  beforeEach(() => as(child));
+  beforeEach(() => as(f.child));
 
-  it("cannot rename the home, add rooms or change roles", async () => {
-    expect(await actions.renameHousehold({ ok: false }, form({ name: "Bos hus" }))).toEqual({ ok: false, error: FORBIDDEN });
-    expect(await actions.addRoom({ ok: false }, form({ name: "Bos rum" }))).toEqual({ ok: false, error: FORBIDDEN });
-    expect(await actions.setMemberRole(child.userId, "adult")).toEqual({ ok: false, error: FORBIDDEN });
-    expect(await db.select().from(room)).toHaveLength(0);
-  });
-
-  it("cannot delete a room", async () => {
-    const [kok] = await db.insert(room).values({ householdId: adult.householdId, name: "Kök" }).returning();
-    expect(await actions.deleteRoom(kok!.id)).toEqual({ ok: false, error: FORBIDDEN });
-    expect(await db.select().from(room)).toHaveLength(1);
+  it("cannot rename the home, add or delete rooms, or change roles", async () => {
+    expect(await actions.renameHousehold({ ok: false }, form({ name: "Bos hus" }))).toEqual(FORBIDDEN);
+    expect(await actions.addRoom({ ok: false }, form({ name: "Bos rum" }))).toEqual(FORBIDDEN);
+    expect(await actions.deleteRoom(f.kitchen.id)).toEqual(FORBIDDEN);
+    expect(await actions.setMemberRole(f.child.userId, "adult")).toEqual(FORBIDDEN);
+    expect(await db.select().from(room).where(eq(room.householdId, f.homeId))).toHaveLength(2);
   });
 
   it("cannot create, assign or delete tasks", async () => {
-    expect(await actions.createTask({ ok: false }, form({ title: "Godis" }))).toEqual({ ok: false, error: FORBIDDEN });
-    const [t] = await db.insert(task).values({ householdId: adult.householdId, title: "Diska" }).returning();
-    await expect(actions.assignTask(t!.id, child.userId)).rejects.toThrow(FORBIDDEN);
-    await expect(actions.deleteTask(t!.id)).rejects.toThrow(FORBIDDEN);
-    const rows = await db.select().from(task);
-    expect(rows).toHaveLength(1);
-    expect(rows[0]!.assigneeId).toBeNull();
+    expect(
+      await actions.createChore({ ok: false }, form({ title: "Godis", roomId: f.kitchen.id, interval: "1", unit: "day" })),
+    ).toEqual(FORBIDDEN);
+    const t = await weeklyTask();
+    expect(await actions.assignInstance(t.instanceId, f.child.userId)).toEqual(FORBIDDEN);
+    expect(await actions.assignChore(t.choreId, f.child.userId)).toEqual(FORBIDDEN);
+    expect(await actions.deleteChore(t.choreId)).toEqual(FORBIDDEN);
+
+    const [c] = await db.select().from(chore);
+    expect(c).toMatchObject({ assigneeId: null, archivedAt: null });
+    expect((await openInstance(t.choreId))!.assigneeId).toBeNull();
   });
 
-  it("can tick off a task and undo it", async () => {
-    const [t] = await db.insert(task).values({ householdId: adult.householdId, title: "Diska" }).returning();
-    await actions.setTaskCompleted(t!.id, true);
-    expect((await db.select().from(task).where(eq(task.id, t!.id)))[0]).toMatchObject({ completedById: child.userId });
-    await actions.setTaskCompleted(t!.id, false);
-    expect((await db.select().from(task).where(eq(task.id, t!.id)))[0]!.completedAt).toBeNull();
+  it("can tick off a task and undo their own tick, but not an adult's", async () => {
+    const mine = await weeklyTask("Diska");
+    const annas = await weeklyTask("Damma");
+
+    expect(await actions.completeInstance(mine.instanceId)).toEqual(OK);
+    expect(await actions.uncompleteInstance(mine.instanceId)).toEqual(OK);
+
+    as(f.adult);
+    await actions.completeInstance(annas.instanceId);
+    as(f.child);
+    expect(await actions.uncompleteInstance(annas.instanceId)).toEqual(FORBIDDEN);
   });
 });
 
 describe("as an adult", () => {
-  beforeEach(() => as(adult));
+  beforeEach(() => as(f.adult));
 
   it("can rename the home, add rooms and change roles", async () => {
-    expect(await actions.renameHousehold({ ok: false }, form({ name: "Villa Kulla" }))).toEqual({ ok: true });
-    expect(await actions.addRoom({ ok: false }, form({ name: "Kök" }))).toEqual({ ok: true });
-    expect(await actions.setMemberRole(child.userId, "adult")).toEqual({ ok: true });
+    expect(await actions.renameHousehold({ ok: false }, form({ name: "Villa Kulla" }))).toEqual(OK);
+    expect(await actions.addRoom({ ok: false }, form({ name: "Hall" }))).toEqual(OK);
+    expect(await actions.setMemberRole(f.child.userId, "adult")).toEqual(OK);
   });
 
-  it("gets a readable error for invalid input or a duplicate room", async () => {
+  it("gets a readable error for invalid input, a duplicate room or a room with tasks", async () => {
     expect(await actions.renameHousehold({ ok: false }, form({ name: "  " }))).toEqual({
       ok: false,
       error: "Hemmet behöver ett namn",
     });
-    await actions.addRoom({ ok: false }, form({ name: "Kök" }));
     expect(await actions.addRoom({ ok: false }, form({ name: "kök" }))).toEqual({ ok: false, error: "Det rummet finns redan" });
+    expect(await actions.createChore({ ok: false }, form({ title: "Diska", interval: "1", unit: "day" }))).toEqual({
+      ok: false,
+      error: "Välj ett rum",
+    });
+    await weeklyTask();
+    expect(await actions.deleteRoom(f.kitchen.id)).toEqual({ ok: false, error: "Rummet har uppgifter. Ta bort dem först." });
   });
 
-  it("can create, assign and delete tasks", async () => {
-    expect(await actions.createTask({ ok: false }, form({ title: "Diska" }))).toEqual({ ok: true });
-    const [t] = await db.select().from(task);
-    await actions.assignTask(t!.id, child.userId);
-    expect((await db.select().from(task))[0]!.assigneeId).toBe(child.userId);
-    await actions.deleteTask(t!.id);
-    expect(await db.select().from(task)).toHaveLength(0);
+  it("can create, assign, tick off, undo and delete tasks", async () => {
+    expect(
+      await actions.createChore(
+        { ok: false },
+        form({ title: "Diska", roomId: f.kitchen.id, kind: "recurring", interval: "1", unit: "day", templateKey: "diska" }),
+      ),
+    ).toEqual(OK);
+    const [c] = await db.select().from(chore);
+    const first = (await openInstance(c!.id))!;
+
+    expect(await actions.assignInstance(first.id, f.child.userId)).toEqual(OK);
+    expect(await actions.assignChore(c!.id, f.adult.userId)).toEqual(OK);
+    expect(await actions.completeInstance(first.id)).toEqual(OK);
+    expect(await actions.completeInstance(first.id)).toEqual({ ok: false, error: "Någon har redan bockat av den" });
+    expect(await actions.uncompleteInstance(first.id)).toEqual(OK);
+    expect(await actions.deleteChore(c!.id)).toEqual(OK);
+    expect(await openInstance(c!.id)).toBeUndefined();
   });
 });
 
 describe("another household's data", () => {
-  let foreignTaskId: string;
-  let foreignRoomId: string;
-  let foreignUserId: string;
+  let theirs: { choreId: string; instanceId: string };
 
   beforeEach(async () => {
-    as(adult);
-    const [other] = await db.insert(household).values({ name: "Grannar" }).returning();
-    const eve = await createUser("Eve");
-    foreignUserId = eve.id;
-    await db.insert(membership).values({ userId: eve.id, householdId: other!.id, role: "adult" });
-    const [t] = await db.insert(task).values({ householdId: other!.id, title: "Grannens disk" }).returning();
-    const [r] = await db.insert(room).values({ householdId: other!.id, name: "Garage" }).returning();
-    foreignTaskId = t!.id;
-    foreignRoomId = r!.id;
+    const { id } = await chores.createChore(f.neighbour, { title: "Tvätta bilen", roomId: f.garage.id, kind: "once" });
+    const [instance] = await db.select().from(choreInstance).where(eq(choreInstance.choreId, id));
+    theirs = { choreId: id, instanceId: instance!.id };
+    as(f.adult);
   });
-
-  const foreignTask = async () => (await db.select().from(task).where(eq(task.id, foreignTaskId)))[0];
 
   it("cannot be ticked off, assigned or deleted by an adult of this household", async () => {
-    await actions.setTaskCompleted(foreignTaskId, true);
-    await actions.assignTask(foreignTaskId, adult.userId);
-    await actions.deleteTask(foreignTaskId);
-    expect(await foreignTask()).toMatchObject({ completedAt: null, assigneeId: null });
+    expect((await actions.completeInstance(theirs.instanceId)).ok).toBe(false);
+    expect((await actions.assignInstance(theirs.instanceId, f.adult.userId)).ok).toBe(false);
+    expect((await actions.assignChore(theirs.choreId, f.adult.userId)).ok).toBe(false);
+    await actions.deleteChore(theirs.choreId);
+
+    expect(await openInstance(theirs.choreId)).toMatchObject({ completedAt: null, assigneeId: null });
+    expect((await db.select().from(chore).where(eq(chore.id, theirs.choreId)))[0]!.archivedAt).toBeNull();
   });
 
-  it("cannot have its rooms deleted or its members' roles changed", async () => {
-    await actions.deleteRoom(foreignRoomId);
-    expect(await db.select().from(room).where(eq(room.id, foreignRoomId))).toHaveLength(1);
-    expect(await actions.setMemberRole(foreignUserId, "child")).toEqual({ ok: false, error: "Personen finns inte i hemmet" });
+  it("cannot have a tick undone by an adult of this household", async () => {
+    await chores.completeInstance(f.neighbour, theirs.instanceId);
+    expect((await actions.uncompleteInstance(theirs.instanceId)).ok).toBe(false);
+    expect(await openInstance(theirs.choreId)).toBeUndefined();
+  });
+
+  it("cannot have its rooms used or deleted, or its members' roles changed", async () => {
+    expect((await actions.createChore({ ok: false }, form({ title: "x", roomId: f.garage.id, kind: "once" }))).ok).toBe(false);
+    await actions.deleteRoom(f.garage.id);
+    expect(await db.select().from(room).where(eq(room.id, f.garage.id))).toHaveLength(1);
+    expect(await actions.setMemberRole(f.neighbour.userId, "child")).toEqual({
+      ok: false,
+      error: "Personen finns inte i hemmet",
+    });
   });
 
   it("cannot be assigned tasks of this household", async () => {
-    const [own] = await db.insert(task).values({ householdId: adult.householdId, title: "Diska" }).returning();
-    await expect(actions.assignTask(own!.id, foreignUserId)).rejects.toThrow("finns inte i hushållet");
-    expect(
-      await actions.createTask({ ok: false }, form({ title: "Diska", assigneeId: foreignUserId })),
-    ).toEqual({ ok: false, error: "Personen finns inte i hushållet" });
-    expect((await db.select().from(task).where(eq(task.id, own!.id)))[0]!.assigneeId).toBeNull();
+    const t = await weeklyTask();
+    expect(await actions.assignInstance(t.instanceId, f.neighbour.userId)).toEqual({
+      ok: false,
+      error: "Personen finns inte i hemmet",
+    });
+    expect(await actions.assignChore(t.choreId, f.neighbour.userId)).toEqual({
+      ok: false,
+      error: "Personen finns inte i hemmet",
+    });
+    expect((await openInstance(t.choreId))!.assigneeId).toBeNull();
   });
 });
 
 describe("when logged out", () => {
   it("refuses every action", async () => {
+    const t = await weeklyTask();
     as(null);
-    expect((await actions.addRoom({ ok: false }, form({ name: "Kök" }))).ok).toBe(false);
-    await expect(actions.setTaskCompleted("00000000-0000-4000-8000-000000000000", true)).rejects.toThrow("utloggad");
+    expect((await actions.addRoom({ ok: false }, form({ name: "Hall" }))).ok).toBe(false);
+    expect((await actions.completeInstance(t.instanceId)).ok).toBe(false);
+    expect((await openInstance(t.choreId))!.completedAt).toBeNull();
   });
 });

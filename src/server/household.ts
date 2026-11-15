@@ -1,7 +1,7 @@
 import "server-only";
-import { and, asc, eq, ne, sql } from "drizzle-orm";
+import { and, asc, eq, isNull, ne, sql } from "drizzle-orm";
 import { db } from "@/db";
-import { household, membership, room, user } from "@/db/schema";
+import { chore, household, membership, room, user } from "@/db/schema";
 import { UserError } from "@/lib/errors";
 import { assertCan, type Role } from "@/lib/permissions";
 import { householdName, memberId, roleInput, roomId, roomName } from "@/lib/validation";
@@ -62,7 +62,7 @@ export async function listRooms(householdId: string) {
   return db
     .select({ id: room.id, name: room.name })
     .from(room)
-    .where(eq(room.householdId, householdId))
+    .where(and(eq(room.householdId, householdId), isNull(room.archivedAt)))
     .orderBy(sql`lower(${room.name})`);
 }
 
@@ -77,9 +77,29 @@ export async function addRoom(actor: Actor, name: string) {
   return created;
 }
 
+/**
+ * Removes a room from the home. It is archived, not deleted, so tasks done there keep their
+ * room in the history. A room with tasks on the board cannot be removed.
+ */
 export async function deleteRoom(actor: Actor, id: string) {
   assertCan(actor, "room:manage");
-  await db.delete(room).where(and(eq(room.id, roomId.parse(id)), eq(room.householdId, actor.householdId)));
+  const target = roomId.parse(id);
+  await db.transaction(async (tx) => {
+    // Lock the room: a task being created in it at this moment waits, or makes us wait.
+    const [r] = await tx
+      .select({ id: room.id })
+      .from(room)
+      .where(and(eq(room.id, target), eq(room.householdId, actor.householdId), isNull(room.archivedAt)))
+      .for("update");
+    if (!r) return;
+    const [active] = await tx
+      .select({ id: chore.id })
+      .from(chore)
+      .where(and(eq(chore.roomId, target), isNull(chore.archivedAt)))
+      .limit(1);
+    if (active) throw new UserError("Rummet har uppgifter. Ta bort dem först.");
+    await tx.update(room).set({ archivedAt: new Date() }).where(eq(room.id, target));
+  });
 }
 
 // ---------------------------------------------------------------------------

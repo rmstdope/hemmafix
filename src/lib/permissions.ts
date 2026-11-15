@@ -17,6 +17,7 @@ const ADULTS_ONLY = new Set<Action>([
   "task:create",
   "task:assign",
   "task:delete",
+  "task:uncomplete-others",
   "history:view-anyone",
 ]);
 
@@ -28,6 +29,8 @@ export type Action =
   | "task:assign"
   | "task:delete"
   | "task:complete"
+  /** Undo someone else's tick; anyone may undo their own. */
+  | "task:uncomplete-others"
   | "task:view"
   | "history:view-own"
   | "history:view-anyone";

@@ -1,8 +1,7 @@
 import type { Page } from "@playwright/test";
 import { expect, test } from "./support/test";
 import { E2E_BASE_URL } from "./support/env";
-import { db, logIn } from "./support/family";
-import * as schema from "../src/db/schema";
+import { logIn, seedChore, seedRooms } from "./support/family";
 
 const openHome = async (page: Page) => {
   await page.goto("/");
@@ -46,31 +45,74 @@ test("an adult adds rooms, typed or suggested, and removes one", async ({ page, 
 });
 
 test("a child sees the tasks and ticks them off, but cannot manage anything", async ({ context }) => {
-  const anna = await logIn(context, "anna", "adult");
+  await logIn(context, "anna", "adult");
   const childContext = await context.browser()!.newContext({ baseURL: E2E_BASE_URL, locale: "sv-SE" });
   const childPage = await childContext.newPage();
   const bo = await logIn(childContext, "bo", "child");
-  const [home] = await db.select().from(schema.household);
-  await db.insert(schema.task).values([
-    { householdId: home!.id, title: "Bädda sängen", assigneeId: bo.id, createdById: anna.id },
-    { householdId: home!.id, title: "Mata katten", createdById: anna.id },
-  ]);
+  const rooms = await seedRooms("Sovrum", "Kök");
+  await seedChore({ title: "Bädda sängen", roomId: rooms["Sovrum"]!.id, assigneeId: bo.id, recurrence: null });
+  await seedChore({ title: "Mata katten", roomId: rooms["Kök"]!.id });
 
   await childPage.goto("/");
-  const task = childPage.getByRole("listitem").filter({ hasText: "Bädda sängen" });
+  const todo = childPage.getByRole("list", { name: "Att göra" });
+  const task = todo.getByRole("listitem").filter({ hasText: "Bädda sängen" });
   await expect(task).toBeVisible();
   await expect(task.getByText("Jag")).toBeVisible();
-  await expect(childPage.getByRole("textbox", { name: "Ny uppgift" })).toHaveCount(0);
+  await expect(childPage.getByRole("button", { name: "Ny uppgift" })).toHaveCount(0);
   await expect(childPage.getByRole("link", { name: "Hemmet" })).toHaveCount(0);
-  await expect(childPage.getByRole("button", { name: "Ta bort" })).toHaveCount(0);
-  await expect(childPage.getByRole("combobox", { name: "Tilldela" })).toHaveCount(0);
+  await expect(childPage.getByRole("button", { name: "Mer" })).toHaveCount(0);
+  await expect(childPage.getByRole("combobox", { name: "Tilldela den här gången" })).toHaveCount(0);
+  // Children can filter too.
+  await childPage.getByRole("combobox", { name: "Filtrera på person" }).selectOption({ label: "Mina" });
+  await expect(todo.getByRole("listitem")).toHaveCount(1);
 
   await task.getByRole("button", { name: "Markera som klar" }).click();
-  await expect(childPage.getByRole("listitem").filter({ hasText: "Bädda sängen" })).toHaveCount(0);
+  await expect(childPage.getByText("Inga uppgifter här.")).toBeVisible();
+
+  // A child may undo their own tick.
+  await childPage.getByText(/Klart senaste veckan/).click();
+  await childPage
+    .getByRole("list", { name: "Klart" })
+    .getByRole("listitem")
+    .filter({ hasText: "Bädda sängen" })
+    .getByRole("button", { name: "Ångra klar" })
+    .click();
+  await expect(task).toBeVisible();
 
   await childPage.goto("/hemmet");
   await expect(childPage).toHaveURL(`${E2E_BASE_URL}/`);
   await childContext.close();
+});
+
+test("a child cannot undo someone else's tick", async ({ page, context }) => {
+  await logIn(context, "anna", "adult");
+  const childContext = await context.browser()!.newContext({ baseURL: E2E_BASE_URL, locale: "sv-SE" });
+  const childPage = await childContext.newPage();
+  await logIn(childContext, "bo", "child");
+  const rooms = await seedRooms("Kök");
+  await seedChore({ title: "Diska", roomId: rooms["Kök"]!.id, recurrence: null });
+
+  await page.goto("/");
+  await page.getByRole("button", { name: "Markera som klar" }).click();
+  await expect(page.getByText("Inget att göra just nu")).toBeVisible();
+
+  await childPage.goto("/");
+  await childPage.getByText(/Klart senaste veckan/).click();
+  const ticked = childPage.getByRole("list", { name: "Klart" }).getByRole("listitem").filter({ hasText: "Diska" });
+  await expect(ticked).toContainText("Klar av Anna");
+  await expect(ticked.getByRole("button", { name: "Ångra klar" })).toHaveCount(0);
+  await childContext.close();
+});
+
+test("a room with tasks cannot be removed", async ({ page, context }) => {
+  await logIn(context, "anna", "adult");
+  const rooms = await seedRooms("Kök");
+  await seedChore({ title: "Diska", roomId: rooms["Kök"]!.id });
+  await openHome(page);
+
+  await page.getByRole("button", { name: "Ta bort Kök" }).click();
+  await expect(page.getByText("Rummet har uppgifter. Ta bort dem först.")).toBeVisible();
+  await expect(page.getByRole("list", { name: "Rum" }).getByText("Kök")).toBeVisible();
 });
 
 test("an adult makes a child an adult, which takes effect on the child's device at once", async ({
@@ -83,13 +125,13 @@ test("an adult makes a child an adult, which takes effect on the child's device 
   await logIn(boContext, "bo", "child");
   await boPage.goto("/");
   await expect(boPage.getByText("Inget att göra just nu")).toBeVisible();
-  await expect(boPage.getByRole("textbox", { name: "Ny uppgift" })).toHaveCount(0);
+  await expect(boPage.getByRole("button", { name: "Ny uppgift" })).toHaveCount(0);
 
   await openHome(page);
   await page.getByRole("combobox", { name: "Roll för Bo Andersson" }).selectOption("Vuxen");
   await expect(page.getByText("Bo är nu vuxen")).toBeVisible();
 
-  await expect(boPage.getByRole("textbox", { name: "Ny uppgift" })).toBeVisible();
+  await expect(boPage.getByRole("button", { name: "Ny uppgift" })).toBeVisible();
   await expect(boPage.getByRole("link", { name: "Hemmet" })).toBeVisible();
   await boContext.close();
 });
