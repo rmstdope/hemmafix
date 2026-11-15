@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { formatDue, todayIso } from "./dates";
+import { formatDay, formatDue, formatTime, todayIso } from "./dates";
 
 const today = "2026-11-14";
 
@@ -31,5 +31,21 @@ describe("todayIso", () => {
     expect(todayIso(new Date("2026-11-14T23:30:00Z"))).toBe("2026-11-15");
     // 21:30 UTC on 30 Jun is 23:30 in Stockholm (UTC+2, summer time).
     expect(todayIso(new Date("2026-06-30T21:30:00Z"))).toBe("2026-06-30");
+  });
+});
+
+describe("formatDay", () => {
+  it("names today and yesterday, and spells out other days", () => {
+    expect(formatDay("2026-11-15", "2026-11-15")).toBe("Idag");
+    expect(formatDay("2026-11-14", "2026-11-15")).toBe("Igår");
+    expect(formatDay("2026-11-12", "2026-11-15")).toMatch(/^Torsdag 12 nov/);
+  });
+});
+
+describe("formatTime and todayIso", () => {
+  it("use Swedish time, so a late tick lands on the right day", () => {
+    const lateEvening = new Date("2026-11-15T23:30:00Z"); // 00:30 on the 16th in Stockholm
+    expect(todayIso(lateEvening)).toBe("2026-11-16");
+    expect(formatTime(lateEvening)).toBe("00:30");
   });
 });
