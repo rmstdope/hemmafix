@@ -148,14 +148,14 @@ export function registerTaskTools(server: McpServer, userId: string): void {
         ...when,
         startDate: z.string().optional().describe("Första datum, ÅÅÅÅ-MM-DD (recurring; annars idag)"),
         dueDate: z.string().optional().describe("Förfallodatum, ÅÅÅÅ-MM-DD (once)"),
-        assigneeId: z.string().nullish().describe("Vem sysslan tilldelas, varje gång"),
+        assigneeId: z.string().optional().describe("Vem sysslan tilldelas, varje gång (utelämna för ingen)"),
       }),
       annotations: WRITES,
     },
     (args) =>
       runAsMember(userId, true, async (actor) => {
         assertIds(args.roomId);
-        await chores.createChore(actor, args);
+        await chores.createChore(actor, { ...args, assigneeId: args.assigneeId ?? null });
         const room = (await listRooms(actor.householdId)).find((r) => r.id === args.roomId);
         return taskCreatedText(args.title.trim(), room?.name ?? null);
       }),
@@ -206,10 +206,10 @@ export function registerTaskTools(server: McpServer, userId: string): void {
     {
       title: "Tilldela en syssla",
       description:
-        "Tilldelar en syssla till en person, eller till ingen (assigneeId null). scope denna_gang: id är ett tillfälle; varje_gang: id är sysslan. Skriver över den som var tilldelad.",
+        "Tilldelar en syssla till en person, eller till ingen (utelämna assigneeId). scope denna_gang: id är ett tillfälle; varje_gang: id är sysslan. Skriver över den som var tilldelad.",
       inputSchema: z.object({
         id,
-        assigneeId: z.string().nullable(),
+        assigneeId: z.string().optional().describe("Vem sysslan tilldelas; utelämna för ingen"),
         scope: z.string().describe("denna_gang (id är ett tillfälle) eller varje_gang (id är sysslan)"),
       }),
       annotations: OVERWRITES,
@@ -222,10 +222,11 @@ export function registerTaskTools(server: McpServer, userId: string): void {
         }
         const everyTime = args.scope === "varje_gang";
         const title = await titleOf(actor, everyTime ? { choreId: args.id } : { instanceId: args.id });
-        if (everyTime) await chores.assignChore(actor, args.id, args.assigneeId);
-        else await chores.assignInstance(actor, args.id, args.assigneeId);
-        const who = args.assigneeId
-          ? ((await listMembersWithRoles(actor.householdId)).find((m) => m.id === args.assigneeId)?.name ?? null)
+        const assigneeId = args.assigneeId ?? null;
+        if (everyTime) await chores.assignChore(actor, args.id, assigneeId);
+        else await chores.assignInstance(actor, args.id, assigneeId);
+        const who = assigneeId
+          ? ((await listMembersWithRoles(actor.householdId)).find((m) => m.id === assigneeId)?.name ?? null)
           : null;
         return taskAssignedText(title, who, everyTime);
       }),
