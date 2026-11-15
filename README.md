@@ -125,8 +125,8 @@ scripts/          migrate.ts – körs vid containerstart
 
 Arbetet planeras och byggs av en flotta AI-agenter, [Cerebro](https://github.com/rmstdope/cerebro),
 monterad som submodul i `.cerebro/cerebro`. Projektets deklarationer ligger bredvid:
-`.cerebro/project.conf` (grindar, portar, att varje merge görs av en människa eftersom den
-driftsätter), `roster.conf` (agenterna), `agents.conf` (modeller) och `traps.md` (lärdomar).
+`.cerebro/project.conf` (grindar och portar; en producent mergar själv när granskningen är klar
+och CI är grön, och varje merge driftsätter), `roster.conf` (agenterna), `agents.conf` (modeller) och `traps.md` (lärdomar).
 Agenternas instruktioner står i `CLAUDE.md`. Arbetet spåras som beads (`bd`, prefix `hf`).
 
 ```sh
