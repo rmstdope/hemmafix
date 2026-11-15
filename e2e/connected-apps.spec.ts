@@ -17,10 +17,10 @@ test("with nothing connected the section says where apps will show", async ({ pa
   await expect(
     page.getByText("Du har inte anslutit några appar. När du ansluter till exempel Claude till Hemmafix syns den här."),
   ).toBeVisible();
-  // Last on the page, after Familjen.
+  // Last on the page, after Familjen and Rutiner.
   const headings = await page.getByRole("heading", { level: 2 }).allTextContents();
   expect(headings.at(-1)).toBe("Anslutna appar");
-  expect(headings.at(-2)).toBe("Familjen");
+  expect(headings.slice(-3)).toEqual(["Familjen", "Rutiner", "Anslutna appar"]);
 });
 
 test("an adult sees only their own apps, newest first, with dates and a letter tile without icon", async ({ page, context }) => {
