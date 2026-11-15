@@ -14,20 +14,25 @@ describe("describeAddress", () => {
 
   it("does not know look-alikes", () => {
     for (const uri of ["https://claude.ai.evil.com/cb", "http://claude.ai/cb", "https://evilclaude.ai/cb", "https://app.claude.ai/cb"]) {
-      expect(describeAddress(uri).known).toBe(false);
+      expect(describeAddress(uri)?.known).toBe(false);
     }
     expect(describeAddress("https://claude-hjalp.app/cb")).toEqual({ label: "claude-hjalp.app", known: false, local: false });
   });
 
-  it("shows the scheme when there is no host, and never knows unparsable input", () => {
-    expect(describeAddress("myapp://callback")).toMatchObject({ known: false });
-    expect(describeAddress("not a url")).toEqual({ label: "okänd", known: false, local: false });
+  it("shows the scheme of a custom-scheme address, so it never reads as a web address", () => {
+    expect(describeAddress("evil://claude.ai/cb")).toEqual({ label: "evil://claude.ai", known: false, local: false });
+    expect(describeAddress("myapp://callback")).toEqual({ label: "myapp://callback", known: false, local: false });
+    expect(describeAddress("com.example.app:/oauth")).toEqual({ label: "com.example.app:", known: false, local: false });
+  });
+
+  it("has no address for unparsable input", () => {
+    expect(describeAddress("not a url")).toBeNull();
   });
 });
 
 describe("appDisplayName", () => {
-  const web = describeAddress("https://claude-hjalp.app/cb");
-  const local = describeAddress("http://localhost:1/cb");
+  const web = describeAddress("https://claude-hjalp.app/cb")!;
+  const local = describeAddress("http://localhost:1/cb")!;
 
   it("keeps a given name, trimmed", () => {
     expect(appDisplayName("  Claude ", web)).toEqual({ heading: "Claude", inline: "Claude" });

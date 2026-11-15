@@ -24,6 +24,7 @@ export async function readConnectingApp(params: SearchParams): Promise<Connectin
   if (!client) return null;
   // Where Godkänn/Avbryt send the person: the signed request's own redirect address.
   const address = describeAddress(query.get("redirect_uri") ?? "");
+  if (!address) return null;
   const display = appDisplayName(client.name, address);
   return { clientId, name: display.heading, nameInline: display.inline, address };
 }

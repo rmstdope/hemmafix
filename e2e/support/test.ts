@@ -3,12 +3,14 @@
 import { test as base } from "@playwright/test";
 import { closeDatabase, resetDatabase } from "./family";
 
+let testsStarted = 0;
+
 export const test = base.extend<{ freshDatabase: void }, { database: void }>({
   // Better Auth rate limits per client address (the authorize endpoint: 30 a minute), and every
   // test in the run shares one: give each test its own address, as separate people would have.
   extraHTTPHeaders: async ({}, provide) => {
-    const n = () => Math.floor(Math.random() * 254) + 1;
-    await provide({ "x-forwarded-for": `10.${n()}.${n()}.${n()}` });
+    const n = ++testsStarted;
+    await provide({ "x-forwarded-for": `10.${(n >> 16) & 255}.${(n >> 8) & 255}.${n & 255}` });
   },
   database: [
     async ({}, use) => {

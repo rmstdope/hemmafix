@@ -271,8 +271,12 @@ test("a nameless app is named after its address everywhere, also on the login st
 });
 
 test("a nameless app on the person's own computer", async ({ page, context }) => {
+  const claude = await claudeStartsConnecting({ name: null, redirectUri: "http://127.0.0.1:5000/cb" });
+  await page.goto(claude.url);
+  await expect(page.getByText("Logga in för att ansluta en app på den här datorn till ditt hem.")).toBeVisible();
+
   await logIn(context, "anna", "adult");
-  await page.goto((await claudeStartsConnecting({ name: null, redirectUri: "http://127.0.0.1:5000/cb" })).url);
+  await page.goto(claude.url);
 
   await expect(page.getByRole("heading", { name: "En app på den här datorn vill ansluta till Hemmafix" })).toBeVisible();
   await expect(page.getByText("Om du godkänner kan en app på den här datorn, i hemmet")).toBeVisible();
