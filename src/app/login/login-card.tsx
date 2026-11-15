@@ -10,7 +10,7 @@ const ERRORS: Record<string, string> = {
   EMAIL_NOT_VERIFIED: "Din e-postadress är inte verifierad hos Google.",
 };
 
-export function LoginCard() {
+export function LoginCard({ connectApp }: { connectApp?: string }) {
   const error = useSearchParams().get("error");
   const [pending, setPending] = useState(false);
 
@@ -22,6 +22,12 @@ export function LoginCard() {
         <h1 className="text-2xl font-semibold">Hemmafix</h1>
         <p className="text-muted-foreground">Familjens att-göra-lista</p>
       </div>
+
+      {connectApp && (
+        <p className="rounded-lg bg-muted p-3 text-sm text-muted-foreground">
+          Logga in för att ansluta <strong className="text-foreground">{connectApp}</strong> till ditt hem.
+        </p>
+      )}
 
       {error && (
         <p role="alert" className="rounded-lg bg-destructive/10 p-3 text-sm text-destructive">

@@ -53,7 +53,10 @@ start_web
 [ "$(curl -fsS "$base/healthz" | jq -r .status)" = ok ] || fail "/healthz"
 [ "$(curl -fsS "$base/release.json" | jq -r .revision)" = "$REVISION" ] || fail "baked revision"
 curl -fsSI "$base/release.json" | grep -qi 'cache-control: no-cache' || fail "release.json cache policy"
-curl -fsS "$base/login" | grep -q 'Hemmafix' || fail "/login did not render"
+# Into a variable, not piped to grep -q: grep stops at the first match and, with pipefail, curl's
+# "Failed writing body" would fail a login page that is streamed in several chunks.
+login="$(curl -fsS "$base/login")"
+[[ "$login" == *Hemmafix* ]] || fail "/login did not render"
 curl -fsS "$base/manifest.webmanifest" | jq -e '.name == "Hemmafix"' >/dev/null || fail "manifest"
 [ "$(curl -sS -o /dev/null -w '%{http_code}' "$base/api/events")" = 401 ] || fail "events must require login"
 [ "$(curl -sS "$base/api/auth/get-session")" = null ] || fail "anonymous session"

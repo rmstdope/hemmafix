@@ -164,3 +164,30 @@ describe("0005: done instances keep their title and room; the floor trigger goes
   });
 });
 
+
+describe("0006: the OAuth tables for connecting Claude", () => {
+  beforeEach(reset);
+
+  it("only adds tables, so the previous release keeps working on the migrated schema", async () => {
+    await migrateUpTo(sql, "0005_done_snapshot");
+    await sql`insert into "user" (id, name, email, email_verified) values ('a', 'Anna', 'a@example.com', true)`;
+    const before = await sql`select table_name from information_schema.tables where table_schema = 'public'`;
+
+    await migrateUpTo(sql);
+
+    const after = await sql`select table_name from information_schema.tables where table_schema = 'public'`;
+    const added = after.map((t) => t.table_name).filter((n) => !before.some((b) => b.table_name === n));
+    expect(added.sort()).toEqual([
+      "jwks",
+      "oauth_access_token",
+      "oauth_client",
+      "oauth_client_assertion",
+      "oauth_client_resource",
+      "oauth_consent",
+      "oauth_refresh_token",
+      "oauth_resource",
+    ]);
+    // The previous release's queries on the old tables are untouched.
+    expect(await sql`select email from "user"`).toEqual([{ email: "a@example.com" }]);
+  });
+});
