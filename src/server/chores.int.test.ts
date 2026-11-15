@@ -14,6 +14,7 @@ import {
   completeInstance,
   createChore,
   deleteChore,
+  editChore,
   listCompletedBy,
   listOpenInstances,
   listRecentlyCompleted,
@@ -510,3 +511,129 @@ describe("listRecentlyCompleted", () => {
   });
 });
 
+
+describe("editChore", () => {
+  // Edits are made from the task's open instance, as the form does.
+  const openInstanceOf = async (choreId: string) =>
+    (await instancesOf(choreId)).find((i) => !i.completedAt)?.id ?? choreId;
+  const editFrom = (instanceId: string, fields: Record<string, string>, who = f.adult) =>
+    editChore(who, instanceId, { roomId: f.kitchen.id, interval: "1", unit: "week", ...fields });
+  const edit = async (choreId: string, fields: Record<string, string>, who = f.adult) =>
+    editFrom(await openInstanceOf(choreId), fields, who);
+
+  it("refuses a stale form: a one-off ticked off since cannot become recurring with nothing open", async () => {
+    const { id } = await createChore(f.adult, once("Putsa fönster"));
+    const [only] = await open();
+    await completeInstance(f.child, only!.id);
+
+    await expect(editFrom(only!.id, { title: "Putsa fönster", kind: "recurring" })).rejects.toThrow(
+      "bockat av den under tiden",
+    );
+    expect((await db.select().from(chore).where(eq(chore.id, id)))[0]!.recurrenceUnit).toBeNull();
+  });
+
+  it("refuses a stale form: the next instance keeps its date", async () => {
+    await createChore(f.adult, weekly("Diska", { startDate: "2026-01-05" }));
+    const [first] = await open();
+    await completeInstance(f.child, first!.id);
+    const [next] = await open();
+
+    await expect(editFrom(first!.id, { title: "Diska", dueDate: "2026-01-05" })).rejects.toThrow(
+      "bockat av den under tiden",
+    );
+    expect((await open())[0]).toMatchObject({ id: next!.id, dueDate: next!.dueDate, title: "Diska" });
+  });
+
+  it("shows an open row as the task is, even if an older release left a snapshot on it", async () => {
+    const { id } = await createChore(f.adult, weekly("Diska"));
+    const [first] = await open();
+    await completeInstance(f.adult, first!.id);
+    await uncompleteInstance(f.adult, first!.id);
+    // An undo by the previous release clears only completed_at / completed_by_id.
+    await db
+      .update(choreInstance)
+      .set({ doneTitle: "Gammalt namn", doneRoomId: f.bathroom.id })
+      .where(eq(choreInstance.id, first!.id));
+    await edit(id, { title: "Handdiska" });
+
+    expect((await open()).map((i) => [i.title, i.roomName])).toEqual([["Handdiska", "Kök"]]);
+    expect((await open({ roomId: f.kitchen.id })).map((i) => i.title)).toEqual(["Handdiska"]);
+  });
+
+  it("changes the title, room, how often and the next due date", async () => {
+    const { id } = await createChore(f.adult, weekly("Diska"));
+
+    await edit(id, { title: "Diska och torka", roomId: f.bathroom.id, interval: "2", unit: "day", dueDate: "2026-12-01" });
+
+    expect((await open())[0]).toMatchObject({
+      title: "Diska och torka",
+      roomName: "Badrum",
+      recurrence: { unit: "day", interval: 2 },
+      dueDate: "2026-12-01",
+    });
+  });
+
+  it("turns a recurring task into a one-off and back", async () => {
+    const { id } = await createChore(f.adult, weekly("Diska"));
+    await edit(id, { title: "Diska", kind: "once", dueDate: "" });
+    let [instance] = await open();
+    expect(instance).toMatchObject({ recurrence: null, dueDate: null });
+
+    await completeInstance(f.adult, instance!.id);
+    expect(await open()).toHaveLength(0);
+
+    const { id: other } = await createChore(f.adult, once("Putsa fönster"));
+    await edit(other, { title: "Putsa fönster", kind: "recurring", interval: "1", unit: "month", dueDate: "" });
+    [instance] = await open();
+    // A recurring task is always due some day: today when no date is given.
+    expect(instance).toMatchObject({ recurrence: { unit: "month", interval: 1 }, dueDate: todayIso() });
+    await completeInstance(f.adult, instance!.id);
+    expect((await open())[0]!.dueDate).toBe(nextDueDate(todayIso(), { unit: "month", interval: 1 }));
+  });
+
+  it("keeps the template only while the title is the template's", async () => {
+    const { id } = await createChore(f.adult, weekly("Diska", { templateKey: "diska" }));
+    await edit(id, { title: "Diska", roomId: f.bathroom.id });
+    expect((await db.select().from(chore).where(eq(chore.id, id)))[0]!.templateKey).toBe("diska");
+    await edit(id, { title: "Diska för hand" });
+    expect((await db.select().from(chore).where(eq(chore.id, id)))[0]!.templateKey).toBeNull();
+  });
+
+  it("leaves what was done as it was, in the history and among the recently done", async () => {
+    const { id } = await createChore(f.adult, weekly("Diska"));
+    const [first] = await open();
+    await completeInstance(f.child, first!.id);
+
+    await edit(id, { title: "Handdiska", roomId: f.bathroom.id });
+
+    expect((await listCompletedBy(f.child, f.child.userId, 7)).map((d) => [d.title, d.roomName])).toEqual([
+      ["Diska", "Kök"],
+    ]);
+    expect((await listRecentlyCompleted(f.adult)).map((d) => [d.title, d.roomName])).toEqual([["Diska", "Kök"]]);
+    expect((await open()).map((d) => [d.title, d.roomName])).toEqual([["Handdiska", "Badrum"]]);
+  });
+
+  it("forgets the snapshot when a tick is undone", async () => {
+    const { id } = await createChore(f.adult, weekly("Diska"));
+    const [first] = await open();
+    await completeInstance(f.adult, first!.id);
+    await uncompleteInstance(f.adult, first!.id);
+    await edit(id, { title: "Handdiska" });
+    expect((await open())[0]!.title).toBe("Handdiska");
+    const [row] = await db.select().from(choreInstance).where(eq(choreInstance.id, first!.id));
+    expect(row).toMatchObject({ doneTitle: null, doneRoomId: null });
+  });
+
+  it("refuses children, other homes, removed rooms, deleted tasks and bad input", async () => {
+    const { id } = await createChore(f.adult, weekly("Diska"));
+    await expect(edit(id, { title: "Godis" }, f.child)).rejects.toThrow(ForbiddenError);
+    await expect(edit(id, { title: "Grannens" }, f.neighbour)).rejects.toThrow("finns inte längre");
+    await expect(edit(id, { title: "Diska", roomId: f.garage.id })).rejects.toThrow("Rummet finns inte");
+    await expect(edit(id, { title: "  " })).rejects.toThrow();
+    await expect(edit(id, { title: "Diska", interval: "0" })).rejects.toThrow();
+    const stale = await openInstanceOf(id);
+    await deleteChore(f.adult, id);
+    await expect(editFrom(stale, { title: "Diska" })).rejects.toThrow("finns inte längre");
+    expect((await db.select().from(chore).where(eq(chore.id, id)))[0]!.title).toBe("Diska");
+  });
+});

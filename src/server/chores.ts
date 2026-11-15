@@ -5,11 +5,13 @@ import { chore, choreInstance, floor, household, membership, room, user } from "
 import { addDays, HOME_TIME_ZONE, todayIso } from "@/lib/dates";
 import { UserError } from "@/lib/errors";
 import { assertCan, can } from "@/lib/permissions";
+import { findTemplate } from "@/lib/chore-templates";
 import { nextDueDate, type Recurrence } from "@/lib/recurrence";
 import {
   assigneeIdInput,
   choreId as choreIdInput,
   createChoreInput,
+  editChoreInput,
   instanceId as instanceIdInput,
   memberId as memberIdInput,
   type BoardFilter,
@@ -95,6 +97,61 @@ export async function createChore(actor: Actor, raw: unknown) {
   });
 }
 
+/**
+ * Changes a task: title, room, how often (it may become one-off or recurring) and when its
+ * open instance is due. What has been done keeps its own title and room in the history.
+ */
+export async function editChore(actor: Actor, openInstanceId: string, raw: unknown) {
+  assertCan(actor, "task:edit");
+  // The edit is made from one open instance (the row the form was opened on). If that has
+  // been ticked off since, the form is stale: saving it would move the next instance back
+  // to the old date, or turn a done one-off into a recurring task with nothing open.
+  const instance = instanceIdInput.parse(openInstanceId);
+  const input = editChoreInput.parse(raw);
+
+  await db.transaction(async (tx) => {
+    // Lock the instance and its task, so a tick or another edit takes turns with this one.
+    const [current] = await tx
+      .select({ choreId: chore.id, templateKey: chore.templateKey, completedAt: choreInstance.completedAt })
+      .from(choreInstance)
+      .innerJoin(chore, eq(chore.id, choreInstance.choreId))
+      .where(
+        and(
+          eq(choreInstance.id, instance),
+          eq(choreInstance.householdId, actor.householdId),
+          isNull(chore.archivedAt),
+        ),
+      )
+      .for("update");
+    if (!current) throw new UserError("Uppgiften finns inte längre");
+    if (current.completedAt) throw new UserError("Någon har bockat av den under tiden. Öppna den igen och ändra.");
+    const target = current.choreId;
+    const [r] = await tx
+      .select({ id: room.id })
+      .from(room)
+      .where(and(eq(room.id, input.roomId), eq(room.householdId, actor.householdId), isNull(room.archivedAt)))
+      .for("share");
+    if (!r) throw new UserError("Rummet finns inte i hemmet");
+
+    // Still the predefined task only while it keeps the template's title.
+    const template = findTemplate(current.templateKey);
+    await tx
+      .update(chore)
+      .set({
+        title: input.title,
+        roomId: input.roomId,
+        recurrenceUnit: input.recurrence?.unit ?? null,
+        recurrenceInterval: input.recurrence?.interval ?? null,
+        templateKey: template && template.title === input.title ? current.templateKey : null,
+      })
+      .where(eq(chore.id, target));
+    await tx
+      .update(choreInstance)
+      .set({ dueDate: input.dueDate ?? (input.recurrence ? todayIso() : null) })
+      .where(eq(choreInstance.id, instance));
+  });
+}
+
 /** Assigns one open instance (this time only). */
 export async function assignInstance(actor: Actor, id: string, assigneeId: string | null) {
   assertCan(actor, "task:assign");
@@ -172,6 +229,8 @@ export async function completeInstance(actor: Actor, id: string) {
         recurrenceInterval: chore.recurrenceInterval,
         archivedAt: chore.archivedAt,
         seriesAssigneeId: chore.assigneeId,
+        title: chore.title,
+        roomId: chore.roomId,
       })
       .from(choreInstance)
       .innerJoin(chore, eq(chore.id, choreInstance.choreId))
@@ -184,7 +243,7 @@ export async function completeInstance(actor: Actor, id: string) {
     // of a race wait for a clean answer.
     const ticked = await tx
       .update(choreInstance)
-      .set({ completedAt: new Date(), completedById: actor.userId })
+      .set({ completedAt: new Date(), completedById: actor.userId, doneTitle: row.title, doneRoomId: row.roomId })
       .where(and(eq(choreInstance.id, target), isNull(choreInstance.completedAt)))
       .returning({ id: choreInstance.id });
     if (ticked.length === 0) throw new UserError("Någon har redan bockat av den");
@@ -244,7 +303,7 @@ export async function uncompleteInstance(actor: Actor, id: string) {
       .where(and(eq(choreInstance.choreId, row.choreId), isNull(choreInstance.completedAt)));
     await tx
       .update(choreInstance)
-      .set({ completedAt: null, completedById: null })
+      .set({ completedAt: null, completedById: null, doneTitle: null, doneRoomId: null })
       .where(eq(choreInstance.id, target));
   });
 }
@@ -273,10 +332,16 @@ export type InstanceView = {
 
 const completer = aliasedTable(user, "completer");
 
+/** A done instance shows the title and room it had when ticked off; an open one the task's. */
+// Gated on completed_at: an open row never shows a snapshot, even one left behind by an undo
+// in a release that did not know about snapshots.
+const shownTitle = sql<string>`case when ${choreInstance.completedAt} is not null then coalesce(${choreInstance.doneTitle}, ${chore.title}) else ${chore.title} end`;
+const shownRoomId = sql`case when ${choreInstance.completedAt} is not null then coalesce(${choreInstance.doneRoomId}, ${chore.roomId}) else ${chore.roomId} end`;
+
 const instanceColumns = {
   id: choreInstance.id,
   choreId: chore.id,
-  title: chore.title,
+  title: shownTitle,
   roomId: room.id,
   roomName: room.name,
   floorName: floor.name,
@@ -308,7 +373,7 @@ function selectInstances(where: SQL | undefined, extra = {}) {
     .select({ ...instanceColumns, ...extra })
     .from(choreInstance)
     .innerJoin(chore, eq(chore.id, choreInstance.choreId))
-    .leftJoin(room, eq(room.id, chore.roomId))
+    .leftJoin(room, eq(room.id, shownRoomId))
     .leftJoin(floor, eq(floor.id, room.floorId))
     .leftJoin(completer, eq(completer.id, choreInstance.completedById))
     .where(where);
@@ -404,14 +469,14 @@ export async function listCompletedBy(actor: Actor, personId: string, days: Hist
   const rows = await db
     .select({
       id: choreInstance.id,
-      title: chore.title,
+      title: shownTitle,
       roomName: room.name,
       floorName: floor.name,
       completedAt: choreInstance.completedAt,
     })
     .from(choreInstance)
     .innerJoin(chore, eq(chore.id, choreInstance.choreId))
-    .leftJoin(room, eq(room.id, chore.roomId))
+    .leftJoin(room, eq(room.id, shownRoomId))
     .leftJoin(floor, eq(floor.id, room.floorId))
     .where(
       and(

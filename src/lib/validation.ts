@@ -63,6 +63,37 @@ export const createChoreInput = z
   });
 export type CreateChoreInput = z.infer<typeof createChoreInput>;
 
+/**
+ * Editing a task: what to do, where, how often, and when it is next due. An empty date
+ * means today for a recurring task and no due date for a one-off.
+ */
+export const editChoreInput = z
+  .object({
+    title: choreTitle,
+    roomId: z.uuid({ error: "Välj ett rum" }),
+    kind: z.enum(["recurring", "once"]).default("recurring"),
+    interval: z.coerce
+      .number({ error: "Ange hur ofta" })
+      .int("Ange ett heltal")
+      .min(1, "Minst 1")
+      .max(MAX_INTERVAL, `Högst ${MAX_INTERVAL}`)
+      .optional(),
+    unit: z.enum(RECURRENCE_UNITS).optional(),
+    dueDate: optionalDate,
+  })
+  .transform((v, ctx) => {
+    let recurrence: Recurrence | null = null;
+    if (v.kind === "recurring") {
+      if (v.interval === undefined || v.unit === undefined) {
+        ctx.addIssue({ code: "custom", message: "Ange hur ofta" });
+        return z.NEVER;
+      }
+      recurrence = { unit: v.unit, interval: v.interval };
+    }
+    return { title: v.title, roomId: v.roomId, recurrence, dueDate: v.dueDate };
+  });
+export type EditChoreInput = z.infer<typeof editChoreInput>;
+
 export const instanceId = z.uuid();
 export const choreId = z.uuid();
 export const assigneeIdInput = z.string().min(1).max(100).nullable();

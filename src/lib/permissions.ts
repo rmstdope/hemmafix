@@ -15,6 +15,7 @@ const ADULTS_ONLY = new Set<Action>([
   "room:manage",
   "member:set-role",
   "task:create",
+  "task:edit",
   "task:assign",
   "task:delete",
   "task:uncomplete-others",
@@ -26,6 +27,7 @@ export type Action =
   | "room:manage"
   | "member:set-role"
   | "task:create"
+  | "task:edit"
   | "task:assign"
   | "task:delete"
   | "task:complete"

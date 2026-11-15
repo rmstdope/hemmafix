@@ -114,6 +114,11 @@ Efter första releasen:
   ```
 
   Förvara dumpar utanför VPS:en. Dumpar på samma disk skyddar inte mot att värden går förlorad.
-- När rmstdope-infras `pre_release_backup` är mergad kan hemmafix ta en dump
-  automatiskt före varje release. Eftersom registreringen är fryst kräver det en
-  omregistrering, eller att fältet finns med redan från början.
+- **Automatisk dump före varje release:** `deploy/runtime/app.json` har fältet
+  `pre_release_backup` (pg_dump från `db`). Det gör ingenting förrän två saker är gjorda,
+  båda granskade ingrepp i produktion:
+  1. rmstdope-infra PR #24 (*Take an optional database dump before each release*) är mergad,
+     och operatörs-CLI:t (en editable install av rmstdope-infra) är på den versionen.
+  2. hemmafix registreras om från `deploy/runtime`, eftersom registreringen är fryst.
+
+  Till dess gäller den manuella dumpen ovan före riskabla ändringar.

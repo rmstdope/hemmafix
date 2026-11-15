@@ -118,6 +118,41 @@ export async function addRoom(actor: Actor, name: string, floorIdArg?: string | 
   });
 }
 
+/** Renames a room. Names stay unique among the rooms on its floor. */
+export async function renameRoom(actor: Actor, id: string, name: string) {
+  assertCan(actor, "room:manage");
+  const target = roomId.parse(id);
+  const next = roomName.parse(name);
+  await db.transaction(async (tx) => {
+    const [r] = await tx
+      .select({ floorId: room.floorId })
+      .from(room)
+      .where(and(eq(room.id, target), eq(room.householdId, actor.householdId), isNull(room.archivedAt)))
+      .for("update");
+    if (!r) throw new UserError("Rummet finns inte i hemmet");
+    const [clash] = await tx
+      .select({ id: room.id })
+      .from(room)
+      .where(
+        and(
+          eq(room.floorId, r.floorId),
+          isNull(room.archivedAt),
+          ne(room.id, target),
+          sql`lower(${room.name}) = lower(${next})`,
+        ),
+      )
+      .limit(1);
+    if (clash) throw new UserError("Det rummet finns redan på våningen");
+    await tx.update(room).set({ name: next }).where(eq(room.id, target));
+  }).catch((err: unknown) => {
+    // Two renames to the same name at once: the unique index stops the second.
+    if ((err as { cause?: { code?: string } }).cause?.code === "23505") {
+      throw new UserError("Det rummet finns redan på våningen");
+    }
+    throw err;
+  });
+}
+
 /**
  * Removes a room from the home. It is archived, not deleted, so tasks done there keep their
  * room in the history. A room with tasks on the board cannot be removed.
