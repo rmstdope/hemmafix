@@ -142,7 +142,9 @@ describe("the task tools", () => {
       "andra_roll",
       "andra_syssla",
       "ta_bort_rum",
+      "ta_bort_rutin",
       "ta_bort_syssla",
+      "ta_bort_uppgift_ur_rutin",
       "ta_bort_vaning",
       "tilldela_syssla",
     ]);
