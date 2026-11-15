@@ -83,9 +83,11 @@ Appen är registrerad med `migration_policy: backward-compatible` (`deploy/runti
 en release som inte blir frisk rullas tillbaka till förra imagen, men migreringar backas
 aldrig. Varje migrering måste därför fungera även med **förra** versionens kod. Lägg till
 kolumner som nullable eller med default (eller med en trigger som fyller i dem, som
-`room_default_floor` i `0004`), och ta bort eller gör om kolumner först i en senare release
-när ingen kod längre använder dem. Testa det i `src/db/migrations.int.test.ts`. Destruktiva
-ändringar är planerat underhåll med en databasdump först, inte en vanlig release.
+`room_default_floor` gjorde i `0004`), och ta bort eller gör om kolumner först i en senare
+release när ingen kod längre använder dem. Ett sådant hjälpmedel kan tas bort när produktion
+kör releasen som införde det, för då är det den en tillbakarullning hamnar på (`0005` tog
+bort triggern). Testa det i `src/db/migrations.int.test.ts`. Destruktiva ändringar är
+planerat underhåll med en databasdump först, inte en vanlig release.
 
 ## Skript
 

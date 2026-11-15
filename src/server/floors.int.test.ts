@@ -15,6 +15,7 @@ import {
   listRooms,
   moveFloor,
   renameFloor,
+  renameRoom,
 } from "./household";
 import { createUser } from "../../test/integration/factories";
 
@@ -195,5 +196,37 @@ describe("tasks and history on floors", () => {
     expect((await listCompletedBy(f.child, f.child.userId, 7)).map((d) => [d.roomName, d.floorName])).toEqual([
       ["Badrum", "2"],
     ]);
+  });
+});
+
+describe("renameRoom", () => {
+  it("renames a room, keeping names unique on its floor but not across floors", async () => {
+    const upstairs = await addFloor(f.adult);
+    const upperBath = await addRoom(f.adult, "Toalett", upstairs.id);
+    await renameRoom(f.adult, upperBath.id, "  Badrum ");
+    expect((await listRooms(f.homeId)).filter((r) => r.name === "Badrum")).toHaveLength(2);
+
+    await expect(renameRoom(f.adult, f.kitchen.id, "badrum")).rejects.toThrow("finns redan på våningen");
+    // Changing only the case of its own name is fine.
+    await renameRoom(f.adult, f.kitchen.id, "KÖK");
+    expect((await listRooms(f.homeId)).map((r) => r.name)).toContain("KÖK");
+  });
+
+  it("refuses children, other homes, removed rooms and empty names", async () => {
+    await expect(renameRoom(f.child, f.kitchen.id, "Bos kök")).rejects.toThrow(ForbiddenError);
+    await expect(renameRoom(f.neighbour, f.kitchen.id, "Grannens")).rejects.toThrow("finns inte i hemmet");
+    await expect(renameRoom(f.adult, f.kitchen.id, "  ")).rejects.toThrow();
+    await deleteRoom(f.adult, f.bathroom.id);
+    await expect(renameRoom(f.adult, f.bathroom.id, "Spa")).rejects.toThrow("finns inte i hemmet");
+  });
+
+  it("gives a readable answer when two rooms are renamed to the same name at once", async () => {
+    const results = await Promise.allSettled([
+      renameRoom(f.adult, f.kitchen.id, "Allrum"),
+      renameRoom(f.adult, f.bathroom.id, "Allrum"),
+    ]);
+    const rejected = results.filter((r) => r.status === "rejected");
+    expect(rejected).toHaveLength(1);
+    expect(String(rejected[0]!.reason)).toContain("finns redan på våningen");
   });
 });

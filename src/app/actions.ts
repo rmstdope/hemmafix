@@ -61,6 +61,10 @@ export async function deleteFloor(id: string) {
   return act((m) => home.deleteFloor(m, id));
 }
 
+export async function renameRoom(id: string, name: string) {
+  return act((m) => home.renameRoom(m, id, name));
+}
+
 export async function deleteRoom(id: string) {
   return act((m) => home.deleteRoom(m, id));
 }
@@ -75,6 +79,10 @@ export async function setMemberRole(userId: string, role: Role) {
 
 export async function createChore(_prev: ActionState, formData: FormData): Promise<ActionState> {
   return act((m) => chores.createChore(m, Object.fromEntries(formData)));
+}
+
+export async function editChore(id: string, _prev: ActionState, formData: FormData): Promise<ActionState> {
+  return act((m) => chores.editChore(m, id, Object.fromEntries(formData)));
 }
 
 export async function completeInstance(id: string) {

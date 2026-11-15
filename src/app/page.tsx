@@ -106,6 +106,8 @@ async function Board({ searchParams }: { searchParams: PageProps<"/">["searchPar
               canManage={isAdult}
               canUndo={false}
               showFloors={showFloors}
+              floors={floors}
+              rooms={rooms}
             />
           ))}
         </ul>
@@ -127,6 +129,8 @@ async function Board({ searchParams }: { searchParams: PageProps<"/">["searchPar
                 canManage={false}
                 canUndo={canUndo(member, t)}
                 showFloors={showFloors}
+                floors={floors}
+                rooms={rooms}
               />
             ))}
           </ul>

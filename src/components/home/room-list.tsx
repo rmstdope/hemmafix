@@ -1,9 +1,9 @@
 "use client";
 
-import { Plus, Trash2 } from "lucide-react";
-import { useActionState, useRef, useTransition } from "react";
+import { Pencil, Plus, Trash2 } from "lucide-react";
+import { useActionState, useRef, useState, useTransition } from "react";
 import { toast } from "sonner";
-import { addRoom, deleteRoom, type ActionState } from "@/app/actions";
+import { addRoom, deleteRoom, renameRoom, type ActionState } from "@/app/actions";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ROOM_SUGGESTIONS } from "@/lib/rooms";
@@ -23,6 +23,7 @@ export function RoomList({ rooms, floorId, where = "" }: { rooms: Room[]; floorI
     return result;
   }, { ok: false });
   const [busy, startTransition] = useTransition();
+  const [editingId, setEditingId] = useState<string | null>(null);
   const suffix = where ? ` ${where}` : "";
 
   const taken = new Set(rooms.map((r) => r.name.toLowerCase()));
@@ -49,21 +50,64 @@ export function RoomList({ rooms, floorId, where = "" }: { rooms: Room[]; floorI
         <p className="text-sm text-muted-foreground">Inga rum{suffix} ännu.</p>
       ) : (
         <ul className="divide-y rounded-xl border bg-card" aria-label={`Rum${suffix}`}>
-          {rooms.map((r) => (
-            <li key={r.id} className="flex items-center justify-between gap-2 py-1 pr-1 pl-3">
-              <span>{r.name}</span>
-              <Button
-                variant="ghost"
-                size="icon-lg"
-                aria-label={`Ta bort ${r.name}${suffix}`}
-                className="size-11 text-muted-foreground"
-                disabled={busy}
-                onClick={() => remove(r)}
-              >
-                <Trash2 />
-              </Button>
-            </li>
-          ))}
+          {rooms.map((r) =>
+            editingId === r.id ? (
+              <li key={r.id} className="p-2">
+                <form
+                  className="flex gap-2"
+                  onSubmit={(e) => {
+                    e.preventDefault();
+                    const name = String(new FormData(e.currentTarget).get("name") ?? "");
+                    startTransition(async () => {
+                      const result = await renameRoom(r.id, name);
+                      if (result.error) toast.error(result.error);
+                      else setEditingId(null);
+                    });
+                  }}
+                >
+                  <Input
+                    name="name"
+                    defaultValue={r.name}
+                    aria-label={`Nytt namn för ${r.name}${suffix}`}
+                    autoFocus
+                    required
+                    maxLength={40}
+                    className="h-11 text-base md:text-sm"
+                  />
+                  <Button type="submit" className="h-11 shrink-0" disabled={busy} aria-label={`Spara namnet på ${r.name}${suffix}`}>
+                    Spara
+                  </Button>
+                  <Button type="button" variant="ghost" className="h-11 shrink-0" onClick={() => setEditingId(null)}>
+                    Avbryt
+                  </Button>
+                </form>
+              </li>
+            ) : (
+              <li key={r.id} className="flex items-center gap-1 py-1 pr-1 pl-3">
+                <span className="flex-1">{r.name}</span>
+                <Button
+                  variant="ghost"
+                  size="icon-lg"
+                  aria-label={`Byt namn på ${r.name}${suffix}`}
+                  className="size-11 text-muted-foreground"
+                  disabled={busy}
+                  onClick={() => setEditingId(r.id)}
+                >
+                  <Pencil />
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="icon-lg"
+                  aria-label={`Ta bort ${r.name}${suffix}`}
+                  className="size-11 text-muted-foreground"
+                  disabled={busy}
+                  onClick={() => remove(r)}
+                >
+                  <Trash2 />
+                </Button>
+              </li>
+            ),
+          )}
         </ul>
       )}
 
