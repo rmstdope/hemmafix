@@ -26,7 +26,7 @@ import { DENIED_TEXT, resolveMcpMember, text } from "./mcp-access";
  */
 type Outcome = string | { text: string; unchanged: true };
 
-async function runTool(userId: string, write: boolean, fn: (actor: home.Actor) => Promise<Outcome>) {
+export async function runTool(userId: string, write: boolean, fn: (actor: home.Actor) => Promise<Outcome>) {
   const access = await resolveMcpMember(userId);
   if ("denied" in access) return text(DENIED_TEXT[access.denied], true);
   try {

@@ -1,3 +1,4 @@
+import { routineAddedNotice } from "./routine-texts";
 import { formatDay, formatDue, formatTime, todayIso } from "./dates";
 import { floorLabel, roomLabel } from "./floors";
 import { ROLE_LABELS, type Role } from "./permissions";
@@ -172,3 +173,25 @@ export const homeRenamedText = (name: string) => `Hemmet heter nu ${name}.`;
 export const roomAddedText = (room: string, floorName: string) =>
   `Rummet ${room} lades till på ${floorLabel(floorName)}.`;
 export const floorAddedText = (floorName: string) => `${floorLabel(floorName)} lades till.`;
+
+export const NO_ROUTINES_TEXT = "Inga rutiner ännu.";
+export type RoutineListing = { id: string; name: string; tasks: { id: string; title: string }[] };
+
+/** Routines in the order the app shows them, each with its tasks; the ids let Claude change or add them. */
+export function formatRoutines(routines: RoutineListing[]): string {
+  if (routines.length === 0) return NO_ROUTINES_TEXT;
+  return routines
+    .map((r) =>
+      [`${r.name} [${r.id}]`, ...(r.tasks.length === 0 ? ["(inga uppgifter)"] : r.tasks.map((t) => `- ${t.title} [${t.id}]`))].join("\n"),
+    )
+    .join("\n\n");
+}
+
+export const routineCreatedText = (name: string, id: string) => `Rutinen ${name} är skapad (id ${id}).`;
+export const routineRenamedText = (name: string) => `Rutinen heter nu ${name}.`;
+export const routineRemovedText = (name: string) =>
+  `Rutinen ${name} togs bort. Uppgifter som redan lagts till i hemmet finns kvar.`;
+export const routineTaskAddedText = (title: string, id: string) => `Uppgiften ${title} lades till i rutinen (id ${id}).`;
+export const routineTaskRenamedText = (title: string) => `Uppgiften heter nu ${title}.`;
+export const ROUTINE_TASK_REMOVED_TEXT = "Uppgiften togs bort ur rutinen.";
+export const routineAddedToRoomText = (count: number, roomName: string) => `${routineAddedNotice(count)} i ${roomName}.`;

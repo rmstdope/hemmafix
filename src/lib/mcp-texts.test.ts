@@ -13,6 +13,12 @@ import {
   formatFamily,
   formatFloorsAndRooms,
   formatOpenTasks,
+  formatRoutines,
+  NO_ROUTINES_TEXT,
+  routineCreatedText,
+  routineTaskAddedText,
+  routineRemovedText,
+  routineAddedToRoomText,
   formatTaskLookup,
   homeRenamedText,
   NO_FLOORS_TEXT,
@@ -216,5 +222,29 @@ describe("what Claude is told about the home", () => {
     expect(FLOOR_RENAMED_TEXT).toBe("Våningen har bytt namn.");
     expect(FLOOR_MOVED_TEXT).toBe("Våningen flyttades.");
     expect(FLOOR_REMOVED_TEXT).toBe("Våningen togs bort.");
+  });
+});
+
+describe("routines", () => {
+  it("lists each routine with its tasks and ids", () => {
+    expect(
+      formatRoutines([
+        { id: "r1", name: "Städa", tasks: [{ id: "t1", title: "Dammsug" }, { id: "t2", title: "Torka" }] },
+        { id: "r2", name: "Tom", tasks: [] },
+      ]),
+    ).toBe("Städa [r1]\n- Dammsug [t1]\n- Torka [t2]\n\nTom [r2]\n(inga uppgifter)");
+  });
+
+  it("says when there are none", () => {
+    expect(formatRoutines([])).toBe(NO_ROUTINES_TEXT);
+    expect(NO_ROUTINES_TEXT).toBe("Inga rutiner ännu.");
+  });
+
+  it("answers each change in one sentence, with the new ids", () => {
+    expect(routineCreatedText("Städa", "r1")).toBe("Rutinen Städa är skapad (id r1).");
+    expect(routineTaskAddedText("Dammsug", "t1")).toBe("Uppgiften Dammsug lades till i rutinen (id t1).");
+    expect(routineRemovedText("Städa")).toBe("Rutinen Städa togs bort. Uppgifter som redan lagts till i hemmet finns kvar.");
+    expect(routineAddedToRoomText(3, "Kök")).toBe("3 uppgifter är tillagda i Kök.");
+    expect(routineAddedToRoomText(1, "Kök")).toBe("1 uppgift är tillagd i Kök.");
   });
 });

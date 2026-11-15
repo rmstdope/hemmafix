@@ -29,6 +29,7 @@ import {
 import { listFloors, listRooms, setMemberRole, type Actor } from "./household";
 import { DENIED_TEXT, resolveMcpMember, text } from "./mcp-access";
 import { registerHomeTools } from "./mcp-home";
+import { registerRoutineTools } from "./mcp-routines";
 import { registerTaskTools } from "./mcp-tasks";
 
 const isHistoryPeriod = (n: number): n is HistoryPeriod => (HISTORY_PERIODS as readonly number[]).includes(n);
@@ -186,6 +187,7 @@ export function createHemmafixMcpServer(userId: string): McpServer {
   );
 
   registerHomeTools(server, userId);
+  registerRoutineTools(server, userId);
 
   return server;
 }
