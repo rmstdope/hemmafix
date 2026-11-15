@@ -3,6 +3,7 @@ import { eq } from "drizzle-orm";
 import { db } from "@/db";
 import { membership, user } from "@/db/schema";
 import { decideAccess } from "@/lib/access";
+import { ACCESS_REMOVED_TEXT, CHILD_TEXT } from "@/lib/mcp-texts";
 import { can } from "@/lib/permissions";
 import { allowedEmails } from "./auth";
 import type { Actor } from "./household";
@@ -24,3 +25,12 @@ export async function resolveMcpMember(userId: string): Promise<McpAccess> {
   if (!can(row.role!, "app:connect")) return { denied: "child" };
   return { actor: { userId, householdId: row.householdId, role: row.role! } };
 }
+
+/** A tool result carrying one text; `isError` marks something the person can fix or must know. */
+export const text = (message: string, isError = false) => ({
+  content: [{ type: "text" as const, text: message }],
+  isError,
+});
+
+/** What Claude is told when `resolveMcpMember` denies a call. */
+export const DENIED_TEXT = { removed: ACCESS_REMOVED_TEXT, child: CHILD_TEXT } as const;

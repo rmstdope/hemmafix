@@ -49,6 +49,14 @@ describe("the open-tasks tool", () => {
     const res = await rpc("anna", "tools/list");
     expect(res.result.tools.map((t: { name: string }) => t.name)).toEqual(
       expect.arrayContaining([
+        "byt_namn_pa_hemmet",
+        "byt_namn_pa_rum",
+        "byt_namn_pa_vaning",
+        "flytta_vaning",
+        "lagg_till_rum",
+        "lagg_till_vaning",
+        "ta_bort_rum",
+        "ta_bort_vaning",
         "andra_roll",
         "lista_familjen",
         "lista_oppna_sysslor",
@@ -130,7 +138,14 @@ describe("the task tools", () => {
     const tools = res.result.tools as { name: string; annotations?: { destructiveHint?: boolean; readOnlyHint?: boolean } }[];
     expect(tools.map((t) => t.name)).toEqual(expect.arrayContaining(TASK_TOOLS));
     const destructive = tools.filter((t) => t.annotations?.destructiveHint === true).map((t) => t.name).sort();
-    expect(destructive).toEqual(["andra_roll", "andra_syssla", "ta_bort_syssla", "tilldela_syssla"]);
+    expect(destructive).toEqual([
+      "andra_roll",
+      "andra_syssla",
+      "ta_bort_rum",
+      "ta_bort_syssla",
+      "ta_bort_vaning",
+      "tilldela_syssla",
+    ]);
     expect(tools.find((t) => t.name === "visa_sysslor_med_id")?.annotations?.readOnlyHint).toBe(true);
   });
 
