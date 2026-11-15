@@ -3,6 +3,10 @@ import { betterAuth } from "better-auth";
 import { drizzleAdapter } from "better-auth/adapters/drizzle";
 import { APIError } from "better-auth/api";
 import { nextCookies } from "better-auth/next-js";
+import { jwt } from "better-auth/plugins";
+import { cimd } from "@better-auth/cimd";
+import { fetchClientMetadataResource } from "@better-auth/cimd/node";
+import { mcp } from "@better-auth/mcp";
 import { eq } from "drizzle-orm";
 import { db } from "@/db";
 import * as schema from "@/db/schema";
@@ -23,8 +27,13 @@ function assertAccess(user: { email: string | null | undefined; emailVerified?: 
   if (decision !== "ok") throw new APIError("FORBIDDEN", ACCESS_ERRORS[decision]);
 }
 
+/** The MCP server's address; tokens are issued for it. */
+export const MCP_RESOURCE = `${process.env.BETTER_AUTH_URL ?? "http://localhost:3000"}/mcp`;
+
 export const auth = betterAuth({
   baseURL: process.env.BETTER_AUTH_URL,
+  // The jwt plugin's own /token would sign browser sessions with the access-token key.
+  disabledPaths: ["/token"],
   secret: process.env.BETTER_AUTH_SECRET,
   database: drizzleAdapter(db, { provider: "pg", schema }),
   socialProviders: {
@@ -62,5 +71,18 @@ export const auth = betterAuth({
       },
     },
   },
-  plugins: [nextCookies()],
+  plugins: [
+    nextCookies(),
+    jwt({ disableSettingJwtHeader: true }),
+    // Claude connects over OAuth 2.1: it registers itself (dynamically or by metadata document),
+    // sends the person here to log in and approve, and gets a token for the MCP resource.
+    mcp({
+      loginPage: "/login",
+      consentPage: "/consent",
+      resource: MCP_RESOURCE,
+      allowDynamicClientRegistration: true,
+      allowUnauthenticatedClientRegistration: true,
+    }),
+    cimd({ fetchClientMetadataResource, metadataProfile: "mcp-2026-07-28" }),
+  ],
 });
