@@ -151,7 +151,7 @@ export function registerRoutineTools(server: McpServer, userId: string): void {
         unit: z.string().optional().describe(`${RECURRENCE_UNITS.join(", ")} (bara för recurring)`),
         startDate: z.string().optional().describe("Första datum, ÅÅÅÅ-MM-DD (recurring; annars idag)"),
         dueDate: z.string().optional().describe("Förfallodatum, ÅÅÅÅ-MM-DD (once)"),
-        assigneeId: z.string().nullish().describe("Vem uppgifterna tilldelas"),
+        assigneeId: z.string().optional().describe("Vem uppgifterna tilldelas (utelämna för ingen)"),
       }),
       annotations: change,
     },
