@@ -67,3 +67,25 @@ export function formatDay(day: string, today: string): string {
 export function formatTime(at: Date): string {
   return timeInHomeZone.format(at);
 }
+
+const connectedDate = new Intl.DateTimeFormat("sv-SE", {
+  day: "numeric",
+  month: "short",
+  year: "numeric",
+  timeZone: HOME_TIME_ZONE,
+});
+
+/** A date in the household's time zone, e.g. "12 nov 2026" (Intl writes "nov." with a dot). */
+export function formatConnectedDate(at: Date): string {
+  return connectedDate.format(at).replace(".", "");
+}
+
+/** When an app was last used: "i dag 08:14", "i går 19:02", a date, or "Inte använd ännu". */
+export function formatLastUsed(at: Date | null, now: Date): string {
+  if (!at) return "Inte använd ännu";
+  const day = todayIso(at);
+  const today = todayIso(now);
+  if (day === today) return `i dag ${formatTime(at)}`;
+  if (day === addDays(today, -1)) return `i går ${formatTime(at)}`;
+  return formatConnectedDate(at);
+}

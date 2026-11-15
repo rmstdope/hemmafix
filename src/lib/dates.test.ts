@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { formatDay, formatDue, formatTime, todayIso } from "./dates";
+import { formatConnectedDate, formatDay, formatDue, formatLastUsed, formatTime, todayIso } from "./dates";
 
 const today = "2026-11-14";
 
@@ -47,5 +47,37 @@ describe("formatTime and todayIso", () => {
     const lateEvening = new Date("2026-11-15T23:30:00Z"); // 00:30 on the 16th in Stockholm
     expect(todayIso(lateEvening)).toBe("2026-11-16");
     expect(formatTime(lateEvening)).toBe("00:30");
+  });
+});
+
+describe("formatConnectedDate", () => {
+  it("writes a date without a trailing dot", () => {
+    expect(formatConnectedDate(new Date("2026-11-12T10:00:00Z"))).toBe("12 nov 2026");
+    expect(formatConnectedDate(new Date("2026-10-04T10:00:00Z"))).toBe("4 okt 2026");
+  });
+
+  it("uses the Stockholm day, not the UTC day", () => {
+    expect(formatConnectedDate(new Date("2026-11-11T23:30:00Z"))).toBe("12 nov 2026");
+  });
+});
+
+describe("formatLastUsed", () => {
+  const now = new Date("2026-11-15T12:00:00Z");
+
+  it("says so when the app was never used", () => {
+    expect(formatLastUsed(null, now)).toBe("Inte använd ännu");
+  });
+
+  it("uses i dag and i går with the clock time", () => {
+    expect(formatLastUsed(new Date("2026-11-15T07:14:00Z"), now)).toBe("i dag 08:14");
+    expect(formatLastUsed(new Date("2026-11-14T18:02:00Z"), now)).toBe("i går 19:02");
+  });
+
+  it("uses a date from the day before yesterday on", () => {
+    expect(formatLastUsed(new Date("2026-11-13T18:02:00Z"), now)).toBe("13 nov 2026");
+  });
+
+  it("compares Stockholm days across midnight", () => {
+    expect(formatLastUsed(new Date("2026-11-14T23:30:00Z"), new Date("2026-11-15T00:30:00Z"))).toBe("i dag 00:30");
   });
 });
