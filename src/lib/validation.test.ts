@@ -70,3 +70,16 @@ describe("boardFilter", () => {
     expect(boardFilter.parse({})).toEqual({});
   });
 });
+
+describe("Swedish errors for kind and unit", () => {
+  const base = { title: "Diska", roomId: "00000000-0000-4000-8000-000000000000" };
+  it("explains a bad kind or unit in Swedish when creating and editing", async () => {
+    const { createChoreInput, editChoreInput } = await import("./validation");
+    for (const schema of [createChoreInput, editChoreInput]) {
+      const kind = schema.safeParse({ ...base, kind: "weekly" });
+      expect(kind.error?.issues[0]?.message).toBe("Välj återkommande eller en gång");
+      const unit = schema.safeParse({ ...base, kind: "recurring", interval: 1, unit: "weeks" });
+      expect(unit.error?.issues[0]?.message).toBe("Välj dag, vecka eller månad");
+    }
+  });
+});
