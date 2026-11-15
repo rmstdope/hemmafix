@@ -1,6 +1,6 @@
 import { randomUUID } from "node:crypto";
 import { db } from "@/db";
-import { household, membership, room, user } from "@/db/schema";
+import { floor, household, membership, room, user } from "@/db/schema";
 import type { Role } from "@/lib/permissions";
 
 /** Inserts a verified user, as Better Auth would after a Google login. */
@@ -19,6 +19,13 @@ export async function createUser(name: string) {
  */
 export async function createFamily() {
   const [home, other] = await db.insert(household).values([{ name: "Hemma" }, { name: "Grannar" }]).returning();
+  const [ground, neighbourFloor] = await db
+    .insert(floor)
+    .values([
+      { householdId: home!.id, name: "1", position: 1 },
+      { householdId: other!.id, name: "1", position: 1 },
+    ])
+    .returning();
   const [anna, bo, eve] = [await createUser("Anna"), await createUser("Bo"), await createUser("Eve")];
   await db.insert(membership).values([
     { userId: anna.id, householdId: home!.id, role: "adult" },
@@ -28,9 +35,9 @@ export async function createFamily() {
   const [kitchen, bathroom, garage] = await db
     .insert(room)
     .values([
-      { householdId: home!.id, name: "Kök" },
-      { householdId: home!.id, name: "Badrum" },
-      { householdId: other!.id, name: "Garage" },
+      { householdId: home!.id, floorId: ground!.id, name: "Kök" },
+      { householdId: home!.id, floorId: ground!.id, name: "Badrum" },
+      { householdId: other!.id, floorId: neighbourFloor!.id, name: "Garage" },
     ])
     .returning();
   const actor = (u: { id: string }, householdId: string, role: Role) => ({
@@ -42,6 +49,8 @@ export async function createFamily() {
   });
   return {
     homeId: home!.id,
+    ground: ground!,
+    neighbourFloor: neighbourFloor!,
     adult: actor(anna, home!.id, "adult"),
     child: actor(bo, home!.id, "child"),
     neighbour: actor(eve, other!.id, "adult"),

@@ -41,7 +41,24 @@ export async function renameHousehold(_prev: ActionState, formData: FormData): P
 }
 
 export async function addRoom(_prev: ActionState, formData: FormData): Promise<ActionState> {
-  return act((m) => home.addRoom(m, String(formData.get("name") ?? "")));
+  const floorId = formData.get("floorId");
+  return act((m) => home.addRoom(m, String(formData.get("name") ?? ""), floorId ? String(floorId) : null));
+}
+
+export async function addFloor() {
+  return act((m) => home.addFloor(m));
+}
+
+export async function renameFloor(id: string, name: string) {
+  return act((m) => home.renameFloor(m, id, name));
+}
+
+export async function moveFloor(id: string, direction: "up" | "down") {
+  return act((m) => home.moveFloor(m, id, direction));
+}
+
+export async function deleteFloor(id: string) {
+  return act((m) => home.deleteFloor(m, id));
 }
 
 export async function deleteRoom(id: string) {

@@ -29,6 +29,13 @@
       "when": 1794702185700,
       "tag": "0003_chores",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1794720801781,
+      "tag": "0004_floors",
+      "breakpoints": true
     }
   ]
 }

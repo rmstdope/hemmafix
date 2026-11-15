@@ -121,6 +121,32 @@ export const membership = pgTable(
   ],
 );
 
+/**
+ * A floor of the home. New floors are named after the next free number ("1", "2" …) and can
+ * be renamed ("Suterräng", "Markplan"). Every room is on a floor; a home always has one.
+ */
+export const floor = pgTable(
+  "floor",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    householdId: uuid("household_id")
+      .notNull()
+      .references(() => household.id, { onDelete: "cascade" }),
+    name: text("name").notNull(),
+    /** Higher is further up the house. */
+    position: integer("position").notNull(),
+    archivedAt: timestamp("archived_at", { withTimezone: true }),
+    ...timestamps,
+  },
+  (t) => [
+    uniqueIndex("floor_household_name_idx")
+      .on(t.householdId, sql`lower(${t.name})`)
+      .where(sql`${t.archivedAt} is null`),
+    // Target of room's (floor, household) foreign key.
+    unique("floor_id_household_unique").on(t.id, t.householdId),
+  ],
+);
+
 export const room = pgTable(
   "room",
   {
@@ -128,15 +154,23 @@ export const room = pgTable(
     householdId: uuid("household_id")
       .notNull()
       .references(() => household.id, { onDelete: "cascade" }),
+    /** A floor of the same household (enforced by the composite foreign key below). */
+    floorId: uuid("floor_id").notNull(),
     name: text("name").notNull(),
     /** Removed rooms are archived, so the history still knows where a task was done. */
     archivedAt: timestamp("archived_at", { withTimezone: true }),
     ...timestamps,
   },
   (t) => [
-    // Names are unique among the home's current rooms; a removed room's name can be reused.
-    uniqueIndex("room_household_name_idx")
-      .on(t.householdId, sql`lower(${t.name})`)
+    foreignKey({
+      name: "room_floor_same_household_fk",
+      columns: [t.floorId, t.householdId],
+      foreignColumns: [floor.id, floor.householdId],
+    }),
+    // Names are unique among a floor's current rooms: Badrum on two floors is fine, and a
+    // removed room's name can be reused.
+    uniqueIndex("room_floor_name_idx")
+      .on(t.floorId, sql`lower(${t.name})`)
       .where(sql`${t.archivedAt} is null`),
     // Target of chore's (room, household) foreign key.
     unique("room_id_household_unique").on(t.id, t.householdId),
@@ -217,4 +251,5 @@ export const choreInstance = pgTable(
 export type Chore = typeof chore.$inferSelect;
 export type ChoreInstance = typeof choreInstance.$inferSelect;
 export type Room = typeof room.$inferSelect;
+export type Floor = typeof floor.$inferSelect;
 export type MemberRole = (typeof memberRole.enumValues)[number];

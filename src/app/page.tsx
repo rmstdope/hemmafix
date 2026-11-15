@@ -11,7 +11,7 @@ import { can } from "@/lib/permissions";
 import { boardFilter } from "@/lib/validation";
 import { requireMember } from "@/server/dal";
 import { canUndo, getHousehold, listMembers, listOpenInstances, listRecentlyCompleted } from "@/server/chores";
-import { listRooms } from "@/server/household";
+import { listFloors, listRooms } from "@/server/household";
 
 export default function Home({ searchParams }: PageProps<"/">) {
   return (
@@ -28,18 +28,26 @@ const first = (v: string | string[] | undefined) => (Array.isArray(v) ? v[0] : v
 async function Board({ searchParams }: { searchParams: PageProps<"/">["searchParams"] }) {
   const member = await requireMember();
   const params = await searchParams;
-  const filter = boardFilter.parse({ roomId: first(params.rum), who: first(params.vem) });
+  const requested = boardFilter.parse({ roomId: first(params.rum), floorId: first(params.plan), who: first(params.vem) });
   const today = todayIso();
   const isAdult = can(member.role, "task:create");
 
-  const [home, members, rooms, open, completed] = await Promise.all([
+  const [home, members, floors, rooms, completed] = await Promise.all([
     getHousehold(member.householdId),
     listMembers(member.householdId),
+    listFloors(member.householdId),
     listRooms(member.householdId),
-    listOpenInstances(member, filter),
     listRecentlyCompleted(member),
   ]);
-  const filtered = Boolean(filter.roomId || filter.who);
+  // A room or floor that has since been removed (or is not this home's) means no filter.
+  const filter = {
+    ...requested,
+    roomId: rooms.some((r) => r.id === requested.roomId) ? requested.roomId : undefined,
+    floorId: floors.some((f) => f.id === requested.floorId) ? requested.floorId : undefined,
+  };
+  const open = await listOpenInstances(member, filter);
+  const filtered = Boolean(filter.roomId || filter.floorId || filter.who);
+  const showFloors = floors.length > 1;
 
   return (
     <>
@@ -70,13 +78,15 @@ async function Board({ searchParams }: { searchParams: PageProps<"/">["searchPar
         </div>
       </header>
 
-      {isAdult && <AddChoreForm rooms={rooms} members={members} currentUserId={member.userId} today={today} />}
+      {isAdult && <AddChoreForm floors={floors} rooms={rooms} members={members} currentUserId={member.userId} today={today} />}
 
       <BoardFilters
+        floors={floors}
         rooms={rooms}
         members={members}
         currentUserId={member.userId}
         roomId={filter.roomId}
+        floorId={filter.floorId}
         who={filter.who}
       />
 
@@ -95,6 +105,7 @@ async function Board({ searchParams }: { searchParams: PageProps<"/">["searchPar
               today={today}
               canManage={isAdult}
               canUndo={false}
+              showFloors={showFloors}
             />
           ))}
         </ul>
@@ -115,6 +126,7 @@ async function Board({ searchParams }: { searchParams: PageProps<"/">["searchPar
                 today={today}
                 canManage={false}
                 canUndo={canUndo(member, t)}
+                showFloors={showFloors}
               />
             ))}
           </ul>

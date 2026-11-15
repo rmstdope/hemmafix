@@ -1,7 +1,7 @@
 import "server-only";
 import { aliasedTable, and, asc, desc, eq, gt, gte, isNotNull, isNull, ne, sql, type SQL } from "drizzle-orm";
 import { db, pg } from "@/db";
-import { chore, choreInstance, household, membership, room, user } from "@/db/schema";
+import { chore, choreInstance, floor, household, membership, room, user } from "@/db/schema";
 import { addDays, HOME_TIME_ZONE, todayIso } from "@/lib/dates";
 import { UserError } from "@/lib/errors";
 import { assertCan, can } from "@/lib/permissions";
@@ -259,6 +259,7 @@ export type InstanceView = {
   title: string;
   roomId: string | null;
   roomName: string | null;
+  floorName: string | null;
   dueDate: string | null;
   assigneeId: string | null;
   seriesAssigneeId: string | null;
@@ -278,6 +279,7 @@ const instanceColumns = {
   title: chore.title,
   roomId: room.id,
   roomName: room.name,
+  floorName: floor.name,
   dueDate: choreInstance.dueDate,
   assigneeId: choreInstance.assigneeId,
   seriesAssigneeId: chore.assigneeId,
@@ -307,6 +309,7 @@ function selectInstances(where: SQL | undefined, extra = {}) {
     .from(choreInstance)
     .innerJoin(chore, eq(chore.id, choreInstance.choreId))
     .leftJoin(room, eq(room.id, chore.roomId))
+    .leftJoin(floor, eq(floor.id, room.floorId))
     .leftJoin(completer, eq(completer.id, choreInstance.completedById))
     .where(where);
 }
@@ -329,6 +332,7 @@ export async function listOpenInstances(actor: Actor, filter: BoardFilter): Prom
       isNull(choreInstance.completedAt),
       isNull(chore.archivedAt),
       filter.roomId ? eq(chore.roomId, filter.roomId) : undefined,
+      filter.floorId ? eq(room.floorId, filter.floorId) : undefined,
       who,
     ),
   ).orderBy(sql`${choreInstance.dueDate} asc nulls last`, asc(choreInstance.createdAt), asc(choreInstance.id));
@@ -378,6 +382,7 @@ export type DoneView = {
   id: string;
   title: string;
   roomName: string | null;
+  floorName: string | null;
   completedAt: Date;
 };
 
@@ -401,11 +406,13 @@ export async function listCompletedBy(actor: Actor, personId: string, days: Hist
       id: choreInstance.id,
       title: chore.title,
       roomName: room.name,
+      floorName: floor.name,
       completedAt: choreInstance.completedAt,
     })
     .from(choreInstance)
     .innerJoin(chore, eq(chore.id, choreInstance.choreId))
     .leftJoin(room, eq(room.id, chore.roomId))
+    .leftJoin(floor, eq(floor.id, room.floorId))
     .where(
       and(
         eq(choreInstance.householdId, actor.householdId),

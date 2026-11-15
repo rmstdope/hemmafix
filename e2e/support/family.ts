@@ -25,25 +25,43 @@ const testAuth = betterAuth({
 });
 
 /**
- * Empties every table in the app's schema, so each test starts with no household and no
- * users. Tables are looked up, not listed, so new ones cannot leak rows between tests.
- * (Drizzle's migration journal lives in the `drizzle` schema and is kept.)
+ * Empties the app's tables, so each test starts with no household and no users.
+ *
+ * DELETE, not TRUNCATE: TRUNCATE takes exclusive table locks one table at a time, and the
+ * server may still be answering a late request from the previous test (a refresh, the event
+ * stream), which deadlocks or stalls. Deleting the roots cascades to everything else; every
+ * table is then checked to be empty, so a new table that escapes the cascade is noticed.
  */
 export async function resetDatabase() {
-  await db.execute(sql`
-    do $$ begin
-      execute (
-        select 'truncate table ' || string_agg(format('%I.%I', schemaname, tablename), ', ')
-          || ' restart identity cascade'
-        from pg_tables where schemaname = 'public'
-      );
-    end $$`);
+  for (let attempt = 1; ; attempt++) {
+    try {
+      await db.transaction(async (tx) => {
+        await tx.execute(sql`delete from household`);
+        await tx.execute(sql`delete from "user"`);
+        await tx.execute(sql`delete from verification`);
+      });
+      break;
+    } catch (err) {
+      // A late request from the previous test may still collide; try again.
+      if ((err as { cause?: { code?: string } }).cause?.code !== "40P01" || attempt >= 3) throw err;
+    }
+  }
+  const rows = (await db.execute(sql`
+    select string_agg(t.tablename, ', ') as leftovers
+    from pg_tables t
+    where t.schemaname = 'public'
+      and (xpath('/row/n/text()', query_to_xml(format('select count(*) as n from %I.%I', t.schemaname, t.tablename), false, true, '')))[1]::text::int > 0
+  `)) as unknown as { leftovers: string | null }[];
+  if (rows[0]?.leftovers) {
+    throw new Error(`resetDatabase left rows in: ${rows[0].leftovers}. Delete them in resetDatabase.`);
+  }
 }
 
 async function homeId() {
   const [existing] = await db.select({ id: schema.household.id }).from(schema.household).limit(1);
   if (existing) return existing.id;
   const [created] = await db.insert(schema.household).values({ name: "Familjen E2E" }).returning();
+  await db.insert(schema.floor).values({ householdId: created!.id, name: "1", position: 1 });
   return created!.id;
 }
 
@@ -68,12 +86,38 @@ export async function closeDatabase() {
   await client.end();
 }
 
-/** Adds rooms to the household (created on demand) and returns them by name. */
-export async function seedRooms(...names: string[]) {
+/** The household's floors (created on demand), top floor first. */
+export async function floors() {
   const householdId = await homeId();
+  return db
+    .select()
+    .from(schema.floor)
+    .where(sql`${schema.floor.householdId} = ${householdId}`)
+    .orderBy(sql`${schema.floor.position} desc`);
+}
+
+/** Adds a floor at the top of the house. */
+export async function seedFloor(name: string) {
+  const existing = await floors();
+  const [created] = await db
+    .insert(schema.floor)
+    .values({ householdId: await homeId(), name, position: (existing[0]?.position ?? 0) + 1 })
+    .returning();
+  return created!;
+}
+
+/**
+ * Adds rooms to the household (created on demand) and returns them by name. They go on
+ * `floorId`, or on the bottom floor.
+ */
+export async function seedRooms(...args: (string | { floorId: string })[]) {
+  const householdId = await homeId();
+  const options = args.find((a): a is { floorId: string } => typeof a !== "string");
+  const names = args.filter((a): a is string => typeof a === "string");
+  const floorId = options?.floorId ?? (await floors()).at(-1)!.id;
   const rows = await db
     .insert(schema.room)
-    .values(names.map((name) => ({ householdId, name })))
+    .values(names.map((name) => ({ householdId, floorId, name })))
     .returning();
   return Object.fromEntries(rows.map((r) => [r.name, r])) as Record<string, schema.Room>;
 }

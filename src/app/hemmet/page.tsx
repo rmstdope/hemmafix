@@ -5,10 +5,10 @@ import { Suspense } from "react";
 import { LiveUpdates } from "@/components/live-updates";
 import { MemberRoles } from "@/components/home/member-roles";
 import { RenameForm } from "@/components/home/rename-form";
-import { RoomList } from "@/components/home/room-list";
+import { FloorsAndRooms } from "@/components/home/floors-and-rooms";
 import { can } from "@/lib/permissions";
 import { requireMember } from "@/server/dal";
-import { listMembersWithRoles, listRooms } from "@/server/household";
+import { listFloors, listMembersWithRoles, listRooms } from "@/server/household";
 import { getHousehold } from "@/server/chores";
 
 export const metadata = { title: "Hemmet – Hemmafix" };
@@ -28,8 +28,9 @@ async function HomeSettings() {
   // Only adults manage the home; the actions refuse children as well.
   if (!can(member.role, "household:rename")) redirect("/");
 
-  const [home, rooms, members] = await Promise.all([
+  const [home, floors, rooms, members] = await Promise.all([
     getHousehold(member.householdId),
+    listFloors(member.householdId),
     listRooms(member.householdId),
     listMembersWithRoles(member.householdId),
   ]);
@@ -57,9 +58,9 @@ async function HomeSettings() {
 
       <section className="mt-8 space-y-2" aria-labelledby="rooms-heading">
         <h2 id="rooms-heading" className="text-sm font-medium text-muted-foreground">
-          Rum
+          {floors.length > 1 ? "Våningar och rum" : "Rum"}
         </h2>
-        <RoomList rooms={rooms} />
+        <FloorsAndRooms floors={floors} rooms={rooms} />
       </section>
 
       <section className="mt-8 space-y-2" aria-labelledby="family-heading">

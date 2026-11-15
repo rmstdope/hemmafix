@@ -1,10 +1,22 @@
 import "server-only";
-import { and, asc, eq, isNull, ne, sql } from "drizzle-orm";
+import { and, asc, desc, eq, isNull, ne, sql } from "drizzle-orm";
 import { db } from "@/db";
-import { chore, household, membership, room, user } from "@/db/schema";
+import { chore, floor, household, membership, room, user } from "@/db/schema";
+import { floorKey, nextFloorName } from "@/lib/floors";
 import { UserError } from "@/lib/errors";
 import { assertCan, type Role } from "@/lib/permissions";
-import { householdName, memberId, roleInput, roomId, roomName } from "@/lib/validation";
+import {
+  floorDirection,
+  floorId,
+  floorName,
+  householdName,
+  memberId,
+  roleInput,
+  roomId,
+  roomName,
+} from "@/lib/validation";
+
+type Tx = Parameters<Parameters<typeof db.transaction>[0]>[0];
 
 /** The logged-in person acting in their household. */
 export type Actor = { userId: string; householdId: string; role: Role };
@@ -37,6 +49,7 @@ export async function ensureMembership(userId: string): Promise<void> {
         .insert(household)
         .values({ name: process.env.HOUSEHOLD_NAME?.trim() || "Familjen" })
         .returning({ id: household.id });
+      await tx.insert(floor).values({ householdId: home.id, name: "1", position: 1 });
     }
 
     await tx
@@ -58,23 +71,51 @@ export async function renameHousehold(actor: Actor, name: string) {
 // Rooms
 // ---------------------------------------------------------------------------
 
-export async function listRooms(householdId: string) {
+export type RoomView = { id: string; name: string; floorId: string };
+
+/** The home's current rooms, alphabetically. */
+export async function listRooms(householdId: string): Promise<RoomView[]> {
   return db
-    .select({ id: room.id, name: room.name })
+    .select({ id: room.id, name: room.name, floorId: room.floorId })
     .from(room)
     .where(and(eq(room.householdId, householdId), isNull(room.archivedAt)))
-    .orderBy(sql`lower(${room.name})`);
+    .orderBy(sql`lower(${room.name})`, asc(room.id));
 }
 
-export async function addRoom(actor: Actor, name: string) {
+/**
+ * Adds a room on a floor. The floor may be left out while the home has a single floor,
+ * which is how the forms look then.
+ */
+export async function addRoom(actor: Actor, name: string, floorIdArg?: string | null) {
   assertCan(actor, "room:manage");
-  const [created] = await db
-    .insert(room)
-    .values({ householdId: actor.householdId, name: roomName.parse(name) })
-    .onConflictDoNothing()
-    .returning({ id: room.id, name: room.name });
-  if (!created) throw new UserError("Det rummet finns redan");
-  return created;
+  const roomNameValue = roomName.parse(name);
+  return db.transaction(async (tx) => {
+    let target = floorIdArg ? floorId.parse(floorIdArg) : null;
+    if (!target) {
+      const floors = await tx
+        .select({ id: floor.id })
+        .from(floor)
+        .where(and(eq(floor.householdId, actor.householdId), isNull(floor.archivedAt)));
+      if (floors.length !== 1) throw new UserError("Välj en våning");
+      target = floors[0]!.id;
+    }
+    // Share-lock the floor so it cannot be removed while the room is added to it (removing it
+    // takes an update lock). Only this floor, so a floor being moved never deadlocks with us.
+    const [onFloor] = await tx
+      .select({ id: floor.id })
+      .from(floor)
+      .where(and(eq(floor.id, target), eq(floor.householdId, actor.householdId), isNull(floor.archivedAt)))
+      .for("share");
+    if (!onFloor) throw new UserError("Våningen finns inte i hemmet");
+
+    const [created] = await tx
+      .insert(room)
+      .values({ householdId: actor.householdId, floorId: target, name: roomNameValue })
+      .onConflictDoNothing()
+      .returning({ id: room.id, name: room.name, floorId: room.floorId });
+    if (!created) throw new UserError("Det rummet finns redan på våningen");
+    return created;
+  });
 }
 
 /**
@@ -99,6 +140,109 @@ export async function deleteRoom(actor: Actor, id: string) {
       .limit(1);
     if (active) throw new UserError("Rummet har uppgifter. Ta bort dem först.");
     await tx.update(room).set({ archivedAt: new Date() }).where(eq(room.id, target));
+  });
+}
+
+// ---------------------------------------------------------------------------
+// Floors
+// ---------------------------------------------------------------------------
+
+export type FloorView = { id: string; name: string };
+
+/** The home's current floors, top floor first, as in a section of the house. */
+export async function listFloors(householdId: string): Promise<FloorView[]> {
+  return db
+    .select({ id: floor.id, name: floor.name })
+    .from(floor)
+    .where(and(eq(floor.householdId, householdId), isNull(floor.archivedAt)))
+    .orderBy(desc(floor.position), asc(floor.createdAt));
+}
+
+/** Takes the household's floor lock, so floor changes in one home happen one at a time. */
+async function lockFloors(tx: Tx, householdId: string) {
+  await tx.execute(sql`select pg_advisory_xact_lock(hashtext('hemmafix:floors:' || ${householdId}))`);
+  return tx
+    .select({ id: floor.id, name: floor.name, position: floor.position })
+    .from(floor)
+    .where(and(eq(floor.householdId, householdId), isNull(floor.archivedAt)))
+    .orderBy(desc(floor.position), asc(floor.createdAt));
+}
+
+/** Adds a floor at the top of the house, named after the next free number unless named. */
+export async function addFloor(actor: Actor, name?: string | null) {
+  assertCan(actor, "room:manage");
+  const given = name?.trim() ? floorName.parse(name) : null;
+  return db.transaction(async (tx) => {
+    const floors = await lockFloors(tx, actor.householdId);
+    if (given && floors.some((f) => floorKey(f.name) === floorKey(given))) {
+      throw new UserError("Det finns redan en våning med det namnet");
+    }
+    const top = Math.max(0, ...floors.map((f) => f.position));
+    const [created] = await tx
+      .insert(floor)
+      .values({
+        householdId: actor.householdId,
+        name: given ?? nextFloorName(floors.map((f) => f.name)),
+        position: top + 1,
+      })
+      .onConflictDoNothing()
+      .returning({ id: floor.id, name: floor.name });
+    if (!created) throw new UserError("Det finns redan en våning med det namnet");
+    return created;
+  });
+}
+
+export async function renameFloor(actor: Actor, id: string, name: string) {
+  assertCan(actor, "room:manage");
+  const target = floorId.parse(id);
+  const next = floorName.parse(name);
+  await db.transaction(async (tx) => {
+    const floors = await lockFloors(tx, actor.householdId);
+    if (!floors.some((f) => f.id === target)) throw new UserError("Våningen finns inte i hemmet");
+    if (floors.some((f) => f.id !== target && floorKey(f.name) === floorKey(next))) {
+      throw new UserError("Det finns redan en våning med det namnet");
+    }
+    await tx.update(floor).set({ name: next }).where(eq(floor.id, target));
+  });
+}
+
+/** Moves a floor one step up or down the house, swapping places with its neighbour. */
+export async function moveFloor(actor: Actor, id: string, direction: "up" | "down") {
+  assertCan(actor, "room:manage");
+  const target = floorId.parse(id);
+  const dir = floorDirection.parse(direction);
+  await db.transaction(async (tx) => {
+    // Top floor first; renumber so positions are distinct before swapping.
+    const floors = await lockFloors(tx, actor.householdId);
+    const index = floors.findIndex((f) => f.id === target);
+    if (index < 0) throw new UserError("Våningen finns inte i hemmet");
+    const other = dir === "up" ? index - 1 : index + 1;
+    if (other < 0 || other >= floors.length) return;
+    const order = floors.map((f) => f.id);
+    [order[index], order[other]] = [order[other]!, order[index]!];
+    for (const [i, floorIdValue] of order.entries()) {
+      await tx.update(floor).set({ position: order.length - i }).where(eq(floor.id, floorIdValue));
+    }
+  });
+}
+
+/** Removes a floor without rooms. A home always keeps at least one floor. */
+export async function deleteFloor(actor: Actor, id: string) {
+  assertCan(actor, "room:manage");
+  const target = floorId.parse(id);
+  await db.transaction(async (tx) => {
+    const floors = await lockFloors(tx, actor.householdId);
+    if (!floors.some((f) => f.id === target)) return;
+    if (floors.length === 1) throw new UserError("Hemmet måste ha minst en våning");
+    // Lock the floor row: a room being added to it waits, or makes us wait.
+    await tx.select({ id: floor.id }).from(floor).where(eq(floor.id, target)).for("update");
+    const [hasRoom] = await tx
+      .select({ id: room.id })
+      .from(room)
+      .where(and(eq(room.floorId, target), isNull(room.archivedAt)))
+      .limit(1);
+    if (hasRoom) throw new UserError("Våningen har rum. Ta bort dem först.");
+    await tx.update(floor).set({ archivedAt: new Date() }).where(eq(floor.id, target));
   });
 }
 

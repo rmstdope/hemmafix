@@ -1,7 +1,7 @@
 "use client";
 
 import { Plus, Trash2 } from "lucide-react";
-import { useActionState, useEffect, useRef, useTransition } from "react";
+import { useActionState, useRef, useTransition } from "react";
 import { toast } from "sonner";
 import { addRoom, deleteRoom, type ActionState } from "@/app/actions";
 import { Button } from "@/components/ui/button";
@@ -10,15 +10,20 @@ import { ROOM_SUGGESTIONS } from "@/lib/rooms";
 
 type Room = { id: string; name: string };
 
-export function RoomList({ rooms }: { rooms: Room[] }) {
+/**
+ * The rooms on one floor, with a field and suggestions to add more. `where` ("på Plan 2")
+ * is added to labels when the home has several floors, so each floor's controls are distinct.
+ */
+export function RoomList({ rooms, floorId, where = "" }: { rooms: Room[]; floorId: string; where?: string }) {
   const formRef = useRef<HTMLFormElement>(null);
-  const [state, action, pending] = useActionState<ActionState, FormData>(addRoom, { ok: false });
+  const [, action, pending] = useActionState<ActionState, FormData>(async (prev, formData) => {
+    const result = await addRoom(prev, formData);
+    if (result.ok) formRef.current?.reset();
+    else if (result.error) toast.error(result.error);
+    return result;
+  }, { ok: false });
   const [busy, startTransition] = useTransition();
-
-  useEffect(() => {
-    if (state.ok) formRef.current?.reset();
-    else if (state.error) toast.error(state.error);
-  }, [state]);
+  const suffix = where ? ` ${where}` : "";
 
   const taken = new Set(rooms.map((r) => r.name.toLowerCase()));
   const suggestions = ROOM_SUGGESTIONS.filter((s) => !taken.has(s.toLowerCase()));
@@ -27,6 +32,7 @@ export function RoomList({ rooms }: { rooms: Room[] }) {
     startTransition(async () => {
       const data = new FormData();
       data.set("name", name);
+      data.set("floorId", floorId);
       const result = await addRoom({ ok: false }, data);
       if (result.error) toast.error(result.error);
     });
@@ -40,17 +46,17 @@ export function RoomList({ rooms }: { rooms: Room[] }) {
   return (
     <div className="space-y-3">
       {rooms.length === 0 ? (
-        <p className="text-sm text-muted-foreground">Inga rum ännu. Lägg till de rum ni har hemma.</p>
+        <p className="text-sm text-muted-foreground">Inga rum{suffix} ännu.</p>
       ) : (
-        <ul className="divide-y rounded-xl border bg-card" aria-label="Rum">
+        <ul className="divide-y rounded-xl border bg-card" aria-label={`Rum${suffix}`}>
           {rooms.map((r) => (
             <li key={r.id} className="flex items-center justify-between gap-2 py-1 pr-1 pl-3">
               <span>{r.name}</span>
               <Button
                 variant="ghost"
                 size="icon-lg"
-                aria-label={`Ta bort ${r.name}`}
-                className="text-muted-foreground"
+                aria-label={`Ta bort ${r.name}${suffix}`}
+                className="size-11 text-muted-foreground"
                 disabled={busy}
                 onClick={() => remove(r)}
               >
@@ -62,22 +68,29 @@ export function RoomList({ rooms }: { rooms: Room[] }) {
       )}
 
       <form ref={formRef} action={action} className="flex gap-2">
+        <input type="hidden" name="floorId" value={floorId} />
         <Input
           name="name"
           placeholder="Nytt rum"
-          aria-label="Nytt rum"
+          aria-label={`Nytt rum${suffix}`}
           autoComplete="off"
           required
           maxLength={40}
           className="h-11 text-base md:text-sm"
         />
-        <Button type="submit" size="icon-lg" className="size-11 shrink-0" disabled={pending} aria-label="Lägg till rum">
+        <Button
+          type="submit"
+          size="icon-lg"
+          className="size-11 shrink-0"
+          disabled={pending}
+          aria-label={`Lägg till rum${suffix}`}
+        >
           <Plus />
         </Button>
       </form>
 
       {suggestions.length > 0 && (
-        <div className="flex flex-wrap gap-2" aria-label="Förslag">
+        <div className="flex flex-wrap gap-2" aria-label={`Förslag${suffix}`}>
           {suggestions.map((s) => (
             <button
               key={s}

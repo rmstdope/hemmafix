@@ -1,6 +1,6 @@
 # Hemmafix
 
-Familjens att-göra-lista. Logga in med Google, lägg in hemmets rum och sysslor –
+Familjens att-göra-lista. Logga in med Google, lägg in hemmets våningar, rum och sysslor –
 fördefinierade eller egna, återkommande eller engångs – tilldela dem till någon i
 familjen och bocka av. En återkommande syssla kommer tillbaka ett intervall efter att
 den gjordes. Listan uppdateras i realtid på allas enheter och kan installeras som app
@@ -76,6 +76,16 @@ bara databaser som börjar på `hemmafix_test_`. Varje körning har egna namn, s
 körningar samtidigt stör inte varandra, och databaser som en avbruten körning lämnat
 efter sig städas bort vid nästa körning. Lokalt räcker dev-databasen från *Kom igång*.
 Första gången: `pnpm exec playwright install chromium`.
+
+## Migreringar
+
+Appen är registrerad med `migration_policy: backward-compatible` (`deploy/runtime/app.json`):
+en release som inte blir frisk rullas tillbaka till förra imagen, men migreringar backas
+aldrig. Varje migrering måste därför fungera även med **förra** versionens kod. Lägg till
+kolumner som nullable eller med default (eller med en trigger som fyller i dem, som
+`room_default_floor` i `0004`), och ta bort eller gör om kolumner först i en senare release
+när ingen kod längre använder dem. Testa det i `src/db/migrations.int.test.ts`. Destruktiva
+ändringar är planerat underhåll med en databasdump först, inte en vanlig release.
 
 ## Skript
 
