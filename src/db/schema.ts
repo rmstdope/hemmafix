@@ -273,6 +273,27 @@ export const oauthClientAssertion = pgTable("oauth_client_assertion", {
   expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
 });
 
+// A connected app is the refresh-token family of one approval (`authorization_code_id`).
+// `app_token` maps each issued access token (JWT, by jti) to its family so a revoked connection
+// is refused at once; `app_connection_use` remembers when a family last called the MCP server.
+export const appToken = pgTable(
+  "app_token",
+  {
+    jti: text("jti").primaryKey(),
+    connectionId: text("connection_id").notNull(),
+    expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
+  },
+  (t) => [index("app_token_connection_idx").on(t.connectionId)],
+);
+
+export const appConnectionUse = pgTable("app_connection_use", {
+  connectionId: text("connection_id").primaryKey(),
+  userId: text("user_id")
+    .notNull()
+    .references(() => user.id, { onDelete: "cascade" }),
+  lastUsedAt: timestamp("last_used_at", { withTimezone: true }).notNull(),
+});
+
 // ---------------------------------------------------------------------------
 // Domain tables. Modeled for many households; step 1 runs with one.
 // ---------------------------------------------------------------------------

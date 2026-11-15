@@ -112,6 +112,8 @@ export type BoardFilter = z.infer<typeof boardFilter>;
 export const householdName = z.string().trim().min(1, "Hemmet behöver ett namn").max(60, "Max 60 tecken");
 export const roomName = z.string().trim().min(1, "Skriv rummets namn").max(40, "Max 40 tecken");
 export const roomId = z.uuid();
+/** A connected app's id: the hash the OAuth provider stores for its authorization code. */
+export const connectionId = z.string().min(1).max(200);
 export const floorId = z.uuid();
 export const floorName = z.string().trim().min(1, "Våningen behöver ett namn").max(30, "Max 30 tecken");
 export const floorDirection = z.enum(["up", "down"]);
