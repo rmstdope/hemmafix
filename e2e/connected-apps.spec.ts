@@ -216,7 +216,11 @@ test("a connected app is listed, and stops working at once when it is disconnect
 
   await disconnectClaude(page);
 
-  expect((await callMcp(request, access_token)).status()).toBe(401);
+  const refused = await callMcp(request, access_token);
+  expect(refused.status()).toBe(401);
+  // The app is told where to log in again, so it can take the person back through approval.
+  expect(refused.headers()["www-authenticate"]).toContain(`error="invalid_token"`);
+  expect(refused.headers()["www-authenticate"]).toContain(`resource_metadata="${E2E_BASE_URL}/.well-known/oauth-protected-resource/mcp"`);
 });
 
 test("an app keeps working after it refreshes its token, and a disconnect stops the refreshed token too", async ({ page, context, request }) => {
