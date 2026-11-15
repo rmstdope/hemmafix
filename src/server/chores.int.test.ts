@@ -14,6 +14,7 @@ import {
   completeInstance,
   createChore,
   deleteChore,
+  listCompletedBy,
   listOpenInstances,
   listRecentlyCompleted,
   uncompleteInstance,
@@ -42,6 +43,7 @@ const once = (title: string, extra: Record<string, string> = {}) => ({
 });
 
 const open = (filter = {}) => listOpenInstances(f.adult, filter);
+const openOf = async (title: string) => (await open()).filter((i) => i.title === title);
 const instancesOf = async (choreId: string) =>
   db.select().from(choreInstance).where(eq(choreInstance.choreId, choreId)).orderBy(choreInstance.createdAt);
 
@@ -384,5 +386,86 @@ describe("rooms", () => {
       const tasks = (await open()).filter((t) => t.roomId === r.id);
       expect(removed && tasks.length > 0).toBe(false);
     }
+  });
+});
+
+describe("listCompletedBy", () => {
+  const tick = async (title: string, who: typeof f.adult, extra: Record<string, string> = {}) => {
+    const { id } = await createChore(f.adult, once(title, extra));
+    const [instance] = await instancesOf(id);
+    await completeInstance(who, instance!.id);
+    return { choreId: id, instanceId: instance!.id };
+  };
+  const titles = (rows: { title: string }[]) => rows.map((r) => r.title);
+
+  it("shows what a person ticked off, newest first, with the room", async () => {
+    await tick("Diska", f.child);
+    await tick("Toa", f.child, { roomId: f.bathroom.id });
+    await tick("Annas", f.adult);
+
+    const bos = await listCompletedBy(f.child, f.child.userId, 30);
+    expect(bos.map((d) => [d.title, d.roomName])).toEqual([
+      ["Toa", "Badrum"],
+      ["Diska", "Kök"],
+    ]);
+  });
+
+  it("lets everyone see their own, and only adults see someone else's", async () => {
+    await tick("Diska", f.child);
+    await tick("Annas", f.adult);
+
+    expect(titles(await listCompletedBy(f.adult, f.child.userId, 30))).toEqual(["Diska"]);
+    expect(titles(await listCompletedBy(f.adult, f.adult.userId, 30))).toEqual(["Annas"]);
+    await expect(listCompletedBy(f.child, f.adult.userId, 30)).rejects.toThrow(ForbiddenError);
+  });
+
+  it("never shows another home's people or tasks", async () => {
+    await createChore(f.neighbour, { title: "Tvätta bilen", roomId: f.garage.id, kind: "once" });
+    const [theirs] = await listOpenInstances(f.neighbour, {});
+    await completeInstance(f.neighbour, theirs!.id);
+
+    await expect(listCompletedBy(f.adult, f.neighbour.userId, 30)).rejects.toThrow("Personen finns inte");
+    expect(await listCompletedBy(f.neighbour, f.neighbour.userId, 30)).toHaveLength(1);
+  });
+
+  it("keeps what was done after the task is deleted and its room removed", async () => {
+    const { choreId } = await tick("Diska", f.child);
+    await deleteChore(f.adult, choreId);
+    await deleteRoom(f.adult, f.kitchen.id);
+
+    expect((await listCompletedBy(f.child, f.child.userId, 30)).map((d) => [d.title, d.roomName])).toEqual([
+      ["Diska", "Kök"],
+    ]);
+  });
+
+  it("drops a tick that was undone, and counts each tick of a recurring task", async () => {
+    const mistake = await tick("Fel", f.child);
+    await uncompleteInstance(f.child, mistake.instanceId);
+    await createChore(f.adult, weekly("Diska"));
+    const [first] = await openOf("Diska");
+    await completeInstance(f.child, first!.id);
+    const [second] = await openOf("Diska");
+    await completeInstance(f.child, second!.id);
+
+    expect(titles(await listCompletedBy(f.child, f.child.userId, 30))).toEqual(["Diska", "Diska"]);
+  });
+
+  it("covers only the chosen period", async () => {
+    const old = await tick("Länge sen", f.child);
+    await db
+      .update(choreInstance)
+      .set({ completedAt: new Date(Date.now() - 40 * 86_400_000) })
+      .where(eq(choreInstance.id, old.instanceId));
+    const lastWeek = await tick("Förra veckan", f.child);
+    await db
+      .update(choreInstance)
+      .set({ completedAt: new Date(Date.now() - 10 * 86_400_000) })
+      .where(eq(choreInstance.id, lastWeek.instanceId));
+    await tick("Idag", f.child);
+
+    expect(titles(await listCompletedBy(f.child, f.child.userId, 7))).toEqual(["Idag"]);
+    expect(titles(await listCompletedBy(f.child, f.child.userId, 30))).toEqual(["Idag", "Förra veckan"]);
+    expect(titles(await listCompletedBy(f.child, f.child.userId, 365))).toEqual(["Idag", "Förra veckan", "Länge sen"]);
+    await expect(listCompletedBy(f.child, f.child.userId, 5 as never)).rejects.toThrow("Ogiltig period");
   });
 });

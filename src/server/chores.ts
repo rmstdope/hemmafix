@@ -11,6 +11,7 @@ import {
   choreId as choreIdInput,
   createChoreInput,
   instanceId as instanceIdInput,
+  memberId as memberIdInput,
   type BoardFilter,
 } from "@/lib/validation";
 import type { Actor } from "./household";
@@ -359,4 +360,50 @@ export function canUndo(
   instance: Pick<InstanceView, "completedById" | "isLatestTick">,
 ) {
   return instance.isLatestTick && (instance.completedById === actor.userId || can(actor.role, "task:uncomplete-others"));
+}
+
+// ---------------------------------------------------------------------------
+// History: who did what
+// ---------------------------------------------------------------------------
+
+export const HISTORY_PERIODS = [7, 30, 365] as const;
+export type HistoryPeriod = (typeof HISTORY_PERIODS)[number];
+
+export type DoneView = {
+  id: string;
+  title: string;
+  roomName: string | null;
+  completedAt: Date;
+};
+
+/**
+ * What `personId` ticked off in the last `days` days, newest first. Everyone may see their
+ * own; only adults may see someone else's. Deleted tasks and removed rooms are included:
+ * what was done stays done.
+ */
+export async function listCompletedBy(actor: Actor, personId: string, days: HistoryPeriod): Promise<DoneView[]> {
+  const person = memberIdInput.parse(personId);
+  assertCan(actor, person === actor.userId ? "history:view-own" : "history:view-anyone");
+  if (!HISTORY_PERIODS.includes(days)) throw new UserError("Ogiltig period");
+  await assertMember(db, actor.householdId, person);
+
+  const rows = await db
+    .select({
+      id: choreInstance.id,
+      title: chore.title,
+      roomName: room.name,
+      completedAt: choreInstance.completedAt,
+    })
+    .from(choreInstance)
+    .innerJoin(chore, eq(chore.id, choreInstance.choreId))
+    .leftJoin(room, eq(room.id, chore.roomId))
+    .where(
+      and(
+        eq(choreInstance.householdId, actor.householdId),
+        eq(choreInstance.completedById, person),
+        gt(choreInstance.completedAt, sql`now() - make_interval(days => ${days})`),
+      ),
+    )
+    .orderBy(desc(choreInstance.completedAt), desc(choreInstance.id));
+  return rows as DoneView[];
 }

@@ -1,4 +1,4 @@
-import { Settings } from "lucide-react";
+import { History, Settings } from "lucide-react";
 import Link from "next/link";
 import { Suspense } from "react";
 import { AddChoreForm } from "@/components/add-chore-form";
@@ -50,6 +50,13 @@ async function Board({ searchParams }: { searchParams: PageProps<"/">["searchPar
           <p className="text-sm text-muted-foreground">{home?.name}</p>
         </div>
         <div className="flex items-center gap-1">
+          <Link
+            href="/gjort"
+            aria-label="Gjort"
+            className="flex size-11 items-center justify-center rounded-lg text-muted-foreground"
+          >
+            <History className="size-5" />
+          </Link>
           {isAdult && (
             <Link
               href="/hemmet"
