@@ -143,7 +143,8 @@ async function connectClaude(page: Page, request: APIRequestContext) {
     async approve() {
       await page.goto(url.toString());
       await page.getByRole("button", { name: "Godkänn" }).click();
-      await expect.poll(() => sent.length).toBe(1);
+      // The first approval after the server starts is slow (cold route compilation on CI).
+      await expect.poll(() => sent.length, { timeout: 20_000 }).toBe(1);
       const token = await request.post("/api/auth/oauth2/token", {
         form: {
           grant_type: "authorization_code",
