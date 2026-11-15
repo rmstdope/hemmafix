@@ -1,8 +1,21 @@
 import "server-only";
 import { createMcpHandler, McpServer } from "@modelcontextprotocol/server";
 import { todayIso } from "@/lib/dates";
-import { ACCESS_REMOVED_TEXT, CHILD_TEXT, formatOpenTasks } from "@/lib/mcp-texts";
+import { z } from "zod";
+import { UserError } from "@/lib/errors";
+import {
+  ACCESS_REMOVED_TEXT,
+  alreadyRoleText,
+  ambiguousMemberText,
+  CHILD_TEXT,
+  findMemberByName,
+  formatOpenTasks,
+  noSuchMemberText,
+  roleChangedText,
+} from "@/lib/mcp-texts";
+import type { Role } from "@/lib/permissions";
 import { listMembers, listOpenInstances } from "./chores";
+import { setMemberRole } from "./household";
 import { resolveMcpMember } from "./mcp-access";
 
 const text = (message: string, isError = false) => ({ content: [{ type: "text" as const, text: message }], isError });
@@ -35,6 +48,36 @@ export function createHemmafixMcpServer(userId: string): McpServer {
           todayIso(),
         ),
       );
+    },
+  );
+
+  server.registerTool(
+    "andra_roll",
+    {
+      title: "Ändra roll",
+      description: "Gör en familjemedlem till vuxen eller barn. Hemmet behåller alltid minst en vuxen.",
+      inputSchema: z.object({
+        namn: z.string().describe("Personens namn i hemmet"),
+        roll: z.enum(["vuxen", "barn"]),
+      }),
+      // Not read-only and destructive: clients ask the person to confirm before it runs.
+      annotations: { readOnlyHint: false, destructiveHint: true, idempotentHint: true },
+    },
+    async ({ namn, roll }) => {
+      const access = await resolveMcpMember(userId);
+      if ("denied" in access) return text(DENIED_TEXT[access.denied], true);
+      const found = findMemberByName(await listMembers(access.actor.householdId), namn);
+      if ("none" in found) return text(noSuchMemberText(namn.trim()), true);
+      if ("ambiguous" in found) return text(ambiguousMemberText(namn.trim()), true);
+      const next: Role = roll === "vuxen" ? "adult" : "child";
+      const { member } = found;
+      try {
+        const changed = await setMemberRole(access.actor, member.id, next);
+        return text(changed ? roleChangedText(member.name, next) : alreadyRoleText(member.name, next));
+      } catch (err) {
+        if (err instanceof UserError) return text(err.message, true);
+        throw err;
+      }
     },
   );
 
