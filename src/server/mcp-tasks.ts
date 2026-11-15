@@ -1,5 +1,5 @@
 import "server-only";
-import { and, eq } from "drizzle-orm";
+import { and, eq, isNull } from "drizzle-orm";
 import type { McpServer } from "@modelcontextprotocol/server";
 import { z } from "zod";
 import { db } from "@/db";
@@ -46,27 +46,45 @@ async function runAsMember(userId: string, changes: boolean, fn: (actor: Actor) 
   return text(answer);
 }
 
-const id = z.uuid({ error: "Ogiltigt id. Hämta id:n med visa_sysslor_med_id." });
-const kind = z.enum(["recurring", "once"]).describe("recurring = kommer tillbaka, once = görs en gång");
+// The schemas below are loose on purpose: the SDK checks them before the handler runs, so a
+// strict one would answer in English and before the access check. src/lib/validation.ts
+// (inside chores.ts) does the real checking, in Swedish, once the member is known.
+const id = z.string().describe("Ett id från visa_sysslor_med_id");
+const kind = z.string().optional().describe(`recurring (kommer tillbaka, standard) eller once (görs en gång)`);
 const when = {
-  interval: z.number().int().optional().describe("Hur ofta, i antal enheter (bara för recurring)"),
-  unit: z.enum(RECURRENCE_UNITS).optional().describe("day, week eller month (bara för recurring)"),
+  interval: z.number().optional().describe("Hur ofta, i antal enheter (bara för recurring)"),
+  unit: z.string().optional().describe(`${RECURRENCE_UNITS.join(", ")} (bara för recurring)`),
 };
 
-/** The title a task has now, for the answer; "Sysslan" when it cannot be found (the call then fails itself). */
-async function titleOf(actor: Actor, by: { instanceId: string } | { choreId: string }): Promise<string> {
+function assertIds(...ids: string[]) {
+  for (const value of ids) {
+    if (!z.uuid().safeParse(value).success) throw new UserError("Ogiltigt id. Hämta id:n med visa_sysslor_med_id.");
+  }
+}
+
+type Found = { title: string; completedAt: Date | null };
+
+/** The task an id points to in the actor's home, or null (unknown, removed or another home's). */
+async function find(actor: Actor, by: { instanceId: string } | { choreId: string }): Promise<Found | null> {
   const [row] =
     "instanceId" in by
       ? await db
-          .select({ title: chore.title })
+          .select({ title: chore.title, completedAt: choreInstance.completedAt })
           .from(choreInstance)
           .innerJoin(chore, eq(chore.id, choreInstance.choreId))
           .where(and(eq(choreInstance.id, by.instanceId), eq(choreInstance.householdId, actor.householdId)))
       : await db
-          .select({ title: chore.title })
+          .select({ title: chore.title, completedAt: chore.archivedAt })
           .from(chore)
-          .where(and(eq(chore.id, by.choreId), eq(chore.householdId, actor.householdId)));
-  return row?.title ?? "Sysslan";
+          .where(and(eq(chore.id, by.choreId), eq(chore.householdId, actor.householdId), isNull(chore.archivedAt)));
+  return row ?? null;
+}
+
+const GONE = "Uppgiften finns inte längre";
+async function titleOf(actor: Actor, by: { instanceId: string } | { choreId: string }): Promise<string> {
+  const found = await find(actor, by);
+  if (!found) throw new UserError(GONE);
+  return found.title;
 }
 
 const WRITES = { readOnlyHint: false, destructiveHint: false } as const;
@@ -101,6 +119,7 @@ export function registerTaskTools(server: McpServer, userId: string): void {
               roomName: i.roomName,
               assigneeName: i.assigneeId ? (names.get(i.assigneeId) ?? null) : null,
               dueDate: i.dueDate,
+              recurrence: i.recurrence,
             })),
             rooms: rooms.map((r) => ({ id: r.id, name: r.name, floorName: floorNames.get(r.floorId) ?? null })),
             members: members.map((m) => ({ id: m.id, name: m.name, role: m.role })),
@@ -135,6 +154,7 @@ export function registerTaskTools(server: McpServer, userId: string): void {
     },
     (args) =>
       runAsMember(userId, true, async (actor) => {
+        assertIds(args.roomId);
         await chores.createChore(actor, args);
         const room = (await listRooms(actor.householdId)).find((r) => r.id === args.roomId);
         return taskCreatedText(args.title.trim(), room?.name ?? null);
@@ -158,6 +178,7 @@ export function registerTaskTools(server: McpServer, userId: string): void {
     },
     ({ instanceId, ...rest }) =>
       runAsMember(userId, true, async (actor) => {
+        assertIds(instanceId, rest.roomId);
         await chores.editChore(actor, instanceId, rest);
         return taskEditedText(rest.title.trim());
       }),
@@ -173,6 +194,7 @@ export function registerTaskTools(server: McpServer, userId: string): void {
     },
     ({ choreId }) =>
       runAsMember(userId, true, async (actor) => {
+        assertIds(choreId);
         const title = await titleOf(actor, { choreId });
         await chores.deleteChore(actor, choreId);
         return taskRemovedText(title);
@@ -194,6 +216,7 @@ export function registerTaskTools(server: McpServer, userId: string): void {
     },
     (args) =>
       runAsMember(userId, true, async (actor) => {
+        assertIds(args.id);
         const everyTime = args.scope === "varje_gang";
         const title = await titleOf(actor, everyTime ? { choreId: args.id } : { instanceId: args.id });
         if (everyTime) await chores.assignChore(actor, args.id, args.assigneeId);
@@ -215,6 +238,7 @@ export function registerTaskTools(server: McpServer, userId: string): void {
     },
     ({ instanceId }) =>
       runAsMember(userId, true, async (actor) => {
+        assertIds(instanceId);
         const title = await titleOf(actor, { instanceId });
         await chores.completeInstance(actor, instanceId);
         return taskTickedText(title);
@@ -231,7 +255,11 @@ export function registerTaskTools(server: McpServer, userId: string): void {
     },
     ({ instanceId }) =>
       runAsMember(userId, true, async (actor) => {
-        const title = await titleOf(actor, { instanceId });
+        assertIds(instanceId);
+        const found = await find(actor, { instanceId });
+        if (!found) throw new UserError(GONE);
+        if (!found.completedAt) throw new UserError("Den är inte avbockad");
+        const title = found.title;
         await chores.uncompleteInstance(actor, instanceId);
         return taskUntickedText(title);
       }),

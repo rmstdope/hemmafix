@@ -31,7 +31,7 @@ export function formatOpenTasks(tasks: OpenTask[], today: string): string {
 const NONE = "(inga)";
 
 export type LookupInput = {
-  open: (OpenTask & { id: string; choreId: string })[];
+  open: (OpenTask & { id: string; choreId: string; recurrence: { unit: string; interval: number } | null })[];
   rooms: { id: string; name: string; floorName: string | null }[];
   members: { id: string; name: string; role: "adult" | "child" }[];
   recentlyDone: { id: string; title: string; doneByName: string | null; isLatestTick: boolean }[];
@@ -43,7 +43,13 @@ export function formatTaskLookup(input: LookupInput, today: string): string {
   return [
     ...section(
       "Öppna sysslor:",
-      input.open.map((t) => `${formatOpenTasks([t], today)} (syssla ${t.choreId}, tillfälle ${t.id})`),
+      input.open.map((t) => {
+        // What andra_syssla needs to hand back unchanged: kind, interval, unit and the ISO due date.
+        const shape = t.recurrence
+          ? `kind recurring, interval ${t.recurrence.interval}, unit ${t.recurrence.unit}`
+          : "kind once";
+        return `${formatOpenTasks([t], today)} (syssla ${t.choreId}, tillfälle ${t.id}, ${shape}${t.dueDate ? `, dueDate ${t.dueDate}` : ""})`;
+      }),
     ),
     ...section(
       "Rum:",

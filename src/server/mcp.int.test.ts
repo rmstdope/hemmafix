@@ -2,6 +2,7 @@ import { beforeAll, beforeEach, describe, expect, it } from "vitest";
 import { and, eq, isNull } from "drizzle-orm";
 import { db, pg } from "@/db";
 import { chore, choreInstance, floor, household, membership, room, user } from "@/db/schema";
+import { todayIso } from "@/lib/dates";
 import { TASKS_CHANNEL } from "./chores";
 
 process.env.ALLOWED_EMAILS = "anna@example.com, bo@example.com";
@@ -131,7 +132,7 @@ describe("the task tools", () => {
     const roomId = await seedKitchen();
     const { choreId, instanceId } = await createDiska(roomId);
     const text = said(await call("anna", "visa_sysslor_med_id"));
-    expect(text).toContain(`(syssla ${choreId}, tillfälle ${instanceId})`);
+    expect(text).toContain(`(syssla ${choreId}, tillfälle ${instanceId}, kind recurring, interval 1, unit day, dueDate ${todayIso()})`);
     expect(text).toContain(`- Kök, Plan 1 (id ${roomId})`);
     expect(text).toContain("- Bo, barn (id bo)");
   });
@@ -240,13 +241,97 @@ describe("the task tools", () => {
     expect(await openOf(c!.id)).toHaveLength(1);
   });
 
+  it("edits from what the lookup shows without changing anything else", async () => {
+    const roomId = await seedKitchen();
+    await call("anna", "skapa_syssla", { title: "Diska", roomId, kind: "recurring", interval: 2, unit: "week", startDate: "2027-03-01" });
+    const lookup = said(await call("anna", "visa_sysslor_med_id"));
+    const [, instanceId] = /tillfälle ([0-9a-f-]{36}), kind recurring, interval 2, unit week, dueDate 2027-03-01/.exec(lookup) ?? [];
+    expect(instanceId).toBeDefined();
+    const r = await call("anna", "andra_syssla", { instanceId, title: "Diska och torka", roomId, kind: "recurring", interval: 2, unit: "week", dueDate: "2027-03-01" });
+    expect(r.isError).toBeFalsy();
+    const [c] = await db.select().from(chore);
+    expect(c).toMatchObject({ title: "Diska och torka", recurrenceUnit: "week", recurrenceInterval: 2 });
+    expect((await openOf(c!.id))[0]!.dueDate).toBe("2027-03-01");
+  });
+
+  it("does not say a task was removed when nothing was", async () => {
+    const roomId = await seedKitchen();
+    const { choreId, instanceId } = await createDiska(roomId);
+    for (const wrong of [instanceId, crypto.randomUUID()]) {
+      const r = await call("anna", "ta_bort_syssla", { choreId: wrong });
+      expect(r.isError).toBe(true);
+      expect(said(r)).toBe("Uppgiften finns inte längre");
+    }
+    expect(await openOf(choreId)).toHaveLength(1);
+    await call("anna", "ta_bort_syssla", { choreId });
+    const twice = await call("anna", "ta_bort_syssla", { choreId });
+    expect(twice.isError).toBe(true);
+  });
+
+  it("does not remove, edit or assign another household's task", async () => {
+    const [{ id: otherHome }] = (await db.insert(household).values({ name: "Annat" }).returning({ id: household.id })) as [{ id: string }];
+    const [f] = await db.insert(floor).values({ householdId: otherHome, name: "1", position: 1 }).returning({ id: floor.id });
+    const [r] = await db.insert(room).values({ householdId: otherHome, floorId: f!.id, name: "Kök" }).returning({ id: room.id });
+    const [c] = await db.insert(chore).values({ householdId: otherHome, roomId: r!.id, title: "Främmande" }).returning({ id: chore.id });
+    const [i] = await db.insert(choreInstance).values({ choreId: c!.id, householdId: otherHome }).returning({ id: choreInstance.id });
+    const mine = await seedKitchen();
+    const attempts: [string, Record<string, unknown>][] = [
+      ["ta_bort_syssla", { choreId: c!.id }],
+      ["andra_syssla", { instanceId: i!.id, title: "X", roomId: mine, kind: "once" }],
+      ["tilldela_syssla", { id: c!.id, assigneeId: "anna", scope: "varje_gang" }],
+      ["tilldela_syssla", { id: i!.id, assigneeId: "anna", scope: "denna_gang" }],
+    ];
+    for (const [name, args] of attempts) expect((await call("anna", name, args)).isError).toBe(true);
+    const [after] = await db.select().from(chore).where(eq(chore.id, c!.id));
+    expect(after).toMatchObject({ title: "Främmande", archivedAt: null, assigneeId: null });
+  });
+
+  it("refuses an unknown predefined task and someone outside the home", async () => {
+    const roomId = await seedKitchen();
+    const unknown = await call("anna", "skapa_syssla", { title: "X", templateKey: "finns-inte", roomId, kind: "once" });
+    expect(said(unknown)).toBe("Okänd fördefinierad uppgift");
+    const { instanceId } = await createDiska(roomId);
+    const stranger = await call("anna", "tilldela_syssla", { id: instanceId, assigneeId: "nobody", scope: "denna_gang" });
+    expect(stranger.isError).toBe(true);
+    expect(said(stranger)).toBe("Personen finns inte i hemmet");
+  });
+
+  it("refuses an edit from an occurrence ticked off in the meantime", async () => {
+    const roomId = await seedKitchen();
+    const { instanceId } = await createDiska(roomId);
+    await call("anna", "bocka_av_syssla", { instanceId });
+    const r = await call("anna", "andra_syssla", { instanceId, title: "Diska", roomId, kind: "recurring", interval: 1, unit: "day" });
+    expect(r.isError).toBe(true);
+    expect(said(r)).toContain("Någon har bockat av den under tiden");
+  });
+
+  it("says so when undoing an occurrence that is not ticked off", async () => {
+    const roomId = await seedKitchen();
+    const { instanceId } = await createDiska(roomId);
+    const r = await call("anna", "angra_avbockning", { instanceId });
+    expect(r.isError).toBe(true);
+    expect(said(r)).toBe("Den är inte avbockad");
+  });
+
+  it("answers in Swedish, and a child still gets the child text, when the input is malformed", async () => {
+    const bad = await call("anna", "bocka_av_syssla", { instanceId: "inte-ett-id" });
+    expect(bad.isError).toBe(true);
+    expect(said(bad)).toBe("Ogiltigt id. Hämta id:n med visa_sysslor_med_id.");
+    const child = await call("bo", "bocka_av_syssla", { instanceId: "inte-ett-id" });
+    expect(said(child)).toBe("Bara vuxna kan använda Hemmafix via Claude. Be en vuxen i familjen om hjälp.");
+  });
+
   it("tells every other household device that something changed", async () => {
     const roomId = await seedKitchen();
-    const heard = new Promise<string>((resolve) => {
-      void pg.listen(TASKS_CHANNEL, (payload) => resolve(payload));
-    });
-    await call("anna", "skapa_syssla", { title: "Diska", roomId, kind: "once" });
-    expect(await heard).toBe(homeId);
+    let resolveHeard!: (payload: string) => void;
+    const heard = new Promise<string>((resolve) => (resolveHeard = resolve));
+    const listener = await pg.listen(TASKS_CHANNEL, (payload) => resolveHeard(payload));
+    try {
+      await call("anna", "skapa_syssla", { title: "Diska", roomId, kind: "once" });
+      expect(await heard).toBe(homeId);
+    } finally {
+      await listener.unlisten();
+    }
   });
 
   it.each([

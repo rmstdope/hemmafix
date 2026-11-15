@@ -30,7 +30,10 @@ describe("the lookup of ids", () => {
   it("shows ids for open tasks, rooms, family and recent ticks, marking the latest tick", () => {
     const text = formatTaskLookup(
       {
-        open: [{ id: "i1", choreId: "c1", title: "Diska", roomName: "Kök", assigneeName: "Anna", dueDate: "2026-11-15" }],
+        open: [
+          { id: "i1", choreId: "c1", title: "Diska", roomName: "Kök", assigneeName: "Anna", dueDate: "2026-11-15", recurrence: { unit: "week", interval: 2 } },
+          { id: "i4", choreId: "c4", title: "Byt lampa", roomName: null, assigneeName: null, dueDate: null, recurrence: null },
+        ],
         rooms: [{ id: "r1", name: "Kök", floorName: "Plan 1" }],
         members: [{ id: "anna", name: "Anna", role: "adult" }],
         recentlyDone: [
@@ -43,7 +46,8 @@ describe("the lookup of ids", () => {
     expect(text).toBe(
       [
         "Öppna sysslor:",
-        "- Diska – Kök, Anna, Idag (syssla c1, tillfälle i1)",
+        "- Diska – Kök, Anna, Idag (syssla c1, tillfälle i1, kind recurring, interval 2, unit week, dueDate 2026-11-15)",
+        "- Byt lampa – ingen tilldelad, inget datum (syssla c4, tillfälle i4, kind once)",
         "Rum:",
         "- Kök, Plan 1 (id r1)",
         "Familj:",
