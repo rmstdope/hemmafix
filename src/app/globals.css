@@ -2,6 +2,11 @@
 @import "tw-animate-css";
 @import "shadcn/tailwind.css";
 
+/* Not this app, and the Cerebro submodule links back into itself, which loops class detection. */
+@source not "../../.cerebro";
+@source not "../../.claude";
+@source not "../../.github";
+
 @custom-variant dark (&:is(.dark *));
 
 @theme inline {
