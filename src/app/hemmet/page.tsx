@@ -85,7 +85,7 @@ async function HomeSettings() {
           name: c.appName,
           icon: c.icon,
           connectedText: formatConnectedDate(c.connectedAt),
-          lastUsedText: formatLastUsed(c.lastUsedAt, now),
+          lastUsedLine: c.lastUsedAt ? `Senast använd ${formatLastUsed(c.lastUsedAt, now)}` : formatLastUsed(null, now),
         }))}
       />
     </>

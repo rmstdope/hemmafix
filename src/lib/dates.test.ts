@@ -77,6 +77,11 @@ describe("formatLastUsed", () => {
     expect(formatLastUsed(new Date("2026-11-13T18:02:00Z"), now)).toBe("13 nov 2026");
   });
 
+  it("compares Stockholm days across the end of daylight saving time", () => {
+    // 2026-10-25 is 25 hours long in Stockholm; 23:30 the evening before is still "i går".
+    expect(formatLastUsed(new Date("2026-10-24T21:30:00Z"), new Date("2026-10-25T09:00:00Z"))).toBe("i går 23:30");
+  });
+
   it("compares Stockholm days across midnight", () => {
     expect(formatLastUsed(new Date("2026-11-14T23:30:00Z"), new Date("2026-11-15T00:30:00Z"))).toBe("i dag 00:30");
   });

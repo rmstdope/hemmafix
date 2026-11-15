@@ -4,6 +4,7 @@ import { and, eq, gt, inArray, isNull, lt, min, sql } from "drizzle-orm";
 import { db } from "@/db";
 import { appConnectionUse, appToken, membership, oauthClient, oauthRefreshToken } from "@/db/schema";
 import { assertCan } from "@/lib/permissions";
+import { connectionId } from "@/lib/validation";
 import { notifyHouseholdChanged } from "./chores";
 import type { Actor } from "./household";
 
@@ -72,16 +73,17 @@ export async function listConnections(userId: string): Promise<Connection[]> {
  * tokens with them), and with the records that let a token through. Another person's or an
  * unknown id changes nothing, which also makes a second disconnect harmless.
  */
-export async function revokeConnection(actor: Actor, connectionId: string): Promise<void> {
+export async function revokeConnection(actor: Actor, id: string): Promise<void> {
   assertCan(actor, "app:connect");
+  const target = connectionId.parse(id);
   await db.transaction(async (tx) => {
     const deleted = await tx
       .delete(oauthRefreshToken)
-      .where(and(eq(oauthRefreshToken.userId, actor.userId), eq(oauthRefreshToken.authorizationCodeId, connectionId)))
+      .where(and(eq(oauthRefreshToken.userId, actor.userId), eq(oauthRefreshToken.authorizationCodeId, target)))
       .returning({ id: oauthRefreshToken.id });
     if (deleted.length === 0) return;
-    await tx.delete(appToken).where(eq(appToken.connectionId, connectionId));
-    await tx.delete(appConnectionUse).where(eq(appConnectionUse.connectionId, connectionId));
+    await tx.delete(appToken).where(eq(appToken.connectionId, target));
+    await tx.delete(appConnectionUse).where(eq(appConnectionUse.connectionId, target));
   });
 }
 
@@ -134,7 +136,12 @@ export async function onTokenIssued(body: unknown): Promise<void> {
     .from(oauthRefreshToken)
     .where(eq(oauthRefreshToken.token, hashToken(refreshToken)))
     .limit(1);
-  if (!row?.family) return;
+  if (!row?.family) {
+    // Fails closed (the app is refused on /mcp), so make it visible: the refresh token the
+    // provider returned did not match what it stored, e.g. after a change of `storeTokens`.
+    console.error("onTokenIssued: no connection found for the refresh token in a token response");
+    return;
+  }
   await recordToken(claims.jti, row.family, new Date(claims.exp * 1000));
 
   const [m] = await db.select({ householdId: membership.householdId }).from(membership).where(eq(membership.userId, row.userId)).limit(1);

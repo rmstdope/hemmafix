@@ -123,6 +123,10 @@ describe("revoking a connection", () => {
     expect(await listConnections("bo")).toHaveLength(1);
   });
 
+  it("rejects an id that is not a string", async () => {
+    await expect(revokeConnection(adult("anna"), 42 as unknown as string)).rejects.toThrow();
+  });
+
   it("is refused for a child", async () => {
     await expect(revokeConnection({ userId: "bo", householdId: "h", role: "child" }, "x")).rejects.toThrow("Det här får bara vuxna göra.");
   });

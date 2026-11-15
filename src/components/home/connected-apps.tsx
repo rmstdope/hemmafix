@@ -10,7 +10,8 @@ export type ConnectedApp = {
   name: string;
   icon: string | null;
   connectedText: string;
-  lastUsedText: string;
+  /** The whole line: "Senast använd i dag 08:14" or "Inte använd ännu". */
+  lastUsedLine: string;
 };
 
 /** Only an https address is loaded as an icon: it is chosen by the app, so it is untrusted. */
@@ -66,7 +67,8 @@ export function ConnectedApps({ apps }: { apps: ConnectedApp[] }) {
     const app = asking;
     if (!app) return;
     startTransition(async () => {
-      const result = await disconnectApp(app.id);
+      // A thrown action (network or database failure) is a failed disconnect like any other.
+      const result = await disconnectApp(app.id).catch(() => ({ ok: false }));
       if (result.ok) focusWhenLengthIs.current = apps.length - 1;
       setAsking(null);
       if (result.ok) {
@@ -97,9 +99,7 @@ export function ConnectedApps({ apps }: { apps: ConnectedApp[] }) {
                 <div className="min-w-0 flex-1">
                   <p className="break-words">{app.name}</p>
                   <p className="text-sm text-muted-foreground">Ansluten {app.connectedText}</p>
-                  <p className="text-sm text-muted-foreground">
-                    {app.lastUsedText === "Inte använd ännu" ? app.lastUsedText : `Senast använd ${app.lastUsedText}`}
-                  </p>
+                  <p className="text-sm text-muted-foreground">{app.lastUsedLine}</p>
                 </div>
                 <button
                   type="button"
@@ -128,10 +128,10 @@ export function ConnectedApps({ apps }: { apps: ConnectedApp[] }) {
         onClick={(e) => {
           if (e.target === dialogRef.current) close();
         }}
-        className="m-auto w-[calc(100%-2rem)] max-w-sm rounded-2xl bg-background p-5 text-foreground shadow-lg backdrop:bg-black/45"
+        className="m-auto w-[calc(100%-2rem)] max-w-sm rounded-2xl bg-background p-0 text-foreground shadow-lg backdrop:bg-black/45"
       >
         {asking && (
-          <>
+          <div className="p-5">
             <h3 id="disconnect-heading" className="text-lg font-semibold break-words">
               Koppla från {asking.name}?
             </h3>
@@ -157,7 +157,7 @@ export function ConnectedApps({ apps }: { apps: ConnectedApp[] }) {
                 Avbryt
               </button>
             </div>
-          </>
+          </div>
         )}
       </dialog>
     </section>

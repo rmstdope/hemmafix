@@ -1,5 +1,5 @@
 import { createHash, randomBytes } from "node:crypto";
-import type { Page } from "@playwright/test";
+import type { APIRequestContext, Page } from "@playwright/test";
 import { expect, test } from "./support/test";
 import { E2E_BASE_URL } from "./support/env";
 import { logIn, seedConnection, seedOAuthClient } from "./support/family";
@@ -69,6 +69,9 @@ test("Avbryt, Escape and a tap outside leave the app connected and return focus"
     await expect(dialog).toBeVisible();
     await expect(dialog).toContainText("Claude kan inte längre se eller ändra hemmet. För att ansluta igen måste du godkänna på nytt.");
     await expect(page.getByRole("button", { name: "Avbryt" })).toBeFocused();
+    // A tap on the box itself, even at its edge, does not close it.
+    await dialog.click({ position: { x: 3, y: 3 } });
+    await expect(dialog).toBeVisible();
     await close();
     await expect(dialog).toBeHidden();
     await expect(opener).toBeFocused();
@@ -113,9 +116,10 @@ test("a child never sees the section", async ({ page, context }) => {
   await expect(page.getByRole("heading", { name: "Anslutna appar" })).toHaveCount(0);
 });
 
-test("a connected app is listed, and stops working at once when it is disconnected", async ({ page, context, request }) => {
-  await logIn(context, "anna", "adult");
-  const REDIRECT_URI = "https://claude.ai/api/mcp/auth_callback";
+const REDIRECT_URI = "https://claude.ai/api/mcp/auth_callback";
+
+/** Claude's side: the adult approves in `page`, and Claude trades the code for its tokens. */
+async function connectClaude(page: Page, request: APIRequestContext) {
   const clientId = await seedOAuthClient({ name: "Claude", redirectUri: REDIRECT_URI });
   const verifier = randomBytes(32).toString("base64url");
   const url = new URL("/api/auth/oauth2/authorize", E2E_BASE_URL);
@@ -134,35 +138,88 @@ test("a connected app is listed, and stops working at once when it is disconnect
     sent.push(new URL(route.request().url()));
     return route.fulfill({ status: 200, contentType: "text/html", body: "Claude" });
   });
-  await page.goto(url.toString());
-  await page.getByRole("button", { name: "Godkänn" }).click();
-  await expect.poll(() => sent.length).toBe(1);
-  const token = await request.post("/api/auth/oauth2/token", {
-    form: {
-      grant_type: "authorization_code",
-      code: sent[0]!.searchParams.get("code")!,
-      code_verifier: verifier,
-      client_id: clientId,
-      redirect_uri: REDIRECT_URI,
-      resource: `${E2E_BASE_URL}/mcp`,
+  return {
+    clientId,
+    async approve() {
+      await page.goto(url.toString());
+      await page.getByRole("button", { name: "Godkänn" }).click();
+      await expect.poll(() => sent.length).toBe(1);
+      const token = await request.post("/api/auth/oauth2/token", {
+        form: {
+          grant_type: "authorization_code",
+          code: sent[0]!.searchParams.get("code")!,
+          code_verifier: verifier,
+          client_id: clientId,
+          redirect_uri: REDIRECT_URI,
+          resource: `${E2E_BASE_URL}/mcp`,
+        },
+      });
+      return (await token.json()) as { access_token: string; refresh_token: string };
     },
+    async refresh(refreshToken: string) {
+      const token = await request.post("/api/auth/oauth2/token", {
+        form: { grant_type: "refresh_token", refresh_token: refreshToken, client_id: clientId, resource: `${E2E_BASE_URL}/mcp` },
+      });
+      expect(token.status(), await token.text()).toBe(200);
+      return (await token.json()) as { access_token: string; refresh_token: string };
+    },
+  };
+}
+
+const callMcp = (request: APIRequestContext, accessToken: string) =>
+  request.post("/mcp", {
+    headers: { authorization: `Bearer ${accessToken}`, accept: "application/json, text/event-stream" },
+    data: { jsonrpc: "2.0", id: 1, method: "tools/call", params: { name: "lista_oppna_sysslor", arguments: {} } },
   });
-  const { access_token } = await token.json();
-  const callMcp = () =>
-    request.post("/mcp", {
-      headers: { authorization: `Bearer ${access_token}`, accept: "application/json, text/event-stream" },
-      data: { jsonrpc: "2.0", id: 1, method: "tools/call", params: { name: "lista_oppna_sysslor", arguments: {} } },
-    });
-  const first = await callMcp();
+
+const disconnectClaude = async (page: Page) => {
+  await page.getByRole("button", { name: "Koppla från Claude" }).click();
+  await page.getByRole("dialog").getByRole("button", { name: "Koppla från", exact: true }).click();
+  await expect(page.getByText("Claude är frånkopplad")).toBeVisible();
+};
+
+test("a connected app is listed, and stops working at once when it is disconnected", async ({ page, context, request }) => {
+  await logIn(context, "anna", "adult");
+  const claude = await connectClaude(page, request);
+  const { access_token } = await claude.approve();
+  const first = await callMcp(request, access_token);
   expect(first.status(), await first.text()).toBe(200);
 
   await openHome(page);
   await expect(section(page).getByRole("listitem")).toHaveCount(1);
   await expect(section(page).getByRole("listitem")).toContainText("Senast använd i dag");
 
-  await page.getByRole("button", { name: "Koppla från Claude" }).click();
-  await page.getByRole("dialog").getByRole("button", { name: "Koppla från", exact: true }).click();
-  await expect(page.getByText("Claude är frånkopplad")).toBeVisible();
+  await disconnectClaude(page);
 
-  expect((await callMcp()).status()).toBe(401);
+  expect((await callMcp(request, access_token)).status()).toBe(401);
+});
+
+test("an app keeps working after it refreshes its token, and a disconnect stops the refreshed token too", async ({ page, context, request }) => {
+  await logIn(context, "anna", "adult");
+  const claude = await connectClaude(page, request);
+  const { refresh_token } = await claude.approve();
+
+  const refreshed = await claude.refresh(refresh_token);
+  const call = await callMcp(request, refreshed.access_token);
+  expect(call.status(), await call.text()).toBe(200);
+
+  await openHome(page);
+  await expect(section(page).getByRole("listitem")).toHaveCount(1);
+  await disconnectClaude(page);
+
+  expect((await callMcp(request, refreshed.access_token)).status()).toBe(401);
+});
+
+test("a new connection shows up on an open Hemmet page without a reload", async ({ page, context, request, browser }) => {
+  await logIn(context, "anna", "adult");
+  await openHome(page);
+  await expect(page.getByText("Du har inte anslutit några appar.")).toBeVisible();
+
+  const other = await browser.newContext();
+  await other.addCookies(await context.cookies());
+  const claude = await connectClaude(await other.newPage(), request);
+  await claude.approve();
+
+  await expect(section(page).getByRole("listitem")).toContainText("Claude");
+  await other.close();
 });
