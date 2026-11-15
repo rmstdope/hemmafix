@@ -65,3 +65,25 @@ describe("0001: admin/member become adult/child", () => {
     ]);
   });
 });
+
+describe("0002–0003: the flat task list makes way for chores in rooms", () => {
+  beforeEach(reset);
+
+  it("drops the old tasks and keeps households, people and rooms", async () => {
+    await migrateUpTo(sql, "0001_flat_toxin");
+    const [home] = await sql`insert into household (name) values ('Hemma') returning id`;
+    await sql`insert into "user" (id, name, email, email_verified) values ('a', 'Anna', 'a@example.com', true)`;
+    await sql`insert into membership (user_id, household_id, role) values ('a', ${home!.id}, 'adult')`;
+    await sql`insert into room (household_id, name) values (${home!.id}, 'Kök')`;
+    await sql`insert into task (household_id, title) values (${home!.id}, 'Gammal uppgift')`;
+
+    await migrateUpTo(sql);
+
+    const tables = await sql`select table_name from information_schema.tables where table_schema = 'public' order by 1`;
+    expect(tables.map((t) => t.table_name)).not.toContain("task");
+    expect(tables.map((t) => t.table_name)).toEqual(expect.arrayContaining(["chore", "chore_instance"]));
+    expect(await sql`select count(*)::int as n from room`).toEqual([{ n: 1 }]);
+    expect(await sql`select count(*)::int as n from membership`).toEqual([{ n: 1 }]);
+  });
+});
+

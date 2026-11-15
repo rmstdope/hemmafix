@@ -1,0 +1,354 @@
+import "server-only";
+import { aliasedTable, and, asc, desc, eq, gt, isNotNull, isNull, ne, sql, type SQL } from "drizzle-orm";
+import { db, pg } from "@/db";
+import { chore, choreInstance, household, membership, room, user } from "@/db/schema";
+import { todayIso } from "@/lib/dates";
+import { UserError } from "@/lib/errors";
+import { assertCan, can } from "@/lib/permissions";
+import { nextDueDate, type Recurrence } from "@/lib/recurrence";
+import {
+  assigneeIdInput,
+  choreId as choreIdInput,
+  createChoreInput,
+  instanceId as instanceIdInput,
+  type BoardFilter,
+} from "@/lib/validation";
+import type { Actor } from "./household";
+
+export const TASKS_CHANNEL = "hemmafix_tasks";
+
+/** Tell every open browser in the household that something changed. */
+export async function notifyHouseholdChanged(householdId: string) {
+  await pg.notify(TASKS_CHANNEL, householdId);
+}
+
+export type Member = { id: string; name: string; image: string | null };
+
+export async function getHousehold(householdId: string) {
+  const [h] = await db.select().from(household).where(eq(household.id, householdId)).limit(1);
+  return h ?? null;
+}
+
+export async function listMembers(householdId: string): Promise<Member[]> {
+  return db
+    .select({ id: user.id, name: user.name, image: user.image })
+    .from(membership)
+    .innerJoin(user, eq(user.id, membership.userId))
+    .where(eq(membership.householdId, householdId))
+    .orderBy(asc(user.name));
+}
+
+type Tx = Parameters<Parameters<typeof db.transaction>[0]>[0];
+
+async function assertMember(tx: Tx | typeof db, householdId: string, userId: string | null) {
+  if (!userId) return;
+  const [m] = await tx
+    .select({ userId: membership.userId })
+    .from(membership)
+    .where(and(eq(membership.householdId, householdId), eq(membership.userId, userId)));
+  if (!m) throw new UserError("Personen finns inte i hemmet");
+}
+
+const recurrenceOf = (c: { recurrenceUnit: Recurrence["unit"] | null; recurrenceInterval: number | null }) =>
+  c.recurrenceUnit && c.recurrenceInterval ? { unit: c.recurrenceUnit, interval: c.recurrenceInterval } : null;
+
+// ---------------------------------------------------------------------------
+// Creating, assigning and deleting tasks (adults)
+// ---------------------------------------------------------------------------
+
+/** Creates a task in a room of the actor's home, with its first instance. */
+export async function createChore(actor: Actor, raw: unknown) {
+  assertCan(actor, "task:create");
+  const input = createChoreInput.parse(raw);
+
+  return db.transaction(async (tx) => {
+    const [r] = await tx
+      .select({ id: room.id })
+      .from(room)
+      .where(and(eq(room.id, input.roomId), eq(room.householdId, actor.householdId)));
+    if (!r) throw new UserError("Rummet finns inte i hemmet");
+    await assertMember(tx, actor.householdId, input.assigneeId);
+
+    const [created] = await tx
+      .insert(chore)
+      .values({
+        householdId: actor.householdId,
+        roomId: input.roomId,
+        title: input.title,
+        templateKey: input.templateKey,
+        recurrenceUnit: input.recurrence?.unit ?? null,
+        recurrenceInterval: input.recurrence?.interval ?? null,
+        assigneeId: input.assigneeId,
+        createdById: actor.userId,
+      })
+      .returning({ id: chore.id });
+    await tx.insert(choreInstance).values({
+      choreId: created!.id,
+      householdId: actor.householdId,
+      dueDate: input.firstDueDate ?? (input.recurrence ? todayIso() : null),
+      assigneeId: input.assigneeId,
+    });
+    return created!;
+  });
+}
+
+/** Assigns one open instance (this time only). */
+export async function assignInstance(actor: Actor, id: string, assigneeId: string | null) {
+  assertCan(actor, "task:assign");
+  const who = assigneeIdInput.parse(assigneeId);
+  await assertMember(db, actor.householdId, who);
+  const updated = await db
+    .update(choreInstance)
+    .set({ assigneeId: who })
+    .where(
+      and(
+        eq(choreInstance.id, instanceIdInput.parse(id)),
+        eq(choreInstance.householdId, actor.householdId),
+        isNull(choreInstance.completedAt),
+      ),
+    )
+    .returning({ id: choreInstance.id });
+  if (updated.length === 0) throw new UserError("Uppgiften finns inte längre");
+}
+
+/** Assigns every instance of a task: the open one and all that come after it. */
+export async function assignChore(actor: Actor, id: string, assigneeId: string | null) {
+  assertCan(actor, "task:assign");
+  const who = assigneeIdInput.parse(assigneeId);
+  const target = choreIdInput.parse(id);
+  await db.transaction(async (tx) => {
+    await assertMember(tx, actor.householdId, who);
+    const updated = await tx
+      .update(chore)
+      .set({ assigneeId: who })
+      .where(and(eq(chore.id, target), eq(chore.householdId, actor.householdId), isNull(chore.archivedAt)))
+      .returning({ id: chore.id });
+    if (updated.length === 0) throw new UserError("Uppgiften finns inte längre");
+    await tx
+      .update(choreInstance)
+      .set({ assigneeId: who })
+      .where(and(eq(choreInstance.choreId, target), isNull(choreInstance.completedAt)));
+  });
+}
+
+/** Removes a task from the board. What has been done stays in the history. */
+export async function deleteChore(actor: Actor, id: string) {
+  assertCan(actor, "task:delete");
+  const target = choreIdInput.parse(id);
+  await db.transaction(async (tx) => {
+    const archived = await tx
+      .update(chore)
+      .set({ archivedAt: new Date() })
+      .where(and(eq(chore.id, target), eq(chore.householdId, actor.householdId), isNull(chore.archivedAt)))
+      .returning({ id: chore.id });
+    if (archived.length === 0) return;
+    await tx.delete(choreInstance).where(and(eq(choreInstance.choreId, target), isNull(choreInstance.completedAt)));
+  });
+}
+
+/** Whether a room still has tasks on the board (it cannot be deleted then). */
+export async function roomHasActiveChores(householdId: string, roomId: string) {
+  const [row] = await db
+    .select({ id: chore.id })
+    .from(chore)
+    .where(and(eq(chore.householdId, householdId), eq(chore.roomId, roomId), isNull(chore.archivedAt)))
+    .limit(1);
+  return !!row;
+}
+
+// ---------------------------------------------------------------------------
+// Ticking off (everyone)
+// ---------------------------------------------------------------------------
+
+/**
+ * Ticks off an open instance. For a recurring task the next instance is created at once,
+ * due one interval after today, and assigned to whoever does the task every time.
+ */
+export async function completeInstance(actor: Actor, id: string) {
+  assertCan(actor, "task:complete");
+  const target = instanceIdInput.parse(id);
+
+  await db.transaction(async (tx) => {
+    // Lock the instance and its task: two people ticking at the same moment must not both
+    // create a next instance, and a tick and an undo of the same task take turns.
+    const [row] = await tx
+      .select({
+        completedAt: choreInstance.completedAt,
+        choreId: choreInstance.choreId,
+        recurrenceUnit: chore.recurrenceUnit,
+        recurrenceInterval: chore.recurrenceInterval,
+        archivedAt: chore.archivedAt,
+        seriesAssigneeId: chore.assigneeId,
+      })
+      .from(choreInstance)
+      .innerJoin(chore, eq(chore.id, choreInstance.choreId))
+      .where(and(eq(choreInstance.id, target), eq(choreInstance.householdId, actor.householdId)))
+      .for("update");
+    if (!row || row.archivedAt) throw new UserError("Uppgiften finns inte längre");
+    if (row.completedAt) throw new UserError("Någon har redan bockat av den");
+
+    await tx
+      .update(choreInstance)
+      .set({ completedAt: new Date(), completedById: actor.userId })
+      .where(eq(choreInstance.id, target));
+
+    const recurrence = recurrenceOf(row);
+    if (recurrence) {
+      await tx.insert(choreInstance).values({
+        choreId: row.choreId,
+        householdId: actor.householdId,
+        dueDate: nextDueDate(todayIso(), recurrence),
+        assigneeId: row.seriesAssigneeId,
+      });
+    }
+  });
+}
+
+/**
+ * Undoes a tick: the instance is open again, and the next instance that the tick created
+ * is removed. Only a task's latest tick can be undone; children may undo only their own.
+ */
+export async function uncompleteInstance(actor: Actor, id: string) {
+  const target = instanceIdInput.parse(id);
+
+  await db.transaction(async (tx) => {
+    const [row] = await tx
+      .select({
+        choreId: choreInstance.choreId,
+        completedAt: choreInstance.completedAt,
+        completedById: choreInstance.completedById,
+        archivedAt: chore.archivedAt,
+      })
+      .from(choreInstance)
+      .innerJoin(chore, eq(chore.id, choreInstance.choreId))
+      .where(and(eq(choreInstance.id, target), eq(choreInstance.householdId, actor.householdId)))
+      // Lock the task too, so a tick and an undo of the same task take turns.
+      .for("update");
+    if (!row || row.archivedAt) throw new UserError("Uppgiften finns inte längre");
+    if (!row.completedAt) return;
+    if (row.completedById !== actor.userId) assertCan(actor, "task:uncomplete-others");
+
+    const [later] = await tx
+      .select({ id: choreInstance.id })
+      .from(choreInstance)
+      .where(
+        and(
+          eq(choreInstance.choreId, row.choreId),
+          ne(choreInstance.id, target),
+          isNotNull(choreInstance.completedAt),
+          gt(choreInstance.completedAt, row.completedAt),
+        ),
+      )
+      .limit(1);
+    if (later) throw new UserError("Bara den senaste avbockningen kan ångras");
+
+    await tx
+      .delete(choreInstance)
+      .where(and(eq(choreInstance.choreId, row.choreId), isNull(choreInstance.completedAt)));
+    await tx
+      .update(choreInstance)
+      .set({ completedAt: null, completedById: null })
+      .where(eq(choreInstance.id, target));
+  });
+}
+
+// ---------------------------------------------------------------------------
+// The board
+// ---------------------------------------------------------------------------
+
+export type InstanceView = {
+  id: string;
+  choreId: string;
+  title: string;
+  roomId: string | null;
+  roomName: string | null;
+  dueDate: string | null;
+  assigneeId: string | null;
+  seriesAssigneeId: string | null;
+  recurrence: Recurrence | null;
+  completedAt: Date | null;
+  completedById: string | null;
+  completedByName: string | null;
+};
+
+const completer = aliasedTable(user, "completer");
+
+const instanceColumns = {
+  id: choreInstance.id,
+  choreId: chore.id,
+  title: chore.title,
+  roomId: room.id,
+  roomName: room.name,
+  dueDate: choreInstance.dueDate,
+  assigneeId: choreInstance.assigneeId,
+  seriesAssigneeId: chore.assigneeId,
+  recurrenceUnit: chore.recurrenceUnit,
+  recurrenceInterval: chore.recurrenceInterval,
+  completedAt: choreInstance.completedAt,
+  completedById: choreInstance.completedById,
+  completedByName: completer.name,
+};
+
+type Row = { [K in keyof typeof instanceColumns]: unknown } & {
+  recurrenceUnit: Recurrence["unit"] | null;
+  recurrenceInterval: number | null;
+};
+
+function toView({ recurrenceUnit, recurrenceInterval, ...rest }: Row): InstanceView {
+  return { ...(rest as Omit<InstanceView, "recurrence">), recurrence: recurrenceOf({ recurrenceUnit, recurrenceInterval }) };
+}
+
+function selectInstances(where: SQL | undefined) {
+  return db
+    .select(instanceColumns)
+    .from(choreInstance)
+    .innerJoin(chore, eq(chore.id, choreInstance.choreId))
+    .leftJoin(room, eq(room.id, chore.roomId))
+    .leftJoin(completer, eq(completer.id, choreInstance.completedById))
+    .where(where);
+}
+
+/** What is left to do, filtered on room and on who it is assigned to. */
+export async function listOpenInstances(actor: Actor, filter: BoardFilter): Promise<InstanceView[]> {
+  assertCan(actor, "task:view");
+  const who =
+    filter.who === "mine"
+      ? eq(choreInstance.assigneeId, actor.userId)
+      : filter.who === "none"
+        ? isNull(choreInstance.assigneeId)
+        : filter.who
+          ? eq(choreInstance.assigneeId, filter.who)
+          : undefined;
+
+  const rows = await selectInstances(
+    and(
+      eq(choreInstance.householdId, actor.householdId),
+      isNull(choreInstance.completedAt),
+      isNull(chore.archivedAt),
+      filter.roomId ? eq(chore.roomId, filter.roomId) : undefined,
+      who,
+    ),
+  ).orderBy(sql`${choreInstance.dueDate} asc nulls last`, asc(choreInstance.createdAt), asc(choreInstance.id));
+  return rows.map((r) => toView(r as Row));
+}
+
+/** Ticked off in the last week, newest first, so a mistaken tick can be undone. */
+export async function listRecentlyCompleted(actor: Actor): Promise<InstanceView[]> {
+  assertCan(actor, "task:view");
+  const rows = await selectInstances(
+    and(
+      eq(choreInstance.householdId, actor.householdId),
+      isNull(chore.archivedAt),
+      isNotNull(choreInstance.completedAt),
+      gt(choreInstance.completedAt, sql`now() - interval '7 days'`),
+    ),
+  )
+    .orderBy(desc(choreInstance.completedAt))
+    .limit(20);
+  return rows.map((r) => toView(r as Row));
+}
+
+/** Whether the actor may undo this tick (the UI shows the undo button only then). */
+export function canUndo(actor: Pick<Actor, "role" | "userId">, instance: Pick<InstanceView, "completedById">) {
+  return instance.completedById === actor.userId || can(actor.role, "task:uncomplete-others");
+}

@@ -1,6 +1,6 @@
 import { pg } from "@/db";
 import { getCurrentMember } from "@/server/dal";
-import { TASKS_CHANNEL } from "@/server/tasks";
+import { TASKS_CHANNEL } from "@/server/chores";
 
 type Closer = () => void;
 const globalForStreams = globalThis as unknown as { sseClosers?: Set<Closer> };

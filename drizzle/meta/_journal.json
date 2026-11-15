@@ -15,6 +15,20 @@
       "when": 1794699186943,
       "tag": "0001_flat_toxin",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1794700460755,
+      "tag": "0002_drop_task",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1794700461171,
+      "tag": "0003_chores",
+      "breakpoints": true
     }
   ]
 }

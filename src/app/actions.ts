@@ -1,16 +1,12 @@
 "use server";
 
-import { and, eq } from "drizzle-orm";
 import { refresh } from "next/cache";
 import { z } from "zod";
-import { db } from "@/db";
-import { task } from "@/db/schema";
 import { UserError } from "@/lib/errors";
-import { assertCan, type Role } from "@/lib/permissions";
-import { assigneeIdInput, completedFlag, createTaskInput, taskId } from "@/lib/validation";
+import type { Role } from "@/lib/permissions";
 import { getCurrentMember, type CurrentMember } from "@/server/dal";
 import * as home from "@/server/household";
-import { isMember, notifyTasksChanged } from "@/server/tasks";
+import * as chores from "@/server/chores";
 
 export type ActionState = { ok: boolean; error?: string };
 
@@ -31,24 +27,9 @@ async function act(fn: (member: CurrentMember) => Promise<unknown>): Promise<Act
     if (e instanceof z.ZodError) return { ok: false, error: e.issues[0]?.message ?? "Ogiltiga uppgifter" };
     throw e;
   }
-  await notifyTasksChanged(member.householdId);
+  await chores.notifyHouseholdChanged(member.householdId);
   refresh();
   return { ok: true };
-}
-
-/**
- * For actions whose callers only need to know that they failed. Next hides a thrown error's
- * message in production, so actions with a message worth showing return `act`'s state instead.
- */
-async function actOrThrow(fn: (member: CurrentMember) => Promise<unknown>) {
-  const result = await act(fn);
-  if (!result.ok) throw new Error(result.error);
-}
-
-async function assertAssignee(householdId: string, assigneeId: string | null) {
-  if (assigneeId && !(await isMember(householdId, assigneeId))) {
-    throw new UserError("Personen finns inte i hushållet");
-  }
 }
 
 // ---------------------------------------------------------------------------
@@ -72,48 +53,29 @@ export async function setMemberRole(userId: string, role: Role) {
 }
 
 // ---------------------------------------------------------------------------
-// Tasks
+// Tasks (who may do what is checked in src/server/chores.ts)
 // ---------------------------------------------------------------------------
 
-export async function createTask(_prev: ActionState, formData: FormData): Promise<ActionState> {
-  return act(async (member) => {
-    assertCan(member, "task:create");
-    const input = createTaskInput.parse(Object.fromEntries(formData));
-    await assertAssignee(member.householdId, input.assigneeId);
-    await db.insert(task).values({ ...input, householdId: member.householdId, createdById: member.userId });
-  });
+export async function createChore(_prev: ActionState, formData: FormData): Promise<ActionState> {
+  return act((m) => chores.createChore(m, Object.fromEntries(formData)));
 }
 
-export async function setTaskCompleted(id: string, completed: boolean) {
-  await actOrThrow(async (member) => {
-    assertCan(member, "task:complete");
-    const isCompleted = completedFlag.parse(completed);
-    await db
-      .update(task)
-      .set(
-        isCompleted
-          ? { completedAt: new Date(), completedById: member.userId }
-          : { completedAt: null, completedById: null },
-      )
-      .where(and(eq(task.id, taskId.parse(id)), eq(task.householdId, member.householdId)));
-  });
+export async function completeInstance(id: string) {
+  return act((m) => chores.completeInstance(m, id));
 }
 
-export async function assignTask(id: string, assigneeIdArg: string | null) {
-  await actOrThrow(async (member) => {
-    assertCan(member, "task:assign");
-    const assigneeId = assigneeIdInput.parse(assigneeIdArg);
-    await assertAssignee(member.householdId, assigneeId);
-    await db
-      .update(task)
-      .set({ assigneeId })
-      .where(and(eq(task.id, taskId.parse(id)), eq(task.householdId, member.householdId)));
-  });
+export async function uncompleteInstance(id: string) {
+  return act((m) => chores.uncompleteInstance(m, id));
 }
 
-export async function deleteTask(id: string) {
-  await actOrThrow(async (member) => {
-    assertCan(member, "task:delete");
-    await db.delete(task).where(and(eq(task.id, taskId.parse(id)), eq(task.householdId, member.householdId)));
-  });
+export async function assignInstance(id: string, assigneeId: string | null) {
+  return act((m) => chores.assignInstance(m, id, assigneeId));
+}
+
+export async function assignChore(id: string, assigneeId: string | null) {
+  return act((m) => chores.assignChore(m, id, assigneeId));
+}
+
+export async function deleteChore(id: string) {
+  return act((m) => chores.deleteChore(m, id));
 }

@@ -1,8 +1,10 @@
 import { sql } from "drizzle-orm";
 import {
   boolean,
+  check,
   date,
   index,
+  integer,
   pgEnum,
   pgTable,
   primaryKey,
@@ -12,6 +14,7 @@ import {
   uuid,
 } from "drizzle-orm/pg-core";
 import { ROLES } from "@/lib/permissions";
+import { MAX_INTERVAL, RECURRENCE_UNITS } from "@/lib/recurrence";
 
 const timestamps = {
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
@@ -129,25 +132,69 @@ export const room = pgTable(
   (t) => [uniqueIndex("room_household_name_idx").on(t.householdId, sql`lower(${t.name})`)],
 );
 
-export const task = pgTable(
-  "task",
+export const recurrenceUnit = pgEnum("recurrence_unit", RECURRENCE_UNITS);
+
+/**
+ * A task: what to do, in which room, and whether it recurs. Each time it is to be done is a
+ * `chore_instance`. Deleting a task archives it, so what people did stays in the history.
+ */
+export const chore = pgTable(
+  "chore",
   {
     id: uuid("id").primaryKey().defaultRandom(),
     householdId: uuid("household_id")
       .notNull()
       .references(() => household.id, { onDelete: "cascade" }),
+    // Required while the task is active; a room can only be deleted once its active tasks
+    // are gone, and archived tasks then keep their history without a room.
+    roomId: uuid("room_id").references(() => room.id, { onDelete: "set null" }),
     title: text("title").notNull(),
-    notes: text("notes"),
+    /** Set when the task was made from a predefined one (src/lib/chore-templates.ts). */
+    templateKey: text("template_key"),
+    /** Both null for a one-off task. */
+    recurrenceUnit: recurrenceUnit("recurrence_unit"),
+    recurrenceInterval: integer("recurrence_interval"),
+    /** Who does it every time; copied to each new instance. */
     assigneeId: text("assignee_id").references(() => user.id, { onDelete: "set null" }),
     createdById: text("created_by_id").references(() => user.id, { onDelete: "set null" }),
+    archivedAt: timestamp("archived_at", { withTimezone: true }),
+    ...timestamps,
+  },
+  (t) => [
+    index("chore_household_idx").on(t.householdId),
+    check(
+      "chore_recurrence_check",
+      sql`(${t.recurrenceUnit} is null and ${t.recurrenceInterval} is null) or (${t.recurrenceUnit} is not null and ${t.recurrenceInterval} between 1 and ${sql.raw(String(MAX_INTERVAL))})`,
+    ),
+    check("chore_active_has_room_check", sql`${t.archivedAt} is not null or ${t.roomId} is not null`),
+  ],
+);
+
+/** One time a task is to be done. A task has at most one open instance at a time. */
+export const choreInstance = pgTable(
+  "chore_instance",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    choreId: uuid("chore_id")
+      .notNull()
+      .references(() => chore.id, { onDelete: "cascade" }),
+    householdId: uuid("household_id")
+      .notNull()
+      .references(() => household.id, { onDelete: "cascade" }),
     dueDate: date("due_date", { mode: "string" }),
+    assigneeId: text("assignee_id").references(() => user.id, { onDelete: "set null" }),
     completedAt: timestamp("completed_at", { withTimezone: true }),
     completedById: text("completed_by_id").references(() => user.id, { onDelete: "set null" }),
     ...timestamps,
   },
-  (t) => [index("task_household_open_idx").on(t.householdId, t.completedAt)],
+  (t) => [
+    uniqueIndex("chore_instance_one_open_idx").on(t.choreId).where(sql`${t.completedAt} is null`),
+    index("chore_instance_household_open_idx").on(t.householdId, t.completedAt),
+    index("chore_instance_completed_by_idx").on(t.completedById, t.completedAt),
+  ],
 );
 
-export type Task = typeof task.$inferSelect;
+export type Chore = typeof chore.$inferSelect;
+export type ChoreInstance = typeof choreInstance.$inferSelect;
 export type Room = typeof room.$inferSelect;
 export type MemberRole = (typeof memberRole.enumValues)[number];

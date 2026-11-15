@@ -9,7 +9,7 @@ import { RoomList } from "@/components/home/room-list";
 import { can } from "@/lib/permissions";
 import { requireMember } from "@/server/dal";
 import { listMembersWithRoles, listRooms } from "@/server/household";
-import { getHousehold } from "@/server/tasks";
+import { getHousehold } from "@/server/chores";
 
 export const metadata = { title: "Hemmet – Hemmafix" };
 

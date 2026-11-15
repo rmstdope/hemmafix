@@ -1,0 +1,190 @@
+"use client";
+
+import { Check, ChevronDown, Repeat, RotateCcw, Trash2 } from "lucide-react";
+import { useOptimistic, useState, useTransition } from "react";
+import { toast } from "sonner";
+import {
+  assignChore,
+  assignInstance,
+  completeInstance,
+  deleteChore,
+  uncompleteInstance,
+  type ActionState,
+} from "@/app/actions";
+import { Button } from "@/components/ui/button";
+import { formatDue } from "@/lib/dates";
+import { formatRecurrence } from "@/lib/recurrence";
+import { cn } from "@/lib/utils";
+import type { InstanceView, Member } from "@/server/chores";
+
+const selectClass = "h-10 truncate rounded-lg border border-input bg-transparent px-2 text-sm dark:bg-input/30";
+
+export function ChoreItem({
+  instance: t,
+  members,
+  currentUserId,
+  today,
+  canManage,
+  canUndo,
+}: {
+  instance: InstanceView;
+  members: Member[];
+  currentUserId: string;
+  /** YYYY-MM-DD in the household's time zone, from the server. */
+  today: string;
+  /** Adults assign and delete. The server enforces the same rules. */
+  canManage: boolean;
+  /** Whether this person may undo the tick (their own, or anyone's for adults). */
+  canUndo: boolean;
+}) {
+  const [pending, startTransition] = useTransition();
+  const [assigneeId, setOptimisticAssignee] = useOptimistic(t.assigneeId);
+  const [hidden, setHidden] = useOptimistic(false);
+  const [expanded, setExpanded] = useState(false);
+  const completed = t.completedAt !== null;
+  const due = completed ? null : formatDue(t.dueDate, today);
+  const firstName = (id: string | null) =>
+    id === currentUserId ? "Jag" : (members.find((m) => m.id === id)?.name.split(" ")[0] ?? "");
+
+  const run = (fn: () => Promise<ActionState>, optimistic?: () => void, success?: string) =>
+    startTransition(async () => {
+      optimistic?.();
+      const result = await fn();
+      if (result.error) toast.error(result.error);
+      else if (success) toast.success(success);
+    });
+
+  if (hidden) return null;
+
+  return (
+    <li className={cn("rounded-xl border bg-card transition-opacity", pending && "opacity-60")}>
+      <div className="flex items-center gap-3 px-3 py-2">
+        {completed ? (
+          canUndo ? (
+            <Button
+              variant="secondary"
+              size="icon-lg"
+              className="size-11 shrink-0 rounded-full"
+              aria-label="Ångra klar"
+              onClick={() => run(() => uncompleteInstance(t.id), () => setHidden(true))}
+            >
+              <RotateCcw />
+            </Button>
+          ) : (
+            <span className="flex size-11 shrink-0 items-center justify-center rounded-full bg-secondary" aria-hidden>
+              <Check className="size-4" />
+            </span>
+          )
+        ) : (
+          <Button
+            variant="outline"
+            size="icon-lg"
+            className="size-11 shrink-0 rounded-full"
+            aria-label="Markera som klar"
+            onClick={() => run(() => completeInstance(t.id), () => setHidden(true))}
+          >
+            <Check className="opacity-40" />
+          </Button>
+        )}
+
+        <div className="min-w-0 flex-1">
+          <p className={cn("truncate font-medium", completed && "text-muted-foreground line-through")}>{t.title}</p>
+          <p className="flex flex-wrap items-center gap-x-1 text-xs text-muted-foreground">
+            {t.roomName && <span>{t.roomName}</span>}
+            {due && (
+              <>
+                <span aria-hidden>·</span>
+                <span className={cn(due.overdue && "font-medium text-destructive")}>{due.label}</span>
+              </>
+            )}
+            {t.recurrence && !completed && (
+              <>
+                <span aria-hidden>·</span>
+                <Repeat className="size-3 shrink-0" aria-hidden />
+                <span>{formatRecurrence(t.recurrence)}</span>
+              </>
+            )}
+            {completed && t.completedByName && (
+              <>
+                <span aria-hidden>·</span>
+                <span>Klar av {t.completedById === currentUserId ? "mig" : t.completedByName.split(" ")[0]}</span>
+              </>
+            )}
+          </p>
+        </div>
+
+        {!completed && !canManage && assigneeId && (
+          <span className="shrink-0 text-sm text-muted-foreground">{firstName(assigneeId)}</span>
+        )}
+
+        {!completed && canManage && (
+          <>
+            <select
+              aria-label="Tilldela den här gången"
+              value={assigneeId ?? ""}
+              onChange={(e) => {
+                const next = e.target.value || null;
+                run(() => assignInstance(t.id, next), () => setOptimisticAssignee(next));
+              }}
+              className={cn(selectClass, "max-w-24")}
+            >
+              <option value="">Ingen</option>
+              {members.map((m) => (
+                <option key={m.id} value={m.id}>
+                  {firstName(m.id)}
+                </option>
+              ))}
+            </select>
+            <Button
+              variant="ghost"
+              size="icon-lg"
+              className="size-11 shrink-0 text-muted-foreground"
+              aria-label="Mer"
+              aria-expanded={expanded}
+              onClick={() => setExpanded((v) => !v)}
+            >
+              <ChevronDown className={cn("transition-transform", expanded && "rotate-180")} />
+            </Button>
+          </>
+        )}
+      </div>
+
+      {expanded && canManage && !completed && (
+        <div className="flex flex-wrap items-center gap-2 border-t px-3 py-2">
+          {t.recurrence && (
+            <label className="flex flex-1 items-center gap-2 text-sm text-muted-foreground">
+              <span className="whitespace-nowrap">Alla gånger</span>
+              <select
+                aria-label="Tilldela alla gånger"
+                value={t.seriesAssigneeId ?? ""}
+                onChange={(e) => {
+                  const next = e.target.value || null;
+                  run(
+                    () => assignChore(t.choreId, next),
+                    () => setOptimisticAssignee(next),
+                    next ? `${firstName(next)} gör "${t.title}" alla gånger` : `Ingen har "${t.title}" alla gånger`,
+                  );
+                }}
+                className={cn(selectClass, "min-w-0 flex-1")}
+              >
+                <option value="">Ingen</option>
+                {members.map((m) => (
+                  <option key={m.id} value={m.id}>
+                    {m.id === currentUserId ? `${m.name} (jag)` : m.name}
+                  </option>
+                ))}
+              </select>
+            </label>
+          )}
+          <Button
+            variant="ghost"
+            className="ml-auto h-10 text-destructive"
+            onClick={() => run(() => deleteChore(t.choreId), () => setHidden(true), `"${t.title}" togs bort`)}
+          >
+            <Trash2 /> Ta bort uppgiften
+          </Button>
+        </div>
+      )}
+    </li>
+  );
+}

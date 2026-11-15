@@ -67,3 +67,46 @@ export async function logIn(
 export async function closeDatabase() {
   await client.end();
 }
+
+/** Adds rooms to the household (created on demand) and returns them by name. */
+export async function seedRooms(...names: string[]) {
+  const householdId = await homeId();
+  const rows = await db
+    .insert(schema.room)
+    .values(names.map((name) => ({ householdId, name })))
+    .returning();
+  return Object.fromEntries(rows.map((r) => [r.name, r])) as Record<string, schema.Room>;
+}
+
+/**
+ * Adds a task straight into the database, with its open instance. Faster than the form when
+ * a test is about something else; tests of creating tasks use the form.
+ */
+export async function seedChore(opts: {
+  title: string;
+  roomId: string;
+  recurrence?: { unit: "day" | "week" | "month"; interval: number } | null;
+  dueDate?: string | null;
+  assigneeId?: string | null;
+}) {
+  const householdId = await homeId();
+  const recurrence = opts.recurrence === undefined ? { unit: "week" as const, interval: 1 } : opts.recurrence;
+  const [c] = await db
+    .insert(schema.chore)
+    .values({
+      householdId,
+      roomId: opts.roomId,
+      title: opts.title,
+      recurrenceUnit: recurrence?.unit ?? null,
+      recurrenceInterval: recurrence?.interval ?? null,
+      assigneeId: opts.assigneeId ?? null,
+    })
+    .returning();
+  await db.insert(schema.choreInstance).values({
+    choreId: c!.id,
+    householdId,
+    dueDate: opts.dueDate ?? null,
+    assigneeId: opts.assigneeId ?? null,
+  });
+  return c!;
+}

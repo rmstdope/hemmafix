@@ -1,16 +1,17 @@
 import { Settings } from "lucide-react";
 import Link from "next/link";
 import { Suspense } from "react";
-import { AddTaskForm } from "@/components/add-task-form";
+import { AddChoreForm } from "@/components/add-chore-form";
+import { BoardFilters } from "@/components/board-filters";
+import { ChoreItem } from "@/components/chore-item";
 import { LiveUpdates } from "@/components/live-updates";
-import { TaskItem } from "@/components/task-item";
 import { UserMenu } from "@/components/user-menu";
-import { can } from "@/lib/permissions";
-import { cn } from "@/lib/utils";
 import { todayIso } from "@/lib/dates";
-import { taskFilter, type TaskFilter } from "@/lib/validation";
+import { can } from "@/lib/permissions";
+import { boardFilter } from "@/lib/validation";
 import { requireMember } from "@/server/dal";
-import { getHousehold, listMembers, listOpenTasks, listRecentlyCompleted } from "@/server/tasks";
+import { canUndo, getHousehold, listMembers, listOpenInstances, listRecentlyCompleted } from "@/server/chores";
+import { listRooms } from "@/server/household";
 
 export default function Home({ searchParams }: PageProps<"/">) {
   return (
@@ -22,24 +23,23 @@ export default function Home({ searchParams }: PageProps<"/">) {
   );
 }
 
-const FILTERS: { value: TaskFilter; label: string }[] = [
-  { value: "all", label: "Alla" },
-  { value: "mine", label: "Mina" },
-  { value: "unassigned", label: "Ingen tilldelad" },
-];
+const first = (v: string | string[] | undefined) => (Array.isArray(v) ? v[0] : v);
 
 async function Board({ searchParams }: { searchParams: PageProps<"/">["searchParams"] }) {
   const member = await requireMember();
-  const filter = taskFilter.parse((await searchParams).filter);
+  const params = await searchParams;
+  const filter = boardFilter.parse({ roomId: first(params.rum), who: first(params.vem) });
   const today = todayIso();
   const isAdult = can(member.role, "task:create");
 
-  const [home, members, open, completed] = await Promise.all([
+  const [home, members, rooms, open, completed] = await Promise.all([
     getHousehold(member.householdId),
     listMembers(member.householdId),
-    listOpenTasks(member.householdId, filter, member.userId),
-    listRecentlyCompleted(member.householdId),
+    listRooms(member.householdId),
+    listOpenInstances(member, filter),
+    listRecentlyCompleted(member),
   ]);
+  const filtered = Boolean(filter.roomId || filter.who);
 
   return (
     <>
@@ -63,39 +63,31 @@ async function Board({ searchParams }: { searchParams: PageProps<"/">["searchPar
         </div>
       </header>
 
-      {isAdult && <AddTaskForm members={members} currentUserId={member.userId} />}
+      {isAdult && <AddChoreForm rooms={rooms} members={members} currentUserId={member.userId} today={today} />}
 
-      <nav className={cn("mb-3 flex gap-1 overflow-x-auto", isAdult && "mt-6")} aria-label="Filter">
-        {FILTERS.map((f) => (
-          <Link
-            key={f.value}
-            href={f.value === "all" ? "/" : `/?filter=${f.value}`}
-            replace
-            className={cn(
-              "rounded-full px-3 py-1.5 text-sm whitespace-nowrap",
-              filter === f.value ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground",
-            )}
-            aria-current={filter === f.value ? "page" : undefined}
-          >
-            {f.label}
-          </Link>
-        ))}
-      </nav>
+      <BoardFilters
+        rooms={rooms}
+        members={members}
+        currentUserId={member.userId}
+        roomId={filter.roomId}
+        who={filter.who}
+      />
 
       {open.length === 0 ? (
         <p className="rounded-xl border border-dashed p-6 text-center text-muted-foreground">
-          {filter === "all" ? "Inget att göra just nu 🎉" : "Inga uppgifter här."}
+          {filtered ? "Inga uppgifter här." : "Inget att göra just nu 🎉"}
         </p>
       ) : (
-        <ul className="space-y-2">
+        <ul className="space-y-2" aria-label="Att göra">
           {open.map((t) => (
-            <TaskItem
+            <ChoreItem
               key={t.id}
-              task={t}
+              instance={t}
               members={members}
               currentUserId={member.userId}
               today={today}
               canManage={isAdult}
+              canUndo={false}
             />
           ))}
         </ul>
@@ -103,19 +95,20 @@ async function Board({ searchParams }: { searchParams: PageProps<"/">["searchPar
 
       {completed.length > 0 && (
         <details className="mt-8">
-          <summary className="cursor-pointer text-sm text-muted-foreground">
+          <summary className="cursor-pointer py-2 text-sm text-muted-foreground">
             Klart senaste veckan ({completed.length})
           </summary>
-          <ul className="mt-2 space-y-2">
+          <ul className="mt-2 space-y-2" aria-label="Klart">
             {completed.map((t) => (
-              <TaskItem
-              key={t.id}
-              task={t}
-              members={members}
-              currentUserId={member.userId}
-              today={today}
-              canManage={isAdult}
-            />
+              <ChoreItem
+                key={t.id}
+                instance={t}
+                members={members}
+                currentUserId={member.userId}
+                today={today}
+                canManage={false}
+                canUndo={canUndo(member, t)}
+              />
             ))}
           </ul>
         </details>

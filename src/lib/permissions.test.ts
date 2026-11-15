@@ -10,6 +10,7 @@ const RULES: Record<Action, "V" | "V+B"> = {
   "task:assign": "V",
   "task:delete": "V",
   "task:complete": "V+B",
+  "task:uncomplete-others": "V",
   "task:view": "V+B",
   "history:view-own": "V+B",
   "history:view-anyone": "V",
