@@ -70,7 +70,7 @@ test("Avbryt, Escape and a tap outside leave the app connected and return focus"
     await expect(dialog).toContainText("Claude kan inte längre se eller ändra hemmet. För att ansluta igen måste du godkänna på nytt.");
     await expect(page.getByRole("button", { name: "Avbryt" })).toBeFocused();
     // A tap on the box itself, even at its edge, does not close it.
-    await dialog.click({ position: { x: 3, y: 3 } });
+    await dialog.click({ position: { x: 20, y: 20 } });
     await expect(dialog).toBeVisible();
     await close();
     await expect(dialog).toBeHidden();
