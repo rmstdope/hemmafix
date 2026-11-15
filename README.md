@@ -1,6 +1,6 @@
 # Hemmafix
 
-Familjens att-göra-lista. Logga in med Google, lägg in hemmets rum och sysslor –
+Familjens att-göra-lista. Logga in med Google, lägg in hemmets våningar, rum och sysslor –
 fördefinierade eller egna, återkommande eller engångs – tilldela dem till någon i
 familjen och bocka av. En återkommande syssla kommer tillbaka ett intervall efter att
 den gjordes. Listan uppdateras i realtid på allas enheter och kan installeras som app

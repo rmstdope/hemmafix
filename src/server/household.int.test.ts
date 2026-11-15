@@ -1,7 +1,7 @@
 import { eq } from "drizzle-orm";
 import { beforeEach, describe, expect, it } from "vitest";
 import { db } from "@/db";
-import { household, membership } from "@/db/schema";
+import { floor, household, membership } from "@/db/schema";
 import { createUser } from "../../test/integration/factories";
 import { UserError } from "@/lib/errors";
 import { ForbiddenError } from "@/lib/permissions";
@@ -78,6 +78,10 @@ describe("the home: name, rooms and roles", () => {
   beforeEach(async () => {
     await db.delete(household);
     const [a, b] = await db.insert(household).values([{ name: "Hemma" }, { name: "Grannar" }]).returning();
+    await db.insert(floor).values([
+      { householdId: a!.id, name: "1", position: 1 },
+      { householdId: b!.id, name: "1", position: 1 },
+    ]);
     homeA = a!.id;
     homeB = b!.id;
     const [anna, bo, eve] = [await createUser("Anna"), await createUser("Bo"), await createUser("Eve")];

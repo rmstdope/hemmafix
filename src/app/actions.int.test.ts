@@ -94,7 +94,7 @@ describe("as an adult", () => {
       ok: false,
       error: "Hemmet behöver ett namn",
     });
-    expect(await actions.addRoom({ ok: false }, form({ name: "kök" }))).toEqual({ ok: false, error: "Det rummet finns redan" });
+    expect(await actions.addRoom({ ok: false }, form({ name: "kök" }))).toEqual({ ok: false, error: "Det rummet finns redan på våningen" });
     expect(await actions.createChore({ ok: false }, form({ title: "Diska", interval: "1", unit: "day" }))).toEqual({
       ok: false,
       error: "Välj ett rum",

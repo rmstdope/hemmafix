@@ -10,8 +10,10 @@ import { Input } from "@/components/ui/input";
 import { CHORE_TEMPLATES, findTemplate } from "@/lib/chore-templates";
 import type { RecurrenceUnit } from "@/lib/recurrence";
 import { cn } from "@/lib/utils";
+import { RoomOptions } from "./room-options";
 
 type Option = { id: string; name: string };
+type Room = Option & { floorId: string };
 
 const fieldClass =
   "h-11 w-full min-w-0 rounded-lg border border-input bg-transparent px-3 text-base md:text-sm dark:bg-input/30";
@@ -45,12 +47,14 @@ const empty = (today: string): Draft => ({
 });
 
 export function AddChoreForm({
+  floors,
   rooms,
   members,
   currentUserId,
   today,
 }: {
-  rooms: Option[];
+  floors: Option[];
+  rooms: Room[];
   members: Option[];
   currentUserId: string;
   /** YYYY-MM-DD in the household's time zone, from the server. */
@@ -76,7 +80,10 @@ export function AddChoreForm({
   const pickTemplate = (key: string) => {
     const template = findTemplate(key);
     if (!template) return set({ templateKey: "" });
-    const room = rooms.find((r) => r.name.toLowerCase() === template.room.toLowerCase());
+    // The template's room when the home has exactly one by that name (Badrum on two floors
+    // is for the person to choose).
+    const matches = rooms.filter((r) => r.name.toLowerCase() === template.room.toLowerCase());
+    const room = matches.length === 1 ? matches[0] : undefined;
     set({
       templateKey: key,
       title: template.title,
@@ -173,11 +180,7 @@ export function AddChoreForm({
           <option value="" disabled>
             Välj rum
           </option>
-          {rooms.map((r) => (
-            <option key={r.id} value={r.id}>
-              {r.name}
-            </option>
-          ))}
+          <RoomOptions floors={floors} rooms={rooms} />
         </select>
       </label>
 

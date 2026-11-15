@@ -68,11 +68,12 @@ export const choreId = z.uuid();
 export const assigneeIdInput = z.string().min(1).max(100).nullable();
 
 /**
- * The board's filters, from the URL: `rum` is a room id, `vem` is "mine", "none" or a
- * member's id. Anything unusable means "no filter".
+ * The board's filters, from the URL: `rum` is a room id, `plan` a floor id, `vem` is
+ * "mine", "none" or a member's id. Anything unusable means "no filter".
  */
 export const boardFilter = z.object({
   roomId: z.uuid().optional().catch(undefined),
+  floorId: z.uuid().optional().catch(undefined),
   who: z.string().min(1).max(100).optional().catch(undefined),
 });
 export type BoardFilter = z.infer<typeof boardFilter>;
@@ -80,5 +81,8 @@ export type BoardFilter = z.infer<typeof boardFilter>;
 export const householdName = z.string().trim().min(1, "Hemmet behöver ett namn").max(60, "Max 60 tecken");
 export const roomName = z.string().trim().min(1, "Skriv rummets namn").max(40, "Max 40 tecken");
 export const roomId = z.uuid();
+export const floorId = z.uuid();
+export const floorName = z.string().trim().min(1, "Våningen behöver ett namn").max(30, "Max 30 tecken");
+export const floorDirection = z.enum(["up", "down"]);
 export const memberId = z.string().min(1).max(100);
 export const roleInput = z.enum(ROLES);

@@ -87,3 +87,27 @@ describe("0002–0003: the flat task list makes way for chores in rooms", () => 
   });
 });
 
+
+describe("0004: floors", () => {
+  beforeEach(reset);
+
+  it("gives every home floor 1 and puts its existing rooms there", async () => {
+    await migrateUpTo(sql, "0003_chores");
+    const [a, b] = await sql`insert into household (name) values ('Hemma'), ('Grannar') returning id`;
+    await sql`insert into room (household_id, name) values (${a!.id}, 'Kök'), (${a!.id}, 'Badrum'), (${b!.id}, 'Garage')`;
+
+    await migrateUpTo(sql);
+
+    const floors = await sql`select household_id, name, position from floor order by household_id`;
+    expect(floors).toHaveLength(2);
+    expect(floors.every((f) => f.name === "1" && f.position === 1)).toBe(true);
+    const rooms = await sql`
+      select room.name, floor.household_id = room.household_id as same_home
+      from room join floor on floor.id = room.floor_id order by room.name`;
+    expect(rooms.map((r) => [r.name, r.same_home])).toEqual([
+      ["Badrum", true],
+      ["Garage", true],
+      ["Kök", true],
+    ]);
+  });
+});

@@ -44,6 +44,7 @@ async function homeId() {
   const [existing] = await db.select({ id: schema.household.id }).from(schema.household).limit(1);
   if (existing) return existing.id;
   const [created] = await db.insert(schema.household).values({ name: "Familjen E2E" }).returning();
+  await db.insert(schema.floor).values({ householdId: created!.id, name: "1", position: 1 });
   return created!.id;
 }
 
@@ -68,12 +69,38 @@ export async function closeDatabase() {
   await client.end();
 }
 
-/** Adds rooms to the household (created on demand) and returns them by name. */
-export async function seedRooms(...names: string[]) {
+/** The household's floors (created on demand), top floor first. */
+export async function floors() {
   const householdId = await homeId();
+  return db
+    .select()
+    .from(schema.floor)
+    .where(sql`${schema.floor.householdId} = ${householdId}`)
+    .orderBy(sql`${schema.floor.position} desc`);
+}
+
+/** Adds a floor at the top of the house. */
+export async function seedFloor(name: string) {
+  const existing = await floors();
+  const [created] = await db
+    .insert(schema.floor)
+    .values({ householdId: await homeId(), name, position: (existing[0]?.position ?? 0) + 1 })
+    .returning();
+  return created!;
+}
+
+/**
+ * Adds rooms to the household (created on demand) and returns them by name. They go on
+ * `floorId`, or on the bottom floor.
+ */
+export async function seedRooms(...args: (string | { floorId: string })[]) {
+  const householdId = await homeId();
+  const options = args.find((a): a is { floorId: string } => typeof a !== "string");
+  const names = args.filter((a): a is string => typeof a === "string");
+  const floorId = options?.floorId ?? (await floors()).at(-1)!.id;
   const rows = await db
     .insert(schema.room)
-    .values(names.map((name) => ({ householdId, name })))
+    .values(names.map((name) => ({ householdId, floorId, name })))
     .returning();
   return Object.fromEntries(rows.map((r) => [r.name, r])) as Record<string, schema.Room>;
 }

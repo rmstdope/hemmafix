@@ -4,8 +4,10 @@ import { Suspense } from "react";
 import { HistoryFilters } from "@/components/history-filters";
 import { LiveUpdates } from "@/components/live-updates";
 import { formatDay, formatTime, todayIso } from "@/lib/dates";
+import { roomLabel } from "@/lib/floors";
 import { can } from "@/lib/permissions";
 import { requireMember } from "@/server/dal";
+import { listFloors } from "@/server/household";
 import { HISTORY_LIMIT, HISTORY_PERIODS, listCompletedBy, listMembers, type DoneView, type HistoryPeriod } from "@/server/chores";
 
 export const metadata = { title: "Gjort – Hemmafix" };
@@ -28,7 +30,8 @@ async function History({ searchParams }: { searchParams: PageProps<"/gjort">["se
   const member = await requireMember();
   const params = await searchParams;
   const canSeeOthers = can(member.role, "history:view-anyone");
-  const members = await listMembers(member.householdId);
+  const [members, floors] = await Promise.all([listMembers(member.householdId), listFloors(member.householdId)]);
+  const showFloors = floors.length > 1;
 
   // Children always see their own; adults may pick anyone in the home.
   const requested = first(params.vem);
@@ -86,7 +89,9 @@ async function History({ searchParams }: { searchParams: PageProps<"/gjort">["se
                   </span>
                   <div className="min-w-0 flex-1">
                     <p className="truncate font-medium">{d.title}</p>
-                    {d.roomName && <p className="text-xs text-muted-foreground">{d.roomName}</p>}
+                    {d.roomName && (
+                      <p className="text-xs text-muted-foreground">{roomLabel(d.roomName, d.floorName, showFloors)}</p>
+                    )}
                   </div>
                   <time dateTime={d.completedAt.toISOString()} className="shrink-0 text-sm text-muted-foreground">
                     {formatTime(d.completedAt)}
