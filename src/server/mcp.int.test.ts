@@ -93,7 +93,7 @@ describe("the open-tasks tool", () => {
 // Changing tasks
 // ---------------------------------------------------------------------------
 
-const call = async (userId: string, name: string, args: Record<string, unknown> = {}) => {
+const taskCall = async (userId: string, name: string, args: Record<string, unknown> = {}) => {
   const res = await rpc(userId, "tools/call", { name, arguments: args });
   return res.result as { isError?: boolean; content: { text: string }[] };
 };
@@ -107,7 +107,7 @@ async function seedKitchen() {
 const openOf = (choreId: string) =>
   db.select().from(choreInstance).where(and(eq(choreInstance.choreId, choreId), isNull(choreInstance.completedAt)));
 async function createDiska(roomId: string) {
-  const r = await call("anna", "skapa_syssla", { title: "Diska", roomId, kind: "recurring", interval: 1, unit: "day" });
+  const r = await taskCall("anna", "skapa_syssla", { title: "Diska", roomId, kind: "recurring", interval: 1, unit: "day" });
   expect(r.isError).toBeFalsy();
   const [c] = await db.select().from(chore).where(eq(chore.title, "Diska"));
   const [i] = await openOf(c!.id);
@@ -137,7 +137,7 @@ describe("the task tools", () => {
   it("shows the ids Claude needs", async () => {
     const roomId = await seedKitchen();
     const { choreId, instanceId } = await createDiska(roomId);
-    const text = said(await call("anna", "visa_sysslor_med_id"));
+    const text = said(await taskCall("anna", "visa_sysslor_med_id"));
     expect(text).toContain(`(syssla ${choreId}, tillfälle ${instanceId}, kind recurring, interval 1, unit day, dueDate ${todayIso()})`);
     expect(text).toContain(`- Kök, Plan 1 (id ${roomId})`);
     expect(text).toContain("- Bo, barn (id bo)");
@@ -145,7 +145,7 @@ describe("the task tools", () => {
 
   it("creates a recurring task from a predefined one, due today", async () => {
     const roomId = await seedKitchen();
-    const r = await call("anna", "skapa_syssla", { title: "Diska", templateKey: "diska", roomId, kind: "recurring", interval: 1, unit: "day" });
+    const r = await taskCall("anna", "skapa_syssla", { title: "Diska", templateKey: "diska", roomId, kind: "recurring", interval: 1, unit: "day" });
     expect(said(r)).toBe("Sysslan Diska är skapad i Kök.");
     const [c] = await db.select().from(chore);
     expect(c).toMatchObject({ title: "Diska", templateKey: "diska", recurrenceUnit: "day", recurrenceInterval: 1 });
@@ -153,7 +153,7 @@ describe("the task tools", () => {
 
   it("creates a one-off task with a due date and an assignee", async () => {
     const roomId = await seedKitchen();
-    const r = await call("anna", "skapa_syssla", { title: "Byt glödlampa", roomId, kind: "once", dueDate: "2026-12-01", assigneeId: "bo" });
+    const r = await taskCall("anna", "skapa_syssla", { title: "Byt glödlampa", roomId, kind: "once", dueDate: "2026-12-01", assigneeId: "bo" });
     expect(r.isError).toBeFalsy();
     const [i] = await db.select().from(choreInstance);
     expect(i).toMatchObject({ dueDate: "2026-12-01", assigneeId: "bo" });
@@ -161,10 +161,10 @@ describe("the task tools", () => {
 
   it("answers in Swedish when the room is not in the home or the input is wrong", async () => {
     await seedKitchen();
-    const other = await call("anna", "skapa_syssla", { title: "X", roomId: crypto.randomUUID(), kind: "once" });
+    const other = await taskCall("anna", "skapa_syssla", { title: "X", roomId: crypto.randomUUID(), kind: "once" });
     expect(other).toMatchObject({ isError: true });
     expect(said(other)).toBe("Rummet finns inte i hemmet");
-    const empty = await call("anna", "skapa_syssla", { title: " ", roomId: crypto.randomUUID(), kind: "once" });
+    const empty = await taskCall("anna", "skapa_syssla", { title: " ", roomId: crypto.randomUUID(), kind: "once" });
     expect(empty.isError).toBe(true);
     expect(said(empty)).toBe("Skriv vad som ska göras");
   });
@@ -172,10 +172,10 @@ describe("the task tools", () => {
   it("ticks off a task, which comes back one interval later, and undoes the tick", async () => {
     const roomId = await seedKitchen();
     const { choreId, instanceId } = await createDiska(roomId);
-    expect(said(await call("anna", "bocka_av_syssla", { instanceId }))).toBe("Klart: Diska är avbockad.");
+    expect(said(await taskCall("anna", "bocka_av_syssla", { instanceId }))).toBe("Klart: Diska är avbockad.");
     const [next] = await openOf(choreId);
     expect(next!.id).not.toBe(instanceId);
-    expect(said(await call("anna", "angra_avbockning", { instanceId }))).toBe("Diska är inte längre avbockad.");
+    expect(said(await taskCall("anna", "angra_avbockning", { instanceId }))).toBe("Diska är inte längre avbockad.");
     const open = await openOf(choreId);
     expect(open.map((i) => i.id)).toEqual([instanceId]);
   });
@@ -183,8 +183,8 @@ describe("the task tools", () => {
   it("ticking off twice says so", async () => {
     const roomId = await seedKitchen();
     const { instanceId } = await createDiska(roomId);
-    await call("anna", "bocka_av_syssla", { instanceId });
-    const again = await call("anna", "bocka_av_syssla", { instanceId });
+    await taskCall("anna", "bocka_av_syssla", { instanceId });
+    const again = await taskCall("anna", "bocka_av_syssla", { instanceId });
     expect(again.isError).toBe(true);
     expect(said(again)).toBe("Någon har redan bockat av den");
   });
@@ -192,21 +192,21 @@ describe("the task tools", () => {
   it("assigns this time only, or every time", async () => {
     const roomId = await seedKitchen();
     const { choreId, instanceId } = await createDiska(roomId);
-    expect(said(await call("anna", "tilldela_syssla", { id: instanceId, assigneeId: "bo", scope: "denna_gang" }))).toBe(
+    expect(said(await taskCall("anna", "tilldela_syssla", { id: instanceId, assigneeId: "bo", scope: "denna_gang" }))).toBe(
       "Diska är tilldelad Bo den här gången.",
     );
     const [c1] = await db.select().from(chore).where(eq(chore.id, choreId));
     expect(c1!.assigneeId).toBeNull();
     expect((await openOf(choreId))[0]!.assigneeId).toBe("bo");
 
-    expect(said(await call("anna", "tilldela_syssla", { id: choreId, assigneeId: "anna", scope: "varje_gang" }))).toBe(
+    expect(said(await taskCall("anna", "tilldela_syssla", { id: choreId, assigneeId: "anna", scope: "varje_gang" }))).toBe(
       "Diska är tilldelad Anna varje gång.",
     );
     const [c2] = await db.select().from(chore).where(eq(chore.id, choreId));
     expect(c2!.assigneeId).toBe("anna");
     expect((await openOf(choreId))[0]!.assigneeId).toBe("anna");
 
-    expect(said(await call("anna", "tilldela_syssla", { id: choreId, assigneeId: null, scope: "varje_gang" }))).toBe(
+    expect(said(await taskCall("anna", "tilldela_syssla", { id: choreId, assigneeId: null, scope: "varje_gang" }))).toBe(
       "Diska är inte längre tilldelad någon varje gång.",
     );
   });
@@ -214,9 +214,9 @@ describe("the task tools", () => {
   it("edits a task and the history keeps the old title", async () => {
     const roomId = await seedKitchen();
     const { choreId, instanceId } = await createDiska(roomId);
-    await call("anna", "bocka_av_syssla", { instanceId });
+    await taskCall("anna", "bocka_av_syssla", { instanceId });
     const [next] = await openOf(choreId);
-    const r = await call("anna", "andra_syssla", { instanceId: next!.id, title: "Diska och torka", roomId, kind: "recurring", interval: 2, unit: "day" });
+    const r = await taskCall("anna", "andra_syssla", { instanceId: next!.id, title: "Diska och torka", roomId, kind: "recurring", interval: 2, unit: "day" });
     expect(said(r)).toBe("Sysslan Diska och torka är ändrad.");
     const [c] = await db.select().from(chore).where(eq(chore.id, choreId));
     expect(c).toMatchObject({ title: "Diska och torka", recurrenceInterval: 2 });
@@ -227,8 +227,8 @@ describe("the task tools", () => {
   it("removes a task but keeps what was done", async () => {
     const roomId = await seedKitchen();
     const { choreId, instanceId } = await createDiska(roomId);
-    await call("anna", "bocka_av_syssla", { instanceId });
-    expect(said(await call("anna", "ta_bort_syssla", { choreId }))).toBe(
+    await taskCall("anna", "bocka_av_syssla", { instanceId });
+    expect(said(await taskCall("anna", "ta_bort_syssla", { choreId }))).toBe(
       "Sysslan Diska är borttagen. Det som redan är gjort finns kvar i historiken.",
     );
     expect(await openOf(choreId)).toEqual([]);
@@ -242,18 +242,18 @@ describe("the task tools", () => {
     const [r] = await db.insert(room).values({ householdId: otherHome, floorId: f!.id, name: "Kök" }).returning({ id: room.id });
     const [c] = await db.insert(chore).values({ householdId: otherHome, roomId: r!.id, title: "Främmande" }).returning({ id: chore.id });
     const [i] = await db.insert(choreInstance).values({ choreId: c!.id, householdId: otherHome }).returning({ id: choreInstance.id });
-    const res = await call("anna", "bocka_av_syssla", { instanceId: i!.id });
+    const res = await taskCall("anna", "bocka_av_syssla", { instanceId: i!.id });
     expect(res.isError).toBe(true);
     expect(await openOf(c!.id)).toHaveLength(1);
   });
 
   it("edits from what the lookup shows without changing anything else", async () => {
     const roomId = await seedKitchen();
-    await call("anna", "skapa_syssla", { title: "Diska", roomId, kind: "recurring", interval: 2, unit: "week", startDate: "2027-03-01" });
-    const lookup = said(await call("anna", "visa_sysslor_med_id"));
+    await taskCall("anna", "skapa_syssla", { title: "Diska", roomId, kind: "recurring", interval: 2, unit: "week", startDate: "2027-03-01" });
+    const lookup = said(await taskCall("anna", "visa_sysslor_med_id"));
     const [, instanceId] = /tillfälle ([0-9a-f-]{36}), kind recurring, interval 2, unit week, dueDate 2027-03-01/.exec(lookup) ?? [];
     expect(instanceId).toBeDefined();
-    const r = await call("anna", "andra_syssla", { instanceId, title: "Diska och torka", roomId, kind: "recurring", interval: 2, unit: "week", dueDate: "2027-03-01" });
+    const r = await taskCall("anna", "andra_syssla", { instanceId, title: "Diska och torka", roomId, kind: "recurring", interval: 2, unit: "week", dueDate: "2027-03-01" });
     expect(r.isError).toBeFalsy();
     const [c] = await db.select().from(chore);
     expect(c).toMatchObject({ title: "Diska och torka", recurrenceUnit: "week", recurrenceInterval: 2 });
@@ -264,13 +264,13 @@ describe("the task tools", () => {
     const roomId = await seedKitchen();
     const { choreId, instanceId } = await createDiska(roomId);
     for (const wrong of [instanceId, crypto.randomUUID()]) {
-      const r = await call("anna", "ta_bort_syssla", { choreId: wrong });
+      const r = await taskCall("anna", "ta_bort_syssla", { choreId: wrong });
       expect(r.isError).toBe(true);
       expect(said(r)).toBe("Uppgiften finns inte längre");
     }
     expect(await openOf(choreId)).toHaveLength(1);
-    await call("anna", "ta_bort_syssla", { choreId });
-    const twice = await call("anna", "ta_bort_syssla", { choreId });
+    await taskCall("anna", "ta_bort_syssla", { choreId });
+    const twice = await taskCall("anna", "ta_bort_syssla", { choreId });
     expect(twice.isError).toBe(true);
   });
 
@@ -287,17 +287,17 @@ describe("the task tools", () => {
       ["tilldela_syssla", { id: c!.id, assigneeId: "anna", scope: "varje_gang" }],
       ["tilldela_syssla", { id: i!.id, assigneeId: "anna", scope: "denna_gang" }],
     ];
-    for (const [name, args] of attempts) expect((await call("anna", name, args)).isError).toBe(true);
+    for (const [name, args] of attempts) expect((await taskCall("anna", name, args)).isError).toBe(true);
     const [after] = await db.select().from(chore).where(eq(chore.id, c!.id));
     expect(after).toMatchObject({ title: "Främmande", archivedAt: null, assigneeId: null });
   });
 
   it("refuses an unknown predefined task and someone outside the home", async () => {
     const roomId = await seedKitchen();
-    const unknown = await call("anna", "skapa_syssla", { title: "X", templateKey: "finns-inte", roomId, kind: "once" });
+    const unknown = await taskCall("anna", "skapa_syssla", { title: "X", templateKey: "finns-inte", roomId, kind: "once" });
     expect(said(unknown)).toBe("Okänd fördefinierad uppgift");
     const { instanceId } = await createDiska(roomId);
-    const stranger = await call("anna", "tilldela_syssla", { id: instanceId, assigneeId: "nobody", scope: "denna_gang" });
+    const stranger = await taskCall("anna", "tilldela_syssla", { id: instanceId, assigneeId: "nobody", scope: "denna_gang" });
     expect(stranger.isError).toBe(true);
     expect(said(stranger)).toBe("Personen finns inte i hemmet");
   });
@@ -305,8 +305,8 @@ describe("the task tools", () => {
   it("refuses an edit from an occurrence ticked off in the meantime", async () => {
     const roomId = await seedKitchen();
     const { instanceId } = await createDiska(roomId);
-    await call("anna", "bocka_av_syssla", { instanceId });
-    const r = await call("anna", "andra_syssla", { instanceId, title: "Diska", roomId, kind: "recurring", interval: 1, unit: "day" });
+    await taskCall("anna", "bocka_av_syssla", { instanceId });
+    const r = await taskCall("anna", "andra_syssla", { instanceId, title: "Diska", roomId, kind: "recurring", interval: 1, unit: "day" });
     expect(r.isError).toBe(true);
     expect(said(r)).toContain("Någon har bockat av den under tiden");
   });
@@ -314,25 +314,25 @@ describe("the task tools", () => {
   it("says so when undoing an occurrence that is not ticked off", async () => {
     const roomId = await seedKitchen();
     const { instanceId } = await createDiska(roomId);
-    const r = await call("anna", "angra_avbockning", { instanceId });
+    const r = await taskCall("anna", "angra_avbockning", { instanceId });
     expect(r.isError).toBe(true);
     expect(said(r)).toBe("Den är inte avbockad");
   });
 
   it("answers in Swedish, and a child still gets the child text, when the input is malformed", async () => {
-    const bad = await call("anna", "bocka_av_syssla", { instanceId: "inte-ett-id" });
+    const bad = await taskCall("anna", "bocka_av_syssla", { instanceId: "inte-ett-id" });
     expect(bad.isError).toBe(true);
     expect(said(bad)).toBe("Ogiltigt id. Hämta id:n med visa_sysslor_med_id.");
-    const child = await call("bo", "bocka_av_syssla", { instanceId: "inte-ett-id" });
+    const child = await taskCall("bo", "bocka_av_syssla", { instanceId: "inte-ett-id" });
     expect(said(child)).toBe("Bara vuxna kan använda Hemmafix via Claude. Be en vuxen i familjen om hjälp.");
   });
 
   it("answers a bad scope, kind or unit in Swedish", async () => {
     const roomId = await seedKitchen();
     const { instanceId } = await createDiska(roomId);
-    expect(said(await call("anna", "tilldela_syssla", { id: instanceId, assigneeId: null, scope: "alla" }))).toBe("Välj denna_gang eller varje_gang");
-    expect(said(await call("anna", "skapa_syssla", { title: "X", roomId, kind: "weekly" }))).toBe("Välj återkommande eller en gång");
-    expect(said(await call("anna", "skapa_syssla", { title: "X", roomId, kind: "recurring", interval: 1, unit: "weeks" }))).toBe("Välj dag, vecka eller månad");
+    expect(said(await taskCall("anna", "tilldela_syssla", { id: instanceId, assigneeId: null, scope: "alla" }))).toBe("Välj denna_gang eller varje_gang");
+    expect(said(await taskCall("anna", "skapa_syssla", { title: "X", roomId, kind: "weekly" }))).toBe("Välj återkommande eller en gång");
+    expect(said(await taskCall("anna", "skapa_syssla", { title: "X", roomId, kind: "recurring", interval: 1, unit: "weeks" }))).toBe("Välj dag, vecka eller månad");
   });
 
   it("tells every other household device that something changed", async () => {
@@ -341,7 +341,7 @@ describe("the task tools", () => {
     const heard = new Promise<string>((resolve) => (resolveHeard = resolve));
     const listener = await pg.listen(TASKS_CHANNEL, (payload) => resolveHeard(payload));
     try {
-      await call("anna", "skapa_syssla", { title: "Diska", roomId, kind: "once" });
+      await taskCall("anna", "skapa_syssla", { title: "Diska", roomId, kind: "once" });
       expect(await heard).toBe(homeId);
     } finally {
       await listener.unlisten();
@@ -357,11 +357,11 @@ describe("the task tools", () => {
     ["bocka_av_syssla", { instanceId: "00000000-0000-4000-8000-000000000000" }],
     ["angra_avbockning", { instanceId: "00000000-0000-4000-8000-000000000000" }],
   ])("%s refuses a child and a removed address", async (name, args) => {
-    const child = await call("bo", name, args);
+    const child = await taskCall("bo", name, args);
     expect(child.isError).toBe(true);
     expect(said(child)).toBe("Bara vuxna kan använda Hemmafix via Claude. Be en vuxen i familjen om hjälp.");
     process.env.ALLOWED_EMAILS = "bo@example.com";
-    const removed = await call("anna", name, args);
+    const removed = await taskCall("anna", name, args);
     process.env.ALLOWED_EMAILS = "anna@example.com, bo@example.com";
     expect(removed.isError).toBe(true);
     expect(said(removed)).toContain("Ditt konto har inte längre tillgång till Hemmafix.");
