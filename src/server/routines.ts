@@ -4,11 +4,11 @@ import { db } from "@/db";
 import { household, routine, routineTask } from "@/db/schema";
 import { UserError } from "@/lib/errors";
 import { assertCan } from "@/lib/permissions";
+import { ROUTINE_GONE, SAVE_FAILED } from "@/lib/routine-texts";
 import { MAX_ROUTINE_TASKS, READY_MADE_ROUTINES } from "@/lib/ready-made-routines";
-import { routineId, routineName, routineTaskId, routineTaskTitle } from "@/lib/validation";
+import { addRoutineInput, routineId, routineName, routineTaskId, routineTaskTitle } from "@/lib/validation";
+import { assertMember, insertChore, lockRoom, type Tx } from "./chores";
 import type { Actor } from "./household";
-
-type Tx = Parameters<Parameters<typeof db.transaction>[0]>[0];
 
 const GONE = "Den här rutinen finns inte längre.";
 
@@ -206,5 +206,61 @@ export async function removeRoutineTask(actor: Actor, id: string, taskId: string
       .where(and(eq(routine.id, parsed.data), eq(routine.householdId, actor.householdId)));
     if (!owned) return;
     await tx.delete(routineTask).where(and(eq(routineTask.id, task.data), eq(routineTask.routineId, owned.id)));
+  });
+}
+
+export type RoutineWithTasks = { id: string; name: string; tasks: string[] };
+
+/** The home's routines with their task titles, for the add-a-routine form (adults). */
+export async function listRoutinesWithTasks(actor: Actor): Promise<RoutineWithTasks[]> {
+  return inHome(actor, async (tx) => {
+    const routines = await tx
+      .select({ id: routine.id, name: routine.name })
+      .from(routine)
+      .where(eq(routine.householdId, actor.householdId))
+      .orderBy(asc(routine.seq));
+    const tasks = await tx
+      .select({ routineId: routineTask.routineId, title: routineTask.title })
+      .from(routineTask)
+      .innerJoin(routine, eq(routine.id, routineTask.routineId))
+      .where(eq(routine.householdId, actor.householdId))
+      .orderBy(asc(routineTask.seq));
+    return routines.map((r) => ({
+      ...r,
+      tasks: tasks.filter((t) => t.routineId === r.id).map((t) => t.title),
+    }));
+  });
+}
+
+/**
+ * Adds every task of a routine to a room as an ordinary task with the chosen cadence, date
+ * and person. The routine is only a template: nothing links the new tasks back to it.
+ * All or nothing.
+ */
+export async function addRoutineToHome(actor: Actor, raw: unknown): Promise<{ count: number }> {
+  assertCan(actor, "task:create");
+  const input = addRoutineInput.parse(raw);
+  return inHome(actor, async (tx) => {
+    // Share-lock the routine so it cannot be removed while its tasks are copied.
+    const [found] = await tx
+      .select({ id: routine.id })
+      .from(routine)
+      .where(and(eq(routine.id, input.routineId), eq(routine.householdId, actor.householdId)))
+      .for("share");
+    if (!found) throw new UserError(ROUTINE_GONE);
+    await lockRoom(tx, actor, input.roomId);
+    await assertMember(tx, actor.householdId, input.assigneeId);
+    const tasks = await tx
+      .select({ title: routineTask.title })
+      .from(routineTask)
+      .where(eq(routineTask.routineId, found.id))
+      .orderBy(asc(routineTask.seq));
+    if (tasks.length === 0) throw new UserError(SAVE_FAILED);
+    // One transaction means one now(): stamp each task a millisecond apart so the list keeps the routine's order.
+    const start = Date.now();
+    for (const [i, t] of tasks.entries()) {
+      await insertChore(tx, actor, { ...input, title: t.title, templateKey: null, createdAt: new Date(start + i) });
+    }
+    return { count: tasks.length };
   });
 }

@@ -12,6 +12,7 @@ import { boardFilter } from "@/lib/validation";
 import { requireMember } from "@/server/dal";
 import { canUndo, getHousehold, listMembers, listOpenInstances, listRecentlyCompleted } from "@/server/chores";
 import { listFloors, listRooms } from "@/server/household";
+import { listRoutinesWithTasks } from "@/server/routines";
 
 export default function Home({ searchParams }: PageProps<"/">) {
   return (
@@ -32,12 +33,13 @@ async function Board({ searchParams }: { searchParams: PageProps<"/">["searchPar
   const today = todayIso();
   const isAdult = can(member.role, "task:create");
 
-  const [home, members, floors, rooms, completed] = await Promise.all([
+  const [home, members, floors, rooms, completed, routines] = await Promise.all([
     getHousehold(member.householdId),
     listMembers(member.householdId),
     listFloors(member.householdId),
     listRooms(member.householdId),
     listRecentlyCompleted(member),
+    isAdult ? listRoutinesWithTasks(member) : [],
   ]);
   // A room or floor that has since been removed (or is not this home's) means no filter.
   const filter = {
@@ -78,7 +80,7 @@ async function Board({ searchParams }: { searchParams: PageProps<"/">["searchPar
         </div>
       </header>
 
-      {isAdult && <AddChoreForm floors={floors} rooms={rooms} members={members} currentUserId={member.userId} today={today} />}
+      {isAdult && <AddChoreForm floors={floors} rooms={rooms} routines={routines} members={members} currentUserId={member.userId} today={today} />}
 
       <BoardFilters
         floors={floors}

@@ -20,6 +20,43 @@ const optionalDate = z
   .nullish()
   .transform((v) => (v ? v : null));
 
+/** What a new task, or a whole routine added at once, shares: where, how often, when, for whom. */
+const cadenceFields = {
+  roomId: z.uuid({ error: "Välj ett rum" }),
+  kind: z.enum(["recurring", "once"], { error: "Välj återkommande eller en gång" }).default("recurring"),
+  interval: z.coerce
+    .number({ error: "Ange hur ofta" })
+    .int("Ange ett heltal")
+    .min(1, "Minst 1")
+    .max(MAX_INTERVAL, `Högst ${MAX_INTERVAL}`)
+    .optional(),
+  unit: z.enum(RECURRENCE_UNITS, { error: "Välj dag, vecka eller månad" }).optional(),
+  startDate: optionalDate,
+  dueDate: optionalDate,
+  assigneeId: optionalText(100),
+};
+
+type Cadence = {
+  kind: "recurring" | "once";
+  interval?: number;
+  unit?: Recurrence["unit"];
+  startDate: string | null;
+  dueDate: string | null;
+};
+
+/** The recurrence and the first due date a cadence stands for; null: today when recurring, none when once. */
+function resolveCadence(v: Cadence, ctx: z.RefinementCtx) {
+  let recurrence: Recurrence | null = null;
+  if (v.kind === "recurring") {
+    if (v.interval === undefined || v.unit === undefined) {
+      ctx.addIssue({ code: "custom", message: "Ange hur ofta" });
+      return z.NEVER;
+    }
+    recurrence = { unit: v.unit, interval: v.interval };
+  }
+  return { recurrence, firstDueDate: recurrence ? v.startDate : v.dueDate };
+}
+
 /** The "new task" form. Recurring is the default; a one-off task may have a due date. */
 export const createChoreInput = z
   .object({
@@ -29,39 +66,32 @@ export const createChoreInput = z
       .nullish()
       .transform((v) => v || null)
       .refine((v) => v === null || findTemplate(v) !== undefined, "Okänd fördefinierad uppgift"),
-    roomId: z.uuid({ error: "Välj ett rum" }),
-    kind: z.enum(["recurring", "once"], { error: "Välj återkommande eller en gång" }).default("recurring"),
-    interval: z.coerce
-      .number({ error: "Ange hur ofta" })
-      .int("Ange ett heltal")
-      .min(1, "Minst 1")
-      .max(MAX_INTERVAL, `Högst ${MAX_INTERVAL}`)
-      .optional(),
-    unit: z.enum(RECURRENCE_UNITS, { error: "Välj dag, vecka eller månad" }).optional(),
-    startDate: optionalDate,
-    dueDate: optionalDate,
-    assigneeId: optionalText(100),
+    ...cadenceFields,
   })
   .transform((v, ctx) => {
-    let recurrence: Recurrence | null = null;
-    if (v.kind === "recurring") {
-      if (v.interval === undefined || v.unit === undefined) {
-        ctx.addIssue({ code: "custom", message: "Ange hur ofta" });
-        return z.NEVER;
-      }
-      recurrence = { unit: v.unit, interval: v.interval };
-    }
+    const { recurrence, firstDueDate } = resolveCadence(v, ctx);
     return {
       title: v.title,
       templateKey: v.templateKey,
       roomId: v.roomId,
       recurrence,
       /** null: today for a recurring task, no due date for a one-off. */
-      firstDueDate: recurrence ? v.startDate : v.dueDate,
+      firstDueDate,
       assigneeId: v.assigneeId,
     };
   });
 export type CreateChoreInput = z.infer<typeof createChoreInput>;
+
+/** Adding a routine to the home: the same cadence for every task in it, in one room. */
+export const addRoutineInput = z
+  .object({ routineId: z.uuid({ error: "Rutinen finns inte längre" }), ...cadenceFields })
+  .transform((v, ctx) => ({
+    routineId: v.routineId,
+    roomId: v.roomId,
+    ...resolveCadence(v, ctx),
+    assigneeId: v.assigneeId,
+  }));
+export type AddRoutineInput = z.infer<typeof addRoutineInput>;
 
 /**
  * Editing a task: what to do, where, how often, and when it is next due. An empty date

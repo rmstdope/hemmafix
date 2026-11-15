@@ -1,8 +1,10 @@
 "use server";
 
 import { refresh } from "next/cache";
+import { unstable_rethrow } from "next/navigation";
 import { z } from "zod";
 import { UserError } from "@/lib/errors";
+import { SAVE_FAILED } from "@/lib/routine-texts";
 import type { Role } from "@/lib/permissions";
 import { getCurrentMember, type CurrentMember } from "@/server/dal";
 import * as home from "@/server/household";
@@ -10,7 +12,7 @@ import * as chores from "@/server/chores";
 import * as connections from "@/server/connections";
 import * as routines from "@/server/routines";
 
-export type ActionState = { ok: boolean; error?: string; id?: string };
+export type ActionState = { ok: boolean; error?: string; id?: string; count?: number };
 
 const LOGGED_OUT = "Du är utloggad – ladda om sidan och logga in igen.";
 
@@ -111,6 +113,23 @@ export async function updateRoutineTask(routineId: string, taskId: string, title
 
 export async function removeRoutineTask(routineId: string, taskId: string) {
   return act((m) => routines.removeRoutineTask(m, routineId, taskId));
+}
+
+/** Adds every task of a routine to a room (adults); resolves with how many were added. */
+export async function addRoutine(_prev: ActionState, formData: FormData): Promise<ActionState> {
+  let count = 0;
+  const result = await act(async (m) => {
+    try {
+      count = (await routines.addRoutineToHome(m, Object.fromEntries(formData))).count;
+    } catch (e) {
+      if (e instanceof UserError || e instanceof z.ZodError) throw e;
+      // The transaction rolled back, so nothing was added: say so the agreed way.
+      unstable_rethrow(e);
+      console.error("addRoutine failed", e);
+      throw new UserError(SAVE_FAILED);
+    }
+  });
+  return result.ok ? { ok: true, count } : result;
 }
 
 // ---------------------------------------------------------------------------

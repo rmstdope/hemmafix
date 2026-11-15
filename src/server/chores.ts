@@ -11,6 +11,7 @@ import {
   assigneeIdInput,
   choreId as choreIdInput,
   createChoreInput,
+  type CreateChoreInput,
   editChoreInput,
   instanceId as instanceIdInput,
   memberId as memberIdInput,
@@ -53,9 +54,9 @@ export async function listFamily(householdId: string): Promise<FamilyMember[]> {
     .orderBy(asc(user.name));
 }
 
-type Tx = Parameters<Parameters<typeof db.transaction>[0]>[0];
+export type Tx = Parameters<Parameters<typeof db.transaction>[0]>[0];
 
-async function assertMember(tx: Tx | typeof db, householdId: string, userId: string | null) {
+export async function assertMember(tx: Tx | typeof db, householdId: string, userId: string | null) {
   if (!userId) return;
   const [m] = await tx
     .select({ userId: membership.userId })
@@ -71,41 +72,59 @@ const recurrenceOf = (c: { recurrenceUnit: Recurrence["unit"] | null; recurrence
 // Creating, assigning and deleting tasks (adults)
 // ---------------------------------------------------------------------------
 
+/** Share-locks a room of the actor's home, so it cannot be removed while tasks are added to it. */
+export async function lockRoom(tx: Tx, actor: Actor, roomId: string) {
+  const [r] = await tx
+    .select({ id: room.id })
+    .from(room)
+    .where(and(eq(room.id, roomId), eq(room.householdId, actor.householdId), isNull(room.archivedAt)))
+    .for("share");
+  if (!r) throw new UserError("Rummet finns inte i hemmet");
+}
+
+/** Inserts a task with its first instance. The caller has checked the room and the assignee. */
+export async function insertChore(
+  tx: Tx,
+  actor: Actor,
+  input: Pick<CreateChoreInput, "title" | "roomId" | "recurrence" | "firstDueDate" | "assigneeId"> & {
+    templateKey: string | null;
+    /** When several tasks are added in one transaction, an increasing time keeps their order on the list. */
+    createdAt?: Date;
+  },
+) {
+  const [created] = await tx
+    .insert(chore)
+    .values({
+      householdId: actor.householdId,
+      roomId: input.roomId,
+      title: input.title,
+      templateKey: input.templateKey,
+      recurrenceUnit: input.recurrence?.unit ?? null,
+      recurrenceInterval: input.recurrence?.interval ?? null,
+      assigneeId: input.assigneeId,
+      createdById: actor.userId,
+      ...(input.createdAt && { createdAt: input.createdAt }),
+    })
+    .returning({ id: chore.id });
+  await tx.insert(choreInstance).values({
+    ...(input.createdAt && { createdAt: input.createdAt }),
+    choreId: created!.id,
+    householdId: actor.householdId,
+    dueDate: input.firstDueDate ?? (input.recurrence ? todayIso() : null),
+    assigneeId: input.assigneeId,
+  });
+  return created!;
+}
+
 /** Creates a task in a room of the actor's home, with its first instance. */
 export async function createChore(actor: Actor, raw: unknown) {
   assertCan(actor, "task:create");
   const input = createChoreInput.parse(raw);
 
   return db.transaction(async (tx) => {
-    // Share-lock the room so it cannot be removed while the task is being added to it.
-    const [r] = await tx
-      .select({ id: room.id })
-      .from(room)
-      .where(and(eq(room.id, input.roomId), eq(room.householdId, actor.householdId), isNull(room.archivedAt)))
-      .for("share");
-    if (!r) throw new UserError("Rummet finns inte i hemmet");
+    await lockRoom(tx, actor, input.roomId);
     await assertMember(tx, actor.householdId, input.assigneeId);
-
-    const [created] = await tx
-      .insert(chore)
-      .values({
-        householdId: actor.householdId,
-        roomId: input.roomId,
-        title: input.title,
-        templateKey: input.templateKey,
-        recurrenceUnit: input.recurrence?.unit ?? null,
-        recurrenceInterval: input.recurrence?.interval ?? null,
-        assigneeId: input.assigneeId,
-        createdById: actor.userId,
-      })
-      .returning({ id: chore.id });
-    await tx.insert(choreInstance).values({
-      choreId: created!.id,
-      householdId: actor.householdId,
-      dueDate: input.firstDueDate ?? (input.recurrence ? todayIso() : null),
-      assigneeId: input.assigneeId,
-    });
-    return created!;
+    return insertChore(tx, actor, input);
   });
 }
 

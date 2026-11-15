@@ -1,12 +1,14 @@
 import { eq } from "drizzle-orm";
 import { beforeEach, describe, expect, it } from "vitest";
 import { db } from "@/db";
-import { household, routine } from "@/db/schema";
+import { chore, choreInstance, household, routine } from "@/db/schema";
 import { ForbiddenError } from "@/lib/permissions";
 import { READY_MADE_ROUTINES } from "@/lib/ready-made-routines";
 import { createFamily } from "../../test/integration/factories";
 import {
   addRoutineTask,
+  addRoutineToHome,
+  listRoutinesWithTasks,
   createRoutine,
   deleteRoutine,
   getRoutine,
@@ -226,3 +228,133 @@ describe("who may", () => {
 async function clearNeighbour() {
   for (const r of await listRoutines(f.neighbour)) await deleteRoutine(f.neighbour, r.id);
 }
+
+describe("addRoutineToHome", () => {
+  const makeRoutine = async (name: string, taskTitles: string[]) => {
+    const { id } = await createRoutine(f.adult, name);
+    for (const t of taskTitles) await addRoutineTask(f.adult, id, t);
+    return id;
+  };
+  const added = async () =>
+    db
+      .select({
+        title: chore.title,
+        roomId: chore.roomId,
+        unit: chore.recurrenceUnit,
+        interval: chore.recurrenceInterval,
+        assigneeId: chore.assigneeId,
+        templateKey: chore.templateKey,
+        due: choreInstance.dueDate,
+        instanceAssignee: choreInstance.assigneeId,
+      })
+      .from(chore)
+      .innerJoin(choreInstance, eq(choreInstance.choreId, chore.id))
+      .orderBy(chore.createdAt, chore.title);
+
+  it("adds every task as its own ordinary task with the chosen cadence, date and person", async () => {
+    const id = await makeRoutine("Storstäd", ["Dammsuga", "Moppa", "Damma"]);
+    const result = await addRoutineToHome(f.adult, {
+      routineId: id,
+      roomId: f.kitchen.id,
+      kind: "recurring",
+      interval: "2",
+      unit: "week",
+      startDate: "2026-12-01",
+      assigneeId: f.child.userId,
+    });
+    expect(result).toEqual({ count: 3 });
+    const rows = await added();
+    expect(rows.map((r) => r.title).sort()).toEqual(["Damma", "Dammsuga", "Moppa"]);
+    for (const r of rows) {
+      expect(r).toMatchObject({
+        roomId: f.kitchen.id,
+        unit: "week",
+        interval: 2,
+        assigneeId: f.child.userId,
+        instanceAssignee: f.child.userId,
+        due: "2026-12-01",
+        templateKey: null,
+      });
+    }
+  });
+
+  it("keeps the routine's order on the list", async () => {
+    const id = await makeRoutine("Ordning", ["Tre", "Ett", "Fyra", "Två", "Fem"]);
+    await addRoutineToHome(f.adult, { routineId: id, roomId: f.kitchen.id, kind: "once" });
+    const rows = await db
+      .select({ title: chore.title })
+      .from(choreInstance)
+      .innerJoin(chore, eq(chore.id, choreInstance.choreId))
+      .orderBy(choreInstance.createdAt, choreInstance.id);
+    expect(rows.map((r) => r.title)).toEqual(["Tre", "Ett", "Fyra", "Två", "Fem"]);
+  });
+
+  it("adds one-off tasks with a due date, or none", async () => {
+    const id = await makeRoutine("Engång", ["Putsa"]);
+    await addRoutineToHome(f.adult, { routineId: id, roomId: f.bathroom.id, kind: "once", dueDate: "2026-12-24" });
+    await addRoutineToHome(f.adult, { routineId: id, roomId: f.bathroom.id, kind: "once", dueDate: "" });
+    const rows = await added();
+    expect(rows.map((r) => r.due).sort()).toEqual(["2026-12-24", null]);
+    for (const r of rows) expect([r.unit, r.interval, r.assigneeId]).toEqual([null, null, null]);
+  });
+
+  it("adds a task whose name is already in the room, and is not tied to the routine afterwards", async () => {
+    const id = await makeRoutine("Städa", ["Dammsuga"]);
+    const input = { routineId: id, roomId: f.kitchen.id, kind: "once" };
+    await addRoutineToHome(f.adult, input);
+    await addRoutineToHome(f.adult, input);
+    await renameRoutine(f.adult, id, "Annat");
+    await deleteRoutine(f.adult, id);
+    expect((await added()).map((r) => r.title)).toEqual(["Dammsuga", "Dammsuga"]);
+  });
+
+  it("adds a full routine of 30 tasks", async () => {
+    const id = await makeRoutine("Stor", Array.from({ length: 30 }, (_, i) => `Uppgift ${i}`));
+    expect(await addRoutineToHome(f.adult, { routineId: id, roomId: f.kitchen.id, kind: "once" })).toEqual({ count: 30 });
+    expect((await added()).length).toBe(30);
+  });
+
+  it("is for adults, for this home's routines and rooms, and adds nothing when it fails", async () => {
+    const id = await makeRoutine("Städa", ["A", "B"]);
+    const theirs = await createRoutine(f.neighbour, "Deras");
+    await addRoutineTask(f.neighbour, theirs.id, "X");
+    const input = { routineId: id, roomId: f.kitchen.id, kind: "once" };
+    await expect(addRoutineToHome(f.child, input)).rejects.toThrow(ForbiddenError);
+    await expect(addRoutineToHome(f.adult, { ...input, routineId: theirs.id })).rejects.toThrow("Rutinen finns inte längre");
+    await expect(
+      addRoutineToHome(f.adult, { ...input, routineId: "00000000-0000-4000-8000-000000000000" }),
+    ).rejects.toThrow("Rutinen finns inte längre");
+    await expect(addRoutineToHome(f.adult, { ...input, roomId: f.garage.id })).rejects.toThrow("Rummet finns inte i hemmet");
+    await expect(addRoutineToHome(f.adult, { ...input, assigneeId: f.neighbour.userId })).rejects.toThrow(
+      "Personen finns inte i hemmet",
+    );
+    expect(await added()).toEqual([]);
+  });
+
+  it("adds nothing for a routine without tasks", async () => {
+    const id = await makeRoutine("Tom", []);
+    await expect(addRoutineToHome(f.adult, { routineId: id, roomId: f.kitchen.id, kind: "once" })).rejects.toThrow(
+      "Det gick inte att spara",
+    );
+    expect(await added()).toEqual([]);
+  });
+});
+
+describe("listRoutinesWithTasks", () => {
+  it("lists the home's routines in creation order, each with its tasks in order", async () => {
+    await clearReadyMade();
+    const a = await createRoutine(f.adult, "Första");
+    const b = await createRoutine(f.adult, "Andra");
+    await addRoutineTask(f.adult, a.id, "Ett");
+    await addRoutineTask(f.adult, a.id, "Två");
+    expect(await listRoutinesWithTasks(f.adult)).toEqual([
+      { id: a.id, name: "Första", tasks: ["Ett", "Två"] },
+      { id: b.id, name: "Andra", tasks: [] },
+    ]);
+  });
+
+  it("gives a home its ready-made routines and is adults only", async () => {
+    expect((await listRoutinesWithTasks(f.adult)).map((r) => r.name)).toEqual(["Städa badrum", "Städa kök", "Städa sovrum"]);
+    await expect(listRoutinesWithTasks(f.child)).rejects.toThrow(ForbiddenError);
+  });
+});
