@@ -1,23 +1,24 @@
 // The `test` every spec imports: each test starts from an empty database, and the
 // database connection is closed once the worker is done with all spec files.
+import { randomBytes } from "node:crypto";
 import { test as base } from "@playwright/test";
-import { E2E_BASE_URL } from "./env";
 import { closeDatabase, resetDatabase } from "./family";
 
-let testsStarted = 0;
-
+/**
+ * Better Auth keeps one rate-limit bucket per client address and path, and without a forwarded
+ * address every request lands in one shared bucket, so the suite as a whole is held to
+ * /oauth2/authorize's 30 requests (the counter resets only after 60 s with no request at all).
+ * Each test presents itself as its own client, which gives it the full allowance; the app's limit
+ * is untouched.
+ */
 export const test = base.extend<{ freshDatabase: void }, { database: void }>({
-  // Better Auth rate limits per client address (the authorize endpoint: 30 a minute), and every
-  // test in the run shares one: give each test its own address, as separate people would have.
-  // Only requests to the app carry it; the redirects to Claude's own address stay untouched.
-  context: async ({ context }, provide) => {
-    const n = ++testsStarted;
-    const address = `10.${(n >> 16) & 255}.${(n >> 8) & 255}.${n & 255}`;
-    await context.route(`${E2E_BASE_URL}/**`, (route) =>
-      route.continue({ headers: { ...route.request().headers(), "x-forwarded-for": address } }),
-    );
-    await provide(context);
-  },
+  extraHTTPHeaders: [
+    async ({}, use) => {
+      const [a, b, c] = randomBytes(3);
+      await use({ "x-forwarded-for": `10.${a}.${b}.${c}` });
+    },
+    { scope: "test" },
+  ],
   database: [
     async ({}, use) => {
       await use();
