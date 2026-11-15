@@ -101,19 +101,31 @@ export async function createChore(actor: Actor, raw: unknown) {
  * Changes a task: title, room, how often (it may become one-off or recurring) and when its
  * open instance is due. What has been done keeps its own title and room in the history.
  */
-export async function editChore(actor: Actor, id: string, raw: unknown) {
+export async function editChore(actor: Actor, openInstanceId: string, raw: unknown) {
   assertCan(actor, "task:edit");
-  const target = choreIdInput.parse(id);
+  // The edit is made from one open instance (the row the form was opened on). If that has
+  // been ticked off since, the form is stale: saving it would move the next instance back
+  // to the old date, or turn a done one-off into a recurring task with nothing open.
+  const instance = instanceIdInput.parse(openInstanceId);
   const input = editChoreInput.parse(raw);
 
   await db.transaction(async (tx) => {
-    // Lock the task, so a tick or another edit takes turns with this one.
+    // Lock the instance and its task, so a tick or another edit takes turns with this one.
     const [current] = await tx
-      .select({ templateKey: chore.templateKey })
-      .from(chore)
-      .where(and(eq(chore.id, target), eq(chore.householdId, actor.householdId), isNull(chore.archivedAt)))
+      .select({ choreId: chore.id, templateKey: chore.templateKey, completedAt: choreInstance.completedAt })
+      .from(choreInstance)
+      .innerJoin(chore, eq(chore.id, choreInstance.choreId))
+      .where(
+        and(
+          eq(choreInstance.id, instance),
+          eq(choreInstance.householdId, actor.householdId),
+          isNull(chore.archivedAt),
+        ),
+      )
       .for("update");
     if (!current) throw new UserError("Uppgiften finns inte längre");
+    if (current.completedAt) throw new UserError("Någon har bockat av den under tiden. Öppna den igen och ändra.");
+    const target = current.choreId;
     const [r] = await tx
       .select({ id: room.id })
       .from(room)
@@ -136,7 +148,7 @@ export async function editChore(actor: Actor, id: string, raw: unknown) {
     await tx
       .update(choreInstance)
       .set({ dueDate: input.dueDate ?? (input.recurrence ? todayIso() : null) })
-      .where(and(eq(choreInstance.choreId, target), isNull(choreInstance.completedAt)));
+      .where(eq(choreInstance.id, instance));
   });
 }
 
@@ -321,8 +333,10 @@ export type InstanceView = {
 const completer = aliasedTable(user, "completer");
 
 /** A done instance shows the title and room it had when ticked off; an open one the task's. */
-const shownTitle = sql<string>`coalesce(${choreInstance.doneTitle}, ${chore.title})`;
-const shownRoomId = sql`coalesce(${choreInstance.doneRoomId}, ${chore.roomId})`;
+// Gated on completed_at: an open row never shows a snapshot, even one left behind by an undo
+// in a release that did not know about snapshots.
+const shownTitle = sql<string>`case when ${choreInstance.completedAt} is not null then coalesce(${choreInstance.doneTitle}, ${chore.title}) else ${chore.title} end`;
+const shownRoomId = sql`case when ${choreInstance.completedAt} is not null then coalesce(${choreInstance.doneRoomId}, ${chore.roomId}) else ${chore.roomId} end`;
 
 const instanceColumns = {
   id: choreInstance.id,

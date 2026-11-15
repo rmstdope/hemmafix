@@ -81,8 +81,13 @@ export async function createChore(_prev: ActionState, formData: FormData): Promi
   return act((m) => chores.createChore(m, Object.fromEntries(formData)));
 }
 
-export async function editChore(id: string, _prev: ActionState, formData: FormData): Promise<ActionState> {
-  return act((m) => chores.editChore(m, id, Object.fromEntries(formData)));
+/** Edits a task from one of its open instances (the row the form was opened on). */
+export async function editChore(
+  instanceId: string,
+  _prev: ActionState,
+  formData: FormData,
+): Promise<ActionState> {
+  return act((m) => chores.editChore(m, instanceId, Object.fromEntries(formData)));
 }
 
 export async function completeInstance(id: string) {

@@ -28,7 +28,8 @@ export function EditChoreForm({
   rooms,
   onDone,
 }: {
-  task: { choreId: string; title: string; roomId: string | null; recurrence: Recurrence | null; dueDate: string | null };
+  /** The open instance the form edits from, and its task. */
+  task: { id: string; title: string; roomId: string | null; recurrence: Recurrence | null; dueDate: string | null };
   floors: Option[];
   rooms: Room[];
   onDone: () => void;
@@ -36,7 +37,7 @@ export function EditChoreForm({
   const [kind, setKind] = useState<"recurring" | "once">(task.recurrence ? "recurring" : "once");
   const [interval, setInterval] = useState(String(task.recurrence?.interval ?? 1));
   const [, action, pending] = useActionState<ActionState, FormData>(async (prev, formData) => {
-    const result = await editChore(task.choreId, prev, formData);
+    const result = await editChore(task.id, prev, formData);
     if (result.ok) {
       toast.success("Uppgiften är ändrad");
       onDone();

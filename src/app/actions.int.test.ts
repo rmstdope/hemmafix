@@ -61,7 +61,7 @@ describe("as a child", () => {
     expect(await actions.assignChore(t.choreId, f.child.userId)).toEqual(FORBIDDEN);
     expect(await actions.deleteChore(t.choreId)).toEqual(FORBIDDEN);
     expect(
-      await actions.editChore(t.choreId, { ok: false }, form({ title: "Godis", roomId: f.kitchen.id, kind: "once" })),
+      await actions.editChore(t.instanceId, { ok: false }, form({ title: "Godis", roomId: f.kitchen.id, kind: "once" })),
     ).toEqual(FORBIDDEN);
     expect(await actions.renameRoom(f.kitchen.id, "Godisrum")).toEqual(FORBIDDEN);
 
@@ -120,7 +120,7 @@ describe("as an adult", () => {
     expect(await actions.assignInstance(first.id, f.child.userId)).toEqual(OK);
     expect(await actions.assignChore(c!.id, f.adult.userId)).toEqual(OK);
     expect(
-      await actions.editChore(c!.id, { ok: false }, form({ title: "Diska allt", roomId: f.kitchen.id, interval: "2", unit: "day" })),
+      await actions.editChore(first.id, { ok: false }, form({ title: "Diska allt", roomId: f.kitchen.id, interval: "2", unit: "day" })),
     ).toEqual(OK);
     expect(await actions.completeInstance(first.id)).toEqual(OK);
     expect(await actions.completeInstance(first.id)).toEqual({ ok: false, error: "Någon har redan bockat av den" });
