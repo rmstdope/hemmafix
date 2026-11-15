@@ -200,11 +200,34 @@ describe("0007: the tables behind connected apps", () => {
     await sql`insert into "user" (id, name, email, email_verified) values ('a', 'Anna', 'a@example.com', true)`;
     const before = await sql`select table_name from information_schema.tables where table_schema = 'public'`;
 
-    await migrateUpTo(sql);
+    await migrateUpTo(sql, "0007_connected_apps");
 
     const after = await sql`select table_name from information_schema.tables where table_schema = 'public'`;
     const added = after.map((t) => t.table_name).filter((n) => !before.some((b) => b.table_name === n));
     expect(added.sort()).toEqual(["app_connection_use", "app_token"]);
     expect(await sql`select email from "user"`).toEqual([{ email: "a@example.com" }]);
+  });
+});
+
+describe("0008: routines", () => {
+  beforeEach(reset);
+
+  it("only adds tables and a nullable column, so the previous release keeps working", async () => {
+    await migrateUpTo(sql, "0007_connected_apps");
+    const [home] = await sql`insert into household (name) values ('Hemma') returning id`;
+    const before = await sql`select table_name from information_schema.tables where table_schema = 'public'`;
+
+    await migrateUpTo(sql, "0008_routines");
+
+    const after = await sql`select table_name from information_schema.tables where table_schema = 'public'`;
+    const added = after.map((t) => t.table_name).filter((n) => !before.some((b) => b.table_name === n));
+    expect(added.sort()).toEqual(["routine", "routine_task"]);
+    // Existing homes are untouched (the ready-made routines are given by the app, once), and the
+    // previous release's insert of a household, without the new column, still works.
+    expect(await sql`select routines_seeded_at from household where id = ${home!.id}`).toEqual([
+      { routines_seeded_at: null },
+    ]);
+    await sql`insert into household (name) values ('Nytt')`;
+    expect(await sql`select count(*)::int as n from routine`).toEqual([{ n: 0 }]);
   });
 });

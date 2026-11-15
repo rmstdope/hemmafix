@@ -8,8 +8,9 @@ import { getCurrentMember, type CurrentMember } from "@/server/dal";
 import * as home from "@/server/household";
 import * as chores from "@/server/chores";
 import * as connections from "@/server/connections";
+import * as routines from "@/server/routines";
 
-export type ActionState = { ok: boolean; error?: string };
+export type ActionState = { ok: boolean; error?: string; id?: string };
 
 const LOGGED_OUT = "Du är utloggad – ladda om sidan och logga in igen.";
 
@@ -77,6 +78,39 @@ export async function setMemberRole(userId: string, role: Role) {
 /** Disconnects one of the logged-in adult's own connected apps. */
 export async function disconnectApp(connectionId: string) {
   return act((m) => connections.revokeConnection(m, connectionId));
+}
+
+// ---------------------------------------------------------------------------
+// Routines: tasks that are usually done together (adults only, checked in src/server/routines.ts)
+// ---------------------------------------------------------------------------
+
+/** Resolves with the new routine's id, so the page can open it. */
+export async function createRoutine(name: string): Promise<ActionState> {
+  let id: string | undefined;
+  const result = await act(async (m) => {
+    id = (await routines.createRoutine(m, name)).id;
+  });
+  return result.ok ? { ok: true, id } : result;
+}
+
+export async function renameRoutine(id: string, name: string) {
+  return act((m) => routines.renameRoutine(m, id, name));
+}
+
+export async function deleteRoutine(id: string) {
+  return act((m) => routines.deleteRoutine(m, id));
+}
+
+export async function addRoutineTask(routineId: string, title: string) {
+  return act((m) => routines.addRoutineTask(m, routineId, title));
+}
+
+export async function updateRoutineTask(routineId: string, taskId: string, title: string) {
+  return act((m) => routines.updateRoutineTask(m, routineId, taskId, title));
+}
+
+export async function removeRoutineTask(routineId: string, taskId: string) {
+  return act((m) => routines.removeRoutineTask(m, routineId, taskId));
 }
 
 // ---------------------------------------------------------------------------

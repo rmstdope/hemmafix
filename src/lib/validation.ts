@@ -14,7 +14,7 @@ const optionalText = (max: number) =>
 
 export const isoDate = z.iso.date({ error: "Ogiltigt datum" });
 
-const choreTitle = z.string().trim().min(1, "Skriv vad som ska göras").max(200, "Max 200 tecken");
+export const choreTitle = z.string().trim().min(1, "Skriv vad som ska göras").max(200, "Max 200 tecken");
 const optionalDate = z
   .union([isoDate, z.literal("")])
   .nullish()
@@ -119,3 +119,8 @@ export const floorName = z.string().trim().min(1, "Våningen behöver ett namn")
 export const floorDirection = z.enum(["up", "down"]);
 export const memberId = z.string().min(1).max(100);
 export const roleInput = z.enum(ROLES);
+
+export const routineName = z.string().trim().min(1, "Skriv rutinens namn").max(40, "Max 40 tecken");
+export const routineTaskTitle = choreTitle;
+export const routineId = z.uuid();
+export const routineTaskId = z.uuid();

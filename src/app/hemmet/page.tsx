@@ -6,6 +6,7 @@ import { LiveUpdates } from "@/components/live-updates";
 import { MemberRoles } from "@/components/home/member-roles";
 import { RenameForm } from "@/components/home/rename-form";
 import { FloorsAndRooms } from "@/components/home/floors-and-rooms";
+import { Routines } from "@/components/home/routines";
 import { ConnectedApps } from "@/components/home/connected-apps";
 import { formatConnectedDate, formatLastUsed } from "@/lib/dates";
 import { can } from "@/lib/permissions";
@@ -13,6 +14,7 @@ import { listConnections } from "@/server/connections";
 import { requireMember } from "@/server/dal";
 import { listFloors, listMembersWithRoles, listRooms } from "@/server/household";
 import { getHousehold } from "@/server/chores";
+import { listRoutines } from "@/server/routines";
 
 export const metadata = { title: "Hemmet – Hemmafix" };
 
@@ -31,12 +33,13 @@ async function HomeSettings() {
   // Only adults manage the home; the actions refuse children as well.
   if (!can(member.role, "household:rename")) redirect("/");
 
-  const [home, floors, rooms, members, connections] = await Promise.all([
+  const [home, floors, rooms, members, connections, routines] = await Promise.all([
     getHousehold(member.householdId),
     listFloors(member.householdId),
     listRooms(member.householdId),
     listMembersWithRoles(member.householdId),
     listConnections(member.userId),
+    listRoutines(member),
   ]);
   const now = new Date();
 
@@ -77,6 +80,16 @@ async function HomeSettings() {
           personer blir barn tills en vuxen ändrar det.
         </p>
         <MemberRoles members={members} currentUserId={member.userId} />
+      </section>
+
+      <section className="mt-8 space-y-2" aria-labelledby="routines-heading">
+        <h2 id="routines-heading" className="text-sm font-medium text-muted-foreground">
+          Rutiner
+        </h2>
+        <p className="text-sm text-muted-foreground">
+          Uppgifter som brukar göras tillsammans, till exempel när ni städar badrummet.
+        </p>
+        <Routines routines={routines} />
       </section>
 
       <ConnectedApps

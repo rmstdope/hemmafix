@@ -1,5 +1,6 @@
 import { sql } from "drizzle-orm";
 import {
+  bigint,
   boolean,
   check,
   date,
@@ -301,6 +302,8 @@ export const appConnectionUse = pgTable("app_connection_use", {
 export const household = pgTable("household", {
   id: uuid("id").primaryKey().defaultRandom(),
   name: text("name").notNull(),
+  /** Set once the ready-made routines were given to the home, so a removed one never returns. */
+  routinesSeededAt: timestamp("routines_seeded_at", { withTimezone: true }),
   ...timestamps,
 });
 
@@ -462,6 +465,40 @@ export const choreInstance = pgTable(
     index("chore_instance_household_open_idx").on(t.householdId, t.completedAt),
     index("chore_instance_completed_by_idx").on(t.completedById, t.completedAt),
   ],
+);
+
+/**
+ * A routine: tasks that are usually done together ("Städa badrum"). A template only: a task in
+ * a routine is a name, and changing or removing the routine never touches tasks in the home.
+ */
+export const routine = pgTable(
+  "routine",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    householdId: uuid("household_id")
+      .notNull()
+      .references(() => household.id, { onDelete: "cascade" }),
+    name: text("name").notNull(),
+    /** Creation order; an identity, so two routines made in one transaction never tie. */
+    seq: bigint("seq", { mode: "number" }).notNull().generatedAlwaysAsIdentity(),
+    ...timestamps,
+  },
+  (t) => [uniqueIndex("routine_household_name_idx").on(t.householdId, sql`lower(${t.name})`)],
+);
+
+export const routineTask = pgTable(
+  "routine_task",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    routineId: uuid("routine_id")
+      .notNull()
+      .references(() => routine.id, { onDelete: "cascade" }),
+    title: text("title").notNull(),
+    /** The order tasks were added in. */
+    seq: bigint("seq", { mode: "number" }).notNull().generatedAlwaysAsIdentity(),
+    ...timestamps,
+  },
+  (t) => [uniqueIndex("routine_task_routine_title_idx").on(t.routineId, sql`lower(${t.title})`)],
 );
 
 export type Chore = typeof chore.$inferSelect;

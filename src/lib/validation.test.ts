@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { boardFilter, createChoreInput } from "./validation";
+import { boardFilter, createChoreInput, routineName, routineTaskTitle } from "./validation";
 
 const ROOM = "6f1c3b0e-5f8a-4c7e-9d2a-1b3c4d5e6f70";
 const parse = (fields: Record<string, string>) => createChoreInput.safeParse(fields);
@@ -81,5 +81,23 @@ describe("Swedish errors for kind and unit", () => {
       const unit = schema.safeParse({ ...base, kind: "recurring", interval: 1, unit: "weeks" });
       expect(unit.error?.issues[0]?.message).toBe("Välj dag, vecka eller månad");
     }
+  });
+});
+
+describe("routineName", () => {
+  it("trims, and refuses empty and over 40 characters", () => {
+    expect(routineName.parse("  Städa badrum ")).toBe("Städa badrum");
+    expect(routineName.safeParse("   ").error?.issues[0]?.message).toBe("Skriv rutinens namn");
+    expect(routineName.safeParse("x".repeat(40)).success).toBe(true);
+    expect(routineName.safeParse("x".repeat(41)).error?.issues[0]?.message).toBe("Max 40 tecken");
+  });
+});
+
+describe("routineTaskTitle", () => {
+  it("trims, and refuses empty and over 200 characters", () => {
+    expect(routineTaskTitle.parse(" Diska ")).toBe("Diska");
+    expect(routineTaskTitle.safeParse("").error?.issues[0]?.message).toBe("Skriv vad som ska göras");
+    expect(routineTaskTitle.safeParse("x".repeat(200)).success).toBe(true);
+    expect(routineTaskTitle.safeParse("x".repeat(201)).error?.issues[0]?.message).toBe("Max 200 tecken");
   });
 });
