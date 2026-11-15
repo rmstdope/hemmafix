@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { floorLabel, nextFloorName, roomLabel } from "./floors";
+import { floorKey, floorLabel, nextFloorName, roomLabel } from "./floors";
 
 describe("floorLabel", () => {
   it("shows numbered floors as Plan N and named floors as they are", () => {
@@ -16,6 +16,8 @@ describe("nextFloorName", () => {
     expect(nextFloorName(["1", "2"])).toBe("3");
     expect(nextFloorName(["2", "Suterräng"])).toBe("1");
     expect(nextFloorName(["1", "Markplan", "3"])).toBe("2");
+    // "Plan 2" is shown like "2", so 2 is taken.
+    expect(nextFloorName(["1", "plan 2"])).toBe("3");
   });
 });
 
@@ -25,5 +27,13 @@ describe("roomLabel", () => {
     expect(roomLabel("Badrum", "Suterräng", true)).toBe("Badrum · Suterräng");
     expect(roomLabel("Badrum", "1", false)).toBe("Badrum");
     expect(roomLabel("Badrum", null, true)).toBe("Badrum");
+  });
+});
+
+describe("floorKey", () => {
+  it("treats names that show the same as the same", () => {
+    expect(floorKey("2")).toBe(floorKey("Plan 2"));
+    expect(floorKey("Suterräng")).toBe(floorKey("SUTERRÄNG"));
+    expect(floorKey("2")).not.toBe(floorKey("3"));
   });
 });

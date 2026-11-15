@@ -97,7 +97,7 @@ test("a template leaves the room to the person when the home has two of that roo
   await expect(room).toHaveValue("");
   // A unique room is still filled in.
   await form.getByRole("combobox", { name: "Fördefinierad uppgift" }).selectOption({ label: "Diska" });
-  await expect(room.locator("option:checked")).toHaveText("Kök");
+  await expect(room.locator("option:checked")).toHaveText("Kök (Plan 1)");
 
   await form.getByRole("combobox", { name: "Fördefinierad uppgift" }).selectOption({ label: "Städa toaletten" });
   await room.selectOption(upper["Badrum"]!.id);

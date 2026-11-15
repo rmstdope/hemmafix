@@ -110,4 +110,20 @@ describe("0004: floors", () => {
       ["Kök", true],
     ]);
   });
+
+  it("lets the previous release keep adding rooms and homes without floors", async () => {
+    await migrateUpTo(sql);
+    const [home] = await sql`insert into household (name) values ('Hemma') returning id`;
+    // The previous release creates a home without a floor, then rooms without one.
+    await sql`insert into room (household_id, name) values (${home!.id}, 'Kök')`;
+    await sql`insert into floor (household_id, name, position) values (${home!.id}, '2', 2)`;
+    await sql`insert into room (household_id, name) values (${home!.id}, 'Hall')`;
+
+    const rooms = await sql`
+      select room.name, floor.name as floor from room join floor on floor.id = room.floor_id order by room.name`;
+    expect(rooms.map((r) => [r.name, r.floor])).toEqual([
+      ["Hall", "1"],
+      ["Kök", "1"],
+    ]);
+  });
 });

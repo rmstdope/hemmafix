@@ -50,6 +50,15 @@ describe("floors", () => {
     await expect(renameFloor(f.adult, f.ground.id, "  ")).rejects.toThrow();
   });
 
+  it("cannot get names that show the same", async () => {
+    const second = await addFloor(f.adult);
+    await expect(renameFloor(f.adult, second.id, "plan 1")).rejects.toThrow("redan en våning");
+    await expect(addFloor(f.adult, "Plan 2")).rejects.toThrow("redan en våning");
+    await renameFloor(f.adult, second.id, "Plan 3");
+    // 3 is taken by "Plan 3", so the next floor is 2.
+    expect((await addFloor(f.adult)).name).toBe("2");
+  });
+
   it("move up and down the house", async () => {
     const suterrang = await addFloor(f.adult, "Suterräng");
     // A basement added later goes on top; move it below floor 1.
@@ -121,6 +130,32 @@ describe("rooms on floors", () => {
     const attic = await addFloor(f.adult);
     await deleteFloor(f.adult, attic.id);
     await expect(addRoom(f.adult, "Vind", attic.id)).rejects.toThrow("finns inte i hemmet");
+  });
+
+  it("wait for a floor being removed, and are then refused", async () => {
+    const attic = await addFloor(f.adult, "Vind");
+    // Hold the floor as deleteFloor does while it checks for rooms and archives it.
+    let release!: () => void;
+    const held = new Promise<void>((r) => (release = r));
+    let locked!: () => void;
+    const isLocked = new Promise<void>((r) => (locked = r));
+    const removal = db.transaction(async (tx) => {
+      await tx.select().from(floor).where(eq(floor.id, attic.id)).for("update");
+      locked();
+      await held;
+      await tx.update(floor).set({ archivedAt: new Date() }).where(eq(floor.id, attic.id));
+    });
+    await isLocked;
+
+    let settled = false;
+    const adding = addRoom(f.adult, "Förråd", attic.id).finally(() => (settled = true));
+    await new Promise((r) => setTimeout(r, 300));
+    expect(settled).toBe(false);
+
+    release();
+    await removal;
+    await expect(adding).rejects.toThrow("finns inte i hemmet");
+    expect((await listRooms(f.homeId)).filter((r) => r.floorId === attic.id)).toHaveLength(0);
   });
 
   it("never end up on a removed floor, however the requests race", async () => {

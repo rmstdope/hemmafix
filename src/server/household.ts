@@ -2,7 +2,7 @@ import "server-only";
 import { and, asc, desc, eq, isNull, ne, sql } from "drizzle-orm";
 import { db } from "@/db";
 import { chore, floor, household, membership, room, user } from "@/db/schema";
-import { nextFloorName } from "@/lib/floors";
+import { floorKey, nextFloorName } from "@/lib/floors";
 import { UserError } from "@/lib/errors";
 import { assertCan, type Role } from "@/lib/permissions";
 import {
@@ -90,15 +90,23 @@ export async function addRoom(actor: Actor, name: string, floorIdArg?: string | 
   assertCan(actor, "room:manage");
   const roomNameValue = roomName.parse(name);
   return db.transaction(async (tx) => {
-    const floors = await tx
+    let target = floorIdArg ? floorId.parse(floorIdArg) : null;
+    if (!target) {
+      const floors = await tx
+        .select({ id: floor.id })
+        .from(floor)
+        .where(and(eq(floor.householdId, actor.householdId), isNull(floor.archivedAt)));
+      if (floors.length !== 1) throw new UserError("Välj en våning");
+      target = floors[0]!.id;
+    }
+    // Share-lock the floor so it cannot be removed while the room is added to it (removing it
+    // takes an update lock). Only this floor, so a floor being moved never deadlocks with us.
+    const [onFloor] = await tx
       .select({ id: floor.id })
       .from(floor)
-      .where(and(eq(floor.householdId, actor.householdId), isNull(floor.archivedAt)))
-      // Share-lock the floors so one cannot be removed while a room is added to it.
+      .where(and(eq(floor.id, target), eq(floor.householdId, actor.householdId), isNull(floor.archivedAt)))
       .for("share");
-    const target = floorIdArg ? floorId.parse(floorIdArg) : floors.length === 1 ? floors[0]!.id : null;
-    if (!target) throw new UserError("Välj en våning");
-    if (!floors.some((f) => f.id === target)) throw new UserError("Våningen finns inte i hemmet");
+    if (!onFloor) throw new UserError("Våningen finns inte i hemmet");
 
     const [created] = await tx
       .insert(room)
@@ -166,6 +174,9 @@ export async function addFloor(actor: Actor, name?: string | null) {
   const given = name?.trim() ? floorName.parse(name) : null;
   return db.transaction(async (tx) => {
     const floors = await lockFloors(tx, actor.householdId);
+    if (given && floors.some((f) => floorKey(f.name) === floorKey(given))) {
+      throw new UserError("Det finns redan en våning med det namnet");
+    }
     const top = Math.max(0, ...floors.map((f) => f.position));
     const [created] = await tx
       .insert(floor)
@@ -188,7 +199,7 @@ export async function renameFloor(actor: Actor, id: string, name: string) {
   await db.transaction(async (tx) => {
     const floors = await lockFloors(tx, actor.householdId);
     if (!floors.some((f) => f.id === target)) throw new UserError("Våningen finns inte i hemmet");
-    if (floors.some((f) => f.id !== target && f.name.toLowerCase() === next.toLowerCase())) {
+    if (floors.some((f) => f.id !== target && floorKey(f.name) === floorKey(next))) {
       throw new UserError("Det finns redan en våning med det namnet");
     }
     await tx.update(floor).set({ name: next }).where(eq(floor.id, target));

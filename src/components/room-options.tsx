@@ -31,8 +31,9 @@ export function RoomOptions({
       {rooms
         .filter((r) => r.floorId === f.id)
         .map((r) => (
+          // The floor in the text too: a closed select shows only the chosen option's text.
           <option key={r.id} value={roomValue(r.id)}>
-            {r.name}
+            {`${r.name} (${floorLabel(f.name)})`}
           </option>
         ))}
     </optgroup>
