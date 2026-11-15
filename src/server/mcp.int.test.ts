@@ -1,6 +1,6 @@
 import { eq } from "drizzle-orm";
 import { beforeAll, beforeEach, describe, expect, it } from "vitest";
-import { db } from "@/db";
+import { db, pg } from "@/db";
 import { chore, choreInstance, floor, household, membership, room, user } from "@/db/schema";
 
 process.env.ALLOWED_EMAILS = "anna@example.com, bo@example.com";
@@ -114,6 +114,35 @@ describe("the change-role tool", () => {
     await changeRole("anna", "Bo", "vuxen");
     const res = await changeRole("anna", "Anna", "barn");
     expect(res.result.content[0].text).toBe("Anna är nu barn.");
+    expect(await roleOf("anna")).toBe("child");
+  });
+
+  it("finds a person with a full Google name by first name, and answers with the first name", async () => {
+    await db.insert(user).values({ id: "cy", name: "Cy Berg", email: "cy@example.com", emailVerified: true });
+    await db.insert(membership).values({ userId: "cy", householdId: homeId, role: "child" });
+    const res = await changeRole("anna", "cy", "vuxen");
+    expect(res.result.content[0].text).toBe("Cy är nu vuxen.");
+    expect(await roleOf("cy")).toBe("adult");
+    expect((await changeRole("anna", "Cy Berg", "barn")).result.content[0].text).toBe("Cy är nu barn.");
+  });
+
+  it("tells the family's open screens when a role changed, and only then", async () => {
+    const seen: string[] = [];
+    const sub = await pg.listen("hemmafix_tasks", (id) => void seen.push(id));
+    await changeRole("bo", "Bo", "vuxen"); // refused
+    await changeRole("anna", "Bo", "barn"); // no change
+    await changeRole("anna", "Bo", "vuxen");
+    await new Promise((r) => setTimeout(r, 200));
+    await sub.unlisten();
+    expect(seen).toEqual([homeId]);
+  });
+
+  it("takes effect for the next call: a person made a child is refused", async () => {
+    await changeRole("anna", "Bo", "vuxen");
+    await changeRole("bo", "Anna", "barn");
+    const res = await changeRole("anna", "Bo", "barn");
+    expect(res.result.isError).toBe(true);
+    expect(res.result.content[0].text).toContain("Bara vuxna kan använda Hemmafix via Claude");
   });
 
   it("refuses a child and changes nothing", async () => {
@@ -125,8 +154,13 @@ describe("the change-role tool", () => {
 
   it("refuses an address removed from the allowlist", async () => {
     process.env.ALLOWED_EMAILS = "bo@example.com";
-    const res = await changeRole("anna", "Bo", "vuxen");
-    process.env.ALLOWED_EMAILS = "anna@example.com, bo@example.com";
+    let res;
+    try {
+      res = await changeRole("anna", "Bo", "vuxen");
+    } finally {
+      process.env.ALLOWED_EMAILS = "anna@example.com, bo@example.com";
+    }
+    expect(res.result.isError).toBe(true);
     expect(res.result.content[0].text).toContain("Ditt konto har inte längre tillgång");
     expect(await roleOf("bo")).toBe("child");
   });
@@ -138,7 +172,13 @@ describe("the change-role tool", () => {
     const dup = await changeRole("anna", "Bo", "vuxen");
     expect(dup.result.isError).toBe(true);
     expect(dup.result.content[0].text).toContain("Flera i hemmet heter Bo.");
-    expect((await changeRole("anna", "Anna", "kung")).result.isError).toBe(true);
+    const bad = await changeRole("anna", "Anna", "kung");
+    expect(bad.result.isError).toBe(true);
+    expect(bad.result.content[0].text).toContain("vuxen");
+    expect(bad.result.content[0].text).not.toMatch(/invalid|expected/i);
+    const blank = await changeRole("anna", "  ", "vuxen");
+    expect(blank.result.isError).toBe(true);
+    expect(blank.result.content[0].text).toContain("namn");
   });
 
   it("does not reach a member of another household", async () => {

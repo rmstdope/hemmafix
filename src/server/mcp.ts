@@ -9,12 +9,13 @@ import {
   ambiguousMemberText,
   CHILD_TEXT,
   findMemberByName,
+  firstName,
   formatOpenTasks,
   noSuchMemberText,
   roleChangedText,
 } from "@/lib/mcp-texts";
 import type { Role } from "@/lib/permissions";
-import { listMembers, listOpenInstances } from "./chores";
+import { listMembers, listOpenInstances, notifyHouseholdChanged } from "./chores";
 import { setMemberRole } from "./household";
 import { resolveMcpMember } from "./mcp-access";
 
@@ -58,12 +59,15 @@ export function createHemmafixMcpServer(userId: string): McpServer {
       description: "Gör en familjemedlem till vuxen eller barn. Hemmet behåller alltid minst en vuxen.",
       inputSchema: z.object({
         namn: z.string().describe("Personens namn i hemmet"),
-        roll: z.enum(["vuxen", "barn"]),
+        roll: z.string().describe('Antingen "vuxen" eller "barn"'),
       }),
       // Not read-only and destructive: clients ask the person to confirm before it runs.
       annotations: { readOnlyHint: false, destructiveHint: true, idempotentHint: true },
     },
     async ({ namn, roll }) => {
+      // Checked here, not by the schema, so the answer is in Swedish and not the SDK's English.
+      if (!namn.trim()) return text("Ange namnet på personen.", true);
+      if (roll !== "vuxen" && roll !== "barn") return text("Rollen måste vara vuxen eller barn.", true);
       const access = await resolveMcpMember(userId);
       if ("denied" in access) return text(DENIED_TEXT[access.denied], true);
       const found = findMemberByName(await listMembers(access.actor.householdId), namn);
@@ -73,7 +77,10 @@ export function createHemmafixMcpServer(userId: string): McpServer {
       const { member } = found;
       try {
         const changed = await setMemberRole(access.actor, member.id, next);
-        return text(changed ? roleChangedText(member.name, next) : alreadyRoleText(member.name, next));
+        // Open screens in the home refresh, as after a change made in the app.
+        if (changed) await notifyHouseholdChanged(access.actor.householdId);
+        const who = firstName(member.name);
+        return text(changed ? roleChangedText(who, next) : alreadyRoleText(who, next));
       } catch (err) {
         if (err instanceof UserError) return text(err.message, true);
         throw err;

@@ -15,16 +15,28 @@ export const noSuchMemberText = (name: string) => `Ingen i hemmet heter ${name}.
 export const ambiguousMemberText = (name: string) =>
   `Flera i hemmet heter ${name}. Ändra rollen i appen under Hemmet.`;
 
-/** Picks the one member with this name (case and surrounding spaces ignored). */
+const norm = (name: string) => name.trim().toLowerCase();
+
+/** The name the app uses for a person: the first word of their Google name. */
+export const firstName = (name: string) => name.trim().split(/\s+/)[0] ?? "";
+
+/**
+ * Picks the one member called this: an exact full name first (case and surrounding spaces
+ * ignored), else a first name no one else shares.
+ */
 export function findMemberByName<M extends { name: string }>(
   members: M[],
   name: string,
 ): { member: M } | { none: true } | { ambiguous: true } {
-  const wanted = name.trim().toLowerCase();
-  const found = members.filter((m) => m.name.trim().toLowerCase() === wanted);
-  if (found.length === 0) return { none: true };
-  if (found.length > 1) return { ambiguous: true };
-  return { member: found[0]! };
+  const wanted = norm(name);
+  for (const found of [
+    members.filter((m) => norm(m.name) === wanted),
+    members.filter((m) => norm(firstName(m.name)) === wanted),
+  ]) {
+    if (found.length === 1) return { member: found[0]! };
+    if (found.length > 1) return { ambiguous: true };
+  }
+  return { none: true };
 }
 
 export type OpenTask = {

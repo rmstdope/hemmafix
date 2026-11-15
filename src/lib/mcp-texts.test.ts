@@ -55,6 +55,18 @@ describe("changing a role", () => {
     expect(findMemberByName(members, "Cecilia")).toEqual({ none: true });
   });
 
+  it("finds a member by first name, preferring an exact full name", () => {
+    const members = [
+      { id: "a", name: "Anna Andersson" },
+      { id: "b", name: "Bo Berg" },
+      { id: "c", name: "Bo" },
+    ];
+    expect(findMemberByName(members, "anna")).toEqual({ member: members[0] });
+    expect(findMemberByName(members, "Bo Berg")).toEqual({ member: members[1] });
+    expect(findMemberByName(members, "Bo")).toEqual({ member: members[2] });
+    expect(findMemberByName([members[1]!, { id: "d", name: "Bo Dahl" }], "Bo")).toEqual({ ambiguous: true });
+  });
+
   it("refuses a name two members share", () => {
     const members = [
       { id: "a", name: "Bo" },
