@@ -30,6 +30,7 @@ import {
 } from "./chores";
 import { listFloors, listRooms, setMemberRole, type Actor } from "./household";
 import { resolveMcpMember } from "./mcp-access";
+import { registerTaskTools } from "./mcp-tasks";
 
 const text = (message: string, isError = false) => ({ content: [{ type: "text" as const, text: message }], isError });
 
@@ -150,6 +151,8 @@ export function createHemmafixMcpServer(userId: string): McpServer {
         });
       }),
   );
+
+  registerTaskTools(server, userId);
 
   server.registerTool(
     "andra_roll",
