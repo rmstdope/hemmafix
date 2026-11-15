@@ -3,7 +3,7 @@
 import { eq } from "drizzle-orm";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { db } from "@/db";
-import { chore, choreInstance, household, room } from "@/db/schema";
+import { chore, choreInstance, household, oauthClient, oauthRefreshToken, room } from "@/db/schema";
 import type { CurrentMember } from "@/server/dal";
 import { createFamily } from "../../test/integration/factories";
 
@@ -177,6 +177,49 @@ describe("another household's data", () => {
       error: "Personen finns inte i hemmet",
     });
     expect((await openInstance(t.choreId))!.assigneeId).toBeNull();
+  });
+});
+
+describe("disconnecting an app", () => {
+  beforeEach(async () => {
+    await db.delete(oauthClient);
+  });
+
+  const connect = async (userId: string) => {
+    const clientId = `client-${userId}`;
+    await db.insert(oauthClient).values({ id: clientId, clientId, name: "Claude", redirectUris: ["https://x.test/cb"] });
+    await db.insert(oauthRefreshToken).values({
+      id: `r-${userId}`,
+      token: `t-${userId}`,
+      clientId,
+      userId,
+      authorizationCodeId: `fam-${userId}`,
+      scopes: ["openid"],
+      createdAt: new Date(),
+      expiresAt: new Date(Date.now() + 86_400_000),
+    });
+    return `fam-${userId}`;
+  };
+
+  it("lets an adult disconnect their own app", async () => {
+    const id = await connect(f.adult.userId);
+    as(f.adult);
+    expect(await actions.disconnectApp(id)).toEqual(OK);
+    expect(await db.select().from(oauthRefreshToken)).toEqual([]);
+  });
+
+  it("refuses a child, and leaves the connection alone", async () => {
+    const id = await connect(f.child.userId);
+    as(f.child);
+    expect(await actions.disconnectApp(id)).toEqual(FORBIDDEN);
+    expect(await db.select().from(oauthRefreshToken)).toHaveLength(1);
+  });
+
+  it("does not disconnect somebody else's app", async () => {
+    const id = await connect(f.neighbour.userId);
+    as(f.adult);
+    await actions.disconnectApp(id);
+    expect(await db.select().from(oauthRefreshToken)).toHaveLength(1);
   });
 });
 
