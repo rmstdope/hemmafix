@@ -3,13 +3,12 @@ import { verifyOAuthQueryParams } from "@better-auth/oauth-provider";
 import { eq } from "drizzle-orm";
 import { db } from "@/db";
 import { oauthClient } from "@/db/schema";
+import { appDisplayName, describeAddress, type AppAddress } from "@/lib/connecting-app";
 import { toQueryString, type SearchParams } from "@/lib/query-string";
 import { auth } from "./auth";
 
-export type ConnectingApp = { clientId: string; name: string };
-
-/** Shown when a connecting app registered without a name. */
-const DEFAULT_APP_NAME = "Claude";
+/** `name` is for headings, `nameInline` for the middle of a sentence; a nameless app is named after its address. */
+export type ConnectingApp = { clientId: string; name: string; nameInline: string; address: AppAddress };
 
 /**
  * The app asking to connect, from the page's search params: only when they carry a request
@@ -23,5 +22,8 @@ export async function readConnectingApp(params: SearchParams): Promise<Connectin
 
   const [client] = await db.select({ name: oauthClient.name }).from(oauthClient).where(eq(oauthClient.clientId, clientId)).limit(1);
   if (!client) return null;
-  return { clientId, name: client.name?.trim() || DEFAULT_APP_NAME };
+  // Where Godkänn/Avbryt send the person: the signed request's own redirect address.
+  const address = describeAddress(query.get("redirect_uri") ?? "");
+  const display = appDisplayName(client.name, address);
+  return { clientId, name: display.heading, nameInline: display.inline, address };
 }

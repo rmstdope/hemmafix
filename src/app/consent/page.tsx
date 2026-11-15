@@ -34,6 +34,8 @@ async function Consent({ searchParams }: { searchParams: PageProps<"/consent">["
   return (
     <ApprovalCard
       appName={app.name}
+      appNameInline={app.nameInline}
+      address={app.address}
       homeName={home?.name ?? ""}
       person={{ name: member.name, firstName, image: member.image }}
     />
