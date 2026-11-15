@@ -211,6 +211,7 @@ export async function seedConnection(opts: {
   icon?: string | null;
   connectedAt?: Date;
   lastUsedAt?: Date;
+  redirectUri?: string;
 }) {
   const clientId = `e2e-${crypto.randomUUID()}`;
   const family = `fam-${crypto.randomUUID()}`;
@@ -219,7 +220,7 @@ export async function seedConnection(opts: {
     clientId,
     name: opts.name,
     icon: opts.icon ?? null,
-    redirectUris: ["https://claude.ai/api/mcp/auth_callback"],
+    redirectUris: [opts.redirectUri ?? "https://claude.ai/api/mcp/auth_callback"],
   });
   await db.insert(schema.oauthRefreshToken).values({
     id: crypto.randomUUID(),

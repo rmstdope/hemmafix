@@ -25,3 +25,9 @@ export function appDisplayName(name: string | null | undefined, address: AppAddr
   if (address.local) return { heading: "En app på den här datorn", inline: "en app på den här datorn" };
   return { heading: address.label, inline: address.label };
 }
+
+/** The address a registered client sends people back to: an unknown one wins, so a mixed registration never looks safe. */
+export function registeredAddress(redirectUris: string[]): AppAddress | null {
+  const all = redirectUris.flatMap((uri) => describeAddress(uri) ?? []);
+  return all.find((a) => !a.known) ?? all[0] ?? null;
+}

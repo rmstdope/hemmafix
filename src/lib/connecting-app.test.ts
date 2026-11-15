@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { appDisplayName, describeAddress } from "./connecting-app";
+import { appDisplayName, describeAddress, registeredAddress } from "./connecting-app";
 
 describe("describeAddress", () => {
   it("knows claude.ai over https", () => {
@@ -45,5 +45,25 @@ describe("appDisplayName", () => {
 
   it("names a nameless app on the person's own computer", () => {
     expect(appDisplayName("", local)).toEqual({ heading: "En app på den här datorn", inline: "en app på den här datorn" });
+  });
+});
+
+describe("registeredAddress", () => {
+  it("is the first address when every registered address is known", () => {
+    expect(registeredAddress(["https://claude.ai/cb", "http://localhost:1/cb"])?.label).toBe("claude.ai");
+  });
+
+  it("prefers an unknown address, so a mixed registration never looks safe", () => {
+    expect(registeredAddress(["https://claude.ai/cb", "https://claude-hjalp.app/cb"])).toEqual({
+      label: "claude-hjalp.app",
+      known: false,
+      local: false,
+    });
+  });
+
+  it("skips what cannot be read, and is null when nothing can", () => {
+    expect(registeredAddress(["nonsense", "https://claude.ai/cb"])?.label).toBe("claude.ai");
+    expect(registeredAddress(["nonsense"])).toBeNull();
+    expect(registeredAddress([])).toBeNull();
   });
 });

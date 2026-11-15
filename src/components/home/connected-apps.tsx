@@ -8,6 +8,10 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 export type ConnectedApp = {
   id: string;
   name: string;
+  /** The name for the middle of a sentence. */
+  nameInline: string;
+  /** Where the app sends the person back to; null when it registered nothing readable. */
+  address: { label: string; known: boolean } | null;
   icon: string | null;
   connectedText: string;
   /** The whole line: "Senast använd i dag 08:14" or "Inte använd ännu". */
@@ -74,7 +78,7 @@ export function ConnectedApps({ apps }: { apps: ConnectedApp[] }) {
       if (result.ok) {
         toast.success(`${app.name} är frånkopplad`);
       } else {
-        toast.error(`Det gick inte att koppla från ${app.name}. Försök igen.`);
+        toast.error(`Det gick inte att koppla från ${app.nameInline}. Försök igen.`);
         openerRef.current?.focus();
       }
     });
@@ -98,12 +102,17 @@ export function ConnectedApps({ apps }: { apps: ConnectedApp[] }) {
                 <AppIcon name={app.name} icon={app.icon} />
                 <div className="min-w-0 flex-1">
                   <p className="break-words">{app.name}</p>
+                  {app.address && (
+                    <p className={`text-sm break-all ${app.address.known ? "text-muted-foreground" : "text-amber-800 dark:text-amber-300"}`}>
+                      {app.address.known ? app.address.label : `${app.address.label} · okänd adress`}
+                    </p>
+                  )}
                   <p className="text-sm text-muted-foreground">Ansluten {app.connectedText}</p>
                   <p className="text-sm text-muted-foreground">{app.lastUsedLine}</p>
                 </div>
                 <button
                   type="button"
-                  aria-label={`Koppla från ${app.name}`}
+                  aria-label={`Koppla från ${app.nameInline}`}
                   onClick={(e) => {
                     openerRef.current = e.currentTarget;
                     setAsking(app);
@@ -133,7 +142,7 @@ export function ConnectedApps({ apps }: { apps: ConnectedApp[] }) {
         {asking && (
           <div className="p-5">
             <h3 id="disconnect-heading" className="text-lg font-semibold break-words">
-              Koppla från {asking.name}?
+              Koppla från {asking.nameInline}?
             </h3>
             <p className="mt-2 text-sm text-muted-foreground">
               {asking.name} kan inte längre se eller ändra hemmet. För att ansluta igen måste du godkänna på nytt.
