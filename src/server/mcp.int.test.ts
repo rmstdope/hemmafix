@@ -138,7 +138,14 @@ describe("the task tools", () => {
     const tools = res.result.tools as { name: string; annotations?: { destructiveHint?: boolean; readOnlyHint?: boolean } }[];
     expect(tools.map((t) => t.name)).toEqual(expect.arrayContaining(TASK_TOOLS));
     const destructive = tools.filter((t) => t.annotations?.destructiveHint === true).map((t) => t.name).sort();
-    expect(destructive).toEqual(["andra_roll", "andra_syssla", "ta_bort_syssla", "tilldela_syssla"]);
+    expect(destructive).toEqual([
+      "andra_roll",
+      "andra_syssla",
+      "ta_bort_rum",
+      "ta_bort_syssla",
+      "ta_bort_vaning",
+      "tilldela_syssla",
+    ]);
     expect(tools.find((t) => t.name === "visa_sysslor_med_id")?.annotations?.readOnlyHint).toBe(true);
   });
 

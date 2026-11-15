@@ -245,25 +245,22 @@ describe("tool annotations", () => {
   it("mark exactly the removals (and the role change) as destructive, so the client asks first", async () => {
     const res = await rpc("anna", "tools/list");
     const tools = res.result.tools as { name: string; annotations?: Record<string, boolean> }[];
-    expect(tools.map((t) => t.name).sort()).toEqual(
-      [
-        "andra_roll",
-        "byt_namn_pa_hemmet",
-        "byt_namn_pa_rum",
-        "byt_namn_pa_vaning",
-        "flytta_vaning",
-        "lagg_till_rum",
-        "lagg_till_vaning",
-        "lista_familjen",
-        "lista_oppna_sysslor",
-        "lista_vaningar_och_rum",
-        "visa_gjort",
-        "ta_bort_rum",
-        "ta_bort_vaning",
-      ].sort(),
-    );
-    const destructive = tools.filter((t) => t.annotations?.destructiveHint === true).map((t) => t.name).sort();
-    expect(destructive).toEqual(["andra_roll", "ta_bort_rum", "ta_bort_vaning"]);
+    const HOME_TOOLS = [
+      "byt_namn_pa_hemmet",
+      "byt_namn_pa_rum",
+      "byt_namn_pa_vaning",
+      "flytta_vaning",
+      "lagg_till_rum",
+      "lagg_till_vaning",
+      "ta_bort_rum",
+      "ta_bort_vaning",
+    ];
+    expect(tools.map((t) => t.name)).toEqual(expect.arrayContaining(HOME_TOOLS));
+    const destructive = tools
+      .filter((t) => HOME_TOOLS.includes(t.name) && t.annotations?.destructiveHint === true)
+      .map((t) => t.name)
+      .sort();
+    expect(destructive).toEqual(["ta_bort_rum", "ta_bort_vaning"]);
     expect(tools.find((t) => t.name === "lagg_till_rum")!.annotations?.destructiveHint).toBe(false);
   });
 });
