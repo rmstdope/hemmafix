@@ -234,9 +234,20 @@ export const choreInstance = pgTable(
     assigneeId: text("assignee_id").references(() => user.id, { onDelete: "set null" }),
     completedAt: timestamp("completed_at", { withTimezone: true }),
     completedById: text("completed_by_id").references(() => user.id, { onDelete: "set null" }),
+    /**
+     * The task's title and room when it was ticked off, so the history keeps what was done
+     * even after the task is edited. Null for open instances.
+     */
+    doneTitle: text("done_title"),
+    doneRoomId: uuid("done_room_id"),
     ...timestamps,
   },
   (t) => [
+    foreignKey({
+      name: "chore_instance_done_room_same_household_fk",
+      columns: [t.doneRoomId, t.householdId],
+      foreignColumns: [room.id, room.householdId],
+    }),
     foreignKey({
       name: "chore_instance_chore_same_household_fk",
       columns: [t.choreId, t.householdId],

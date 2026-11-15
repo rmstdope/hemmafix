@@ -1,6 +1,6 @@
 "use client";
 
-import { Check, ChevronDown, Repeat, RotateCcw, Trash2 } from "lucide-react";
+import { Check, ChevronDown, Pencil, Repeat, RotateCcw, Trash2 } from "lucide-react";
 import { useOptimistic, useState, useTransition } from "react";
 import { toast } from "sonner";
 import {
@@ -15,6 +15,7 @@ import { Button } from "@/components/ui/button";
 import { formatDue } from "@/lib/dates";
 import { roomLabel } from "@/lib/floors";
 import { formatRecurrence } from "@/lib/recurrence";
+import { EditChoreForm } from "./edit-chore-form";
 import { cn } from "@/lib/utils";
 import type { InstanceView, Member } from "@/server/chores";
 
@@ -28,6 +29,8 @@ export function ChoreItem({
   canManage,
   canUndo,
   showFloors,
+  floors,
+  rooms,
 }: {
   instance: InstanceView;
   members: Member[];
@@ -40,11 +43,15 @@ export function ChoreItem({
   canUndo: boolean;
   /** Whether the home has several floors, so rooms are shown with theirs. */
   showFloors: boolean;
+  /** The home's floors and rooms, for editing the task (adults). */
+  floors: { id: string; name: string }[];
+  rooms: { id: string; name: string; floorId: string }[];
 }) {
   const [pending, startTransition] = useTransition();
   const [assigneeId, setOptimisticAssignee] = useOptimistic(t.assigneeId);
   const [hidden, setHidden] = useOptimistic(false);
   const [expanded, setExpanded] = useState(false);
+  const [editing, setEditing] = useState(false);
   const completed = t.completedAt !== null;
   const due = completed ? null : formatDue(t.dueDate, today);
   const firstName = (id: string | null) =>
@@ -155,7 +162,13 @@ export function ChoreItem({
         )}
       </div>
 
-      {expanded && canManage && !completed && (
+      {expanded && canManage && !completed && editing && (
+        <div className="border-t px-3 py-3">
+          <EditChoreForm task={t} floors={floors} rooms={rooms} onDone={() => setEditing(false)} />
+        </div>
+      )}
+
+      {expanded && canManage && !completed && !editing && (
         <div className="flex flex-wrap items-center gap-2 border-t px-3 py-2">
           {t.recurrence && (
             <label className="flex flex-1 items-center gap-2 text-sm text-muted-foreground">
@@ -182,9 +195,12 @@ export function ChoreItem({
               </select>
             </label>
           )}
+          <Button variant="ghost" className="ml-auto h-10" onClick={() => setEditing(true)}>
+            <Pencil /> Ändra
+          </Button>
           <Button
             variant="ghost"
-            className="ml-auto h-10 text-destructive"
+            className="h-10 text-destructive"
             onClick={() => run(() => deleteChore(t.choreId), () => setHidden(true), `"${t.title}" togs bort`)}
           >
             <Trash2 /> Ta bort uppgiften

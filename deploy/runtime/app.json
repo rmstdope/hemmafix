@@ -4,6 +4,11 @@
   "profile": "fullstack",
   "stateful": true,
   "migration_policy": "backward-compatible",
+  "pre_release_backup": {
+    "service": "db",
+    "command": ["sh", "-c", "pg_dump -U \"$POSTGRES_USER\" --format=custom \"$POSTGRES_DB\""],
+    "timeout_seconds": 300
+  },
   "deployment": {
     "repository": "rmstdope/hemmafix",
     "workflow": "ci.yml",

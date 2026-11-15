@@ -112,7 +112,7 @@ describe("0004: floors", () => {
   });
 
   it("lets the previous release keep adding rooms and homes without floors", async () => {
-    await migrateUpTo(sql);
+    await migrateUpTo(sql, "0004_floors");
     const [home] = await sql`insert into household (name) values ('Hemma') returning id`;
     // The previous release creates a home without a floor, then rooms without one.
     await sql`insert into room (household_id, name) values (${home!.id}, 'Kök')`;
@@ -127,3 +127,40 @@ describe("0004: floors", () => {
     ]);
   });
 });
+
+describe("0005: done instances keep their title and room; the floor trigger goes", () => {
+  beforeEach(reset);
+
+  it("copies the title and room into what was already done, not into what is open", async () => {
+    await migrateUpTo(sql, "0004_floors");
+    const [home] = await sql`insert into household (name) values ('Hemma') returning id`;
+    const [ground] = await sql`insert into floor (household_id, name, position) values (${home!.id}, '1', 1) returning id`;
+    const [kitchen] = await sql`insert into room (household_id, floor_id, name) values (${home!.id}, ${ground!.id}, 'Kök') returning id`;
+    const [c] = await sql`insert into chore (household_id, room_id, title) values (${home!.id}, ${kitchen!.id}, 'Diska') returning id`;
+    await sql`insert into chore_instance (chore_id, household_id, completed_at) values
+      (${c!.id}, ${home!.id}, now()), (${c!.id}, ${home!.id}, null)`;
+
+    await migrateUpTo(sql);
+
+    const rows = await sql`select done_title, done_room_id, completed_at is not null as done from chore_instance order by done desc`;
+    expect(rows.map((r) => [r.done, r.done_title, r.done_room_id])).toEqual([
+      [true, "Diska", kitchen!.id],
+      [false, null, null],
+    ]);
+    const triggers = await sql`select 1 from pg_trigger where tgname = 'room_default_floor'`;
+    expect(triggers).toHaveLength(0);
+  });
+
+  it("still works for the previous release, which sets floors and knows nothing of snapshots", async () => {
+    await migrateUpTo(sql);
+    const [home] = await sql`insert into household (name) values ('Hemma') returning id`;
+    const [ground] = await sql`insert into floor (household_id, name, position) values (${home!.id}, '1', 1) returning id`;
+    const [kitchen] = await sql`insert into room (household_id, floor_id, name) values (${home!.id}, ${ground!.id}, 'Kök') returning id`;
+    const [c] = await sql`insert into chore (household_id, room_id, title) values (${home!.id}, ${kitchen!.id}, 'Diska') returning id`;
+    const [i] = await sql`insert into chore_instance (chore_id, household_id) values (${c!.id}, ${home!.id}) returning id`;
+    // The previous release ticks off without a snapshot.
+    await sql`update chore_instance set completed_at = now() where id = ${i!.id}`;
+    expect(await sql`select done_title from chore_instance`).toEqual([{ done_title: null }]);
+  });
+});
+
