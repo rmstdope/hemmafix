@@ -1,4 +1,4 @@
-import { formatDay, formatTime, HOME_TIME_ZONE, formatDue } from "./dates";
+import { formatDay, formatDue, formatTime, todayIso } from "./dates";
 import { floorLabel, roomLabel } from "./floors";
 import { ROLE_LABELS, type Role } from "./permissions";
 
@@ -89,13 +89,6 @@ export function formatFamily(members: { id: string; name: string; role: Role }[]
 
 export type DoneTask = { title: string; roomName: string | null; floorName: string | null; completedAt: Date };
 
-const dayInHomeZone = new Intl.DateTimeFormat("sv-SE", {
-  timeZone: HOME_TIME_ZONE,
-  year: "numeric",
-  month: "2-digit",
-  day: "2-digit",
-});
-
 /** What one person ticked off, newest first, grouped by day like the app's history page. */
 export function formatDone(
   done: DoneTask[],
@@ -104,7 +97,7 @@ export function formatDone(
   if (done.length === 0) return NOTHING_DONE_TEXT;
   const days: { day: string; lines: string[] }[] = [];
   for (const d of done) {
-    const day = dayInHomeZone.format(d.completedAt);
+    const day = todayIso(d.completedAt);
     const room = d.roomName === null ? "" : ` – ${roomLabel(d.roomName, d.floorName, opts.showFloors)}`;
     const line = `- ${formatTime(d.completedAt)} ${d.title}${room}`;
     const last = days[days.length - 1];

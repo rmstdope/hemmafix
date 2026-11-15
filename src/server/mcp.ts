@@ -20,6 +20,7 @@ import {
 import type { Role } from "@/lib/permissions";
 import {
   HISTORY_LIMIT,
+  HISTORY_PERIODS,
   listCompletedBy,
   listFamily,
   listMembers,
@@ -33,6 +34,8 @@ import { resolveMcpMember } from "./mcp-access";
 const text = (message: string, isError = false) => ({ content: [{ type: "text" as const, text: message }], isError });
 
 const DENIED_TEXT = { removed: ACCESS_REMOVED_TEXT, child: CHILD_TEXT } as const;
+
+const isHistoryPeriod = (n: number): n is HistoryPeriod => (HISTORY_PERIODS as readonly number[]).includes(n);
 
 const PERIOD_LABELS: Record<HistoryPeriod, string> = { 7: "senaste veckan", 30: "senaste månaden", 365: "senaste året" };
 
@@ -95,10 +98,10 @@ export function createHemmafixMcpServer(userId: string): McpServer {
           listRooms(actor.householdId),
           listMembers(actor.householdId),
         ]);
-        if (rum && !rooms.some((r) => r.id === rum)) throw new UserError("Rummet finns inte i hemmet");
-        if (vaning && !floors.some((f) => f.id === vaning)) throw new UserError("Våningen finns inte i hemmet");
+        if (rum !== undefined && !rooms.some((r) => r.id === rum)) throw new UserError("Rummet finns inte i hemmet");
+        if (vaning !== undefined && !floors.some((f) => f.id === vaning)) throw new UserError("Våningen finns inte i hemmet");
         const who = vem === "jag" ? "mine" : vem === "ingen" ? "none" : vem;
-        if (who && who !== "mine" && who !== "none" && !members.some((m) => m.id === who)) {
+        if (who !== undefined && who !== "mine" && who !== "none" && !members.some((m) => m.id === who)) {
           throw new UserError("Personen finns inte i hemmet");
         }
         const open = await listOpenInstances(actor, { roomId: rum, floorId: vaning, who });
@@ -125,15 +128,14 @@ export function createHemmafixMcpServer(userId: string): McpServer {
         "Visar vad en person har bockat av under en period (7, 30 eller 365 dagar; 30 om inget anges), nyaste först.",
       inputSchema: z.object({
         vem: z.string().optional().describe("Personens id eller 'jag' (standard)"),
-        period: z
-          .union([z.literal(7), z.literal(30), z.literal(365)])
-          .optional()
-          .describe("Antal dagar: 7, 30 eller 365"),
+        // Checked in the tool, not here, so a wrong period is answered in Swedish.
+        period: z.coerce.number().optional().describe("Antal dagar: 7, 30 eller 365"),
       }),
     },
     ({ vem, period }) =>
       asActor(userId, async (actor) => {
-        const days: HistoryPeriod = period ?? 30;
+        const days = period ?? 30;
+        if (!isHistoryPeriod(days)) throw new UserError("Ogiltig period");
         const personId = !vem || vem === "jag" ? actor.userId : vem;
         const [members, floors] = await Promise.all([listMembers(actor.householdId), listFloors(actor.householdId)]);
         const person = members.find((m) => m.id === personId);

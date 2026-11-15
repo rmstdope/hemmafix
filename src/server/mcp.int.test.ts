@@ -310,6 +310,13 @@ describe("what someone has done", () => {
     expect(bos).toContain("Torka");
   });
 
+  it("keeps what was done in a deleted task", async () => {
+    const ids = await seedHomes();
+    await done(ids.kok, "Diska", homeId, "anna", 0);
+    await db.update(chore).set({ archivedAt: new Date() });
+    expect(textOf(await call("anna", "visa_gjort"))).toContain("Diska");
+  });
+
   it("says so when nothing was done, and keeps what was done in a removed room", async () => {
     const ids = await seedHomes();
     expect(textOf(await call("anna", "visa_gjort"))).toBe("Inget gjort under perioden.");
@@ -324,11 +331,30 @@ describe("what someone has done", () => {
     expect(other.result.isError).toBe(true);
     expect(textOf(other)).toBe("Personen finns inte i hemmet");
     const bad = await call("anna", "visa_gjort", { period: 5 });
-    expect(bad.result.isError ?? bad.error).toBeTruthy();
+    expect(bad.result.isError).toBe(true);
+    expect(textOf(bad)).toBe("Ogiltig period");
+    expect(textOf(await call("anna", "visa_gjort", { period: "30" }))).toBe("Inget gjort under perioden.");
+  });
+});
+
+describe("empty filters", () => {
+  it("are refused, not read as no filter", async () => {
+    await seedHomes();
+    for (const args of [{ rum: "" }, { vaning: "" }, { vem: "" }]) {
+      expect((await call("anna", "lista_oppna_sysslor", args)).result.isError).toBe(true);
+    }
   });
 });
 
 describe("every tool re-checks who is asking", () => {
+  it.each(["lista_vaningar_och_rum", "lista_familjen", "lista_oppna_sysslor", "visa_gjort"])("%s refuses an address removed from the allowlist", async (tool) => {
+    process.env.ALLOWED_EMAILS = "bo@example.com";
+    const res = await call("anna", tool);
+    process.env.ALLOWED_EMAILS = "anna@example.com, bo@example.com, eve@example.com";
+    expect(res.result.isError).toBe(true);
+    expect(textOf(res)).toContain("Ditt konto har inte längre tillgång till Hemmafix.");
+  });
+
   it.each(["lista_vaningar_och_rum", "lista_familjen", "lista_oppna_sysslor", "visa_gjort"])("%s refuses a child", async (tool) => {
     const res = await call("bo", tool);
     expect(res.result.isError).toBe(true);
