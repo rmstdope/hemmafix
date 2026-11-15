@@ -5,6 +5,7 @@ import { assertCan, can, ForbiddenError, type Action } from "./permissions";
 const RULES: Record<Action, "V" | "V+B"> = {
   "household:rename": "V",
   "room:manage": "V",
+  "routine:manage": "V",
   "member:set-role": "V",
   "task:create": "V",
   "task:edit": "V",

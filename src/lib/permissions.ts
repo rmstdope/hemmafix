@@ -13,6 +13,7 @@ export const ROLE_LABELS: Record<Role, string> = { adult: "Vuxen", child: "Barn"
 const ADULTS_ONLY = new Set<Action>([
   "household:rename",
   "room:manage",
+  "routine:manage",
   "member:set-role",
   "task:create",
   "task:edit",
@@ -26,6 +27,7 @@ const ADULTS_ONLY = new Set<Action>([
 export type Action =
   | "household:rename"
   | "room:manage"
+  | "routine:manage"
   | "member:set-role"
   | "task:create"
   | "task:edit"
