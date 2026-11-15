@@ -16,5 +16,5 @@ export default function LoginPage({ searchParams }: PageProps<"/login">) {
 
 async function Login({ searchParams }: { searchParams: PageProps<"/login">["searchParams"] }) {
   const app = await readConnectingApp(await searchParams);
-  return <LoginCard connectApp={app?.name} />;
+  return <LoginCard connectApp={app?.nameInline} />;
 }

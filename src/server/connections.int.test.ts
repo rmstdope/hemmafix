@@ -13,9 +13,9 @@ const at = (iso: string) => new Date(iso);
 const future = new Date(Date.now() + 86_400_000);
 
 let n = 0;
-async function client(name: string | null, icon: string | null = null) {
+async function client(name: string | null, icon: string | null = null, redirectUris = ["https://x.test/cb"]) {
   const clientId = `c${++n}`;
-  await db.insert(oauthClient).values({ id: clientId, clientId, name, icon, redirectUris: ["https://x.test/cb"] });
+  await db.insert(oauthClient).values({ id: clientId, clientId, name, icon, redirectUris });
   return clientId;
 }
 /** One refresh token row of a family (a rotation inserts another row, the old one revoked). */
@@ -86,15 +86,49 @@ describe("listing connections", () => {
     expect(await listConnections("anna")).toEqual([]);
   });
 
-  it("names an app without a name Okänd app, and reports when it was last used", async () => {
-    const c = await client(null);
+  it("names an app without a name after its address, and reports when it was last used", async () => {
+    const c = await client(null, null, ["https://claude-hjalp.app/cb"]);
     await refresh({ userId: "anna", clientId: c, family: "f", createdAt: "2026-11-12T10:00:00Z" });
     await db.insert(appConnectionUse).values({ connectionId: "f", userId: "anna", lastUsedAt: at("2026-11-14T08:14:00Z") });
 
     const [conn] = await listConnections("anna");
 
-    expect(conn!.appName).toBe("Okänd app");
+    expect(conn!.appName).toBe("claude-hjalp.app");
+    expect(conn!.appNameInline).toBe("claude-hjalp.app");
     expect(conn!.lastUsedAt).toEqual(at("2026-11-14T08:14:00Z"));
+  });
+
+  it("names a nameless app on the person's own computer En app på den här datorn", async () => {
+    const c = await client("  ", null, ["http://localhost:5555/cb"]);
+    await refresh({ userId: "anna", clientId: c, family: "f", createdAt: "2026-11-12T10:00:00Z" });
+
+    const [conn] = await listConnections("anna");
+
+    expect(conn!.appName).toBe("En app på den här datorn");
+    expect(conn!.appNameInline).toBe("en app på den här datorn");
+  });
+
+  it("carries the address the app sends the person back to, known or not", async () => {
+    const real = await client("Claude", null, ["https://claude.ai/api/mcp/auth_callback"]);
+    const fake = await client("Claude", null, ["https://claude-hjalp.app/cb"]);
+    await refresh({ userId: "anna", clientId: real, family: "real", createdAt: "2026-11-12T10:00:00Z" });
+    await refresh({ userId: "anna", clientId: fake, family: "fake", createdAt: "2026-11-13T10:00:00Z" });
+
+    const list = await listConnections("anna");
+
+    expect(list.map((c) => [c.id, c.address])).toEqual([
+      ["fake", { label: "claude-hjalp.app", known: false, local: false }],
+      ["real", { label: "claude.ai", known: true, local: false }],
+    ]);
+  });
+
+  it("keeps the name Okänd app and no address when no registered address can be read", async () => {
+    const c = await client(null, null, ["nonsense"]);
+    await refresh({ userId: "anna", clientId: c, family: "f", createdAt: "2026-11-12T10:00:00Z" });
+
+    const [conn] = await listConnections("anna");
+
+    expect([conn!.appName, conn!.address]).toEqual(["Okänd app", null]);
   });
 });
 

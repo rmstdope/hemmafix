@@ -53,6 +53,35 @@ test("an adult sees only their own apps, newest first, with dates and a letter t
   expect(button!.x + button!.width).toBeLessThanOrEqual(row!.x + row!.width + 1);
 });
 
+test("each row shows where the app sends the person back to, and marks an unknown address", async ({ page, context }) => {
+  const anna = await logIn(context, "anna", "adult");
+  await seedConnection({ userId: anna.id, name: "Claude", connectedAt: new Date("2026-10-01T10:00:00Z") });
+  await seedConnection({ userId: anna.id, name: "Claude Code", redirectUri: "http://localhost:4567/callback", connectedAt: new Date("2026-10-02T10:00:00Z") });
+  await seedConnection({ userId: anna.id, name: "Claude", redirectUri: "https://claude-hjalp.app/cb", connectedAt: new Date("2026-10-03T10:00:00Z") });
+  await seedConnection({ userId: anna.id, name: null, redirectUri: "https://helt-okand.example/cb", connectedAt: new Date("2026-10-04T10:00:00Z") });
+  await seedConnection({ userId: anna.id, name: null, redirectUri: "http://127.0.0.1:9/cb", connectedAt: new Date("2026-10-05T10:00:00Z") });
+
+  await openHome(page);
+
+  const rows = section(page).getByRole("listitem");
+  await expect(rows).toHaveCount(5);
+  // Newest first: nameless on the own computer, nameless unknown, impostor, Claude Code, real Claude.
+  await expect(rows.nth(0)).toContainText("En app på den här datorn");
+  await expect(rows.nth(0).getByText("den här datorn", { exact: true })).toBeVisible();
+  await expect(rows.nth(1)).toContainText("helt-okand.example");
+  await expect(rows.nth(1).getByText("helt-okand.example · okänd adress")).toBeVisible();
+  await expect(rows.nth(2).getByText("claude-hjalp.app · okänd adress")).toBeVisible();
+  await expect(rows.nth(3).getByText("den här datorn", { exact: true })).toBeVisible();
+  const known = rows.nth(4).getByText("claude.ai", { exact: true });
+  await expect(known).toBeVisible();
+  await expect(rows.nth(4)).not.toContainText("okänd adress");
+  // The unknown address is in the warning colour, the known one in the usual grey.
+  const colour = (l: ReturnType<Page["locator"]>) => l.evaluate((el) => getComputedStyle(el).color);
+  expect(await colour(rows.nth(2).getByText("okänd adress"))).not.toBe(await colour(known));
+  await expect(page.getByRole("button", { name: "Koppla från en app på den här datorn" })).toBeVisible();
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
+});
+
 test("Avbryt, Escape and a tap outside leave the app connected and return focus", async ({ page, context }) => {
   const anna = await logIn(context, "anna", "adult");
   await seedConnection({ userId: anna.id, name: "Claude" });

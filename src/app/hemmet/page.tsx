@@ -83,6 +83,8 @@ async function HomeSettings() {
         apps={connections.map((c) => ({
           id: c.id,
           name: c.appName,
+          nameInline: c.appNameInline,
+          address: c.address,
           icon: c.icon,
           connectedText: formatConnectedDate(c.connectedAt),
           lastUsedLine: c.lastUsedAt ? `Senast använd ${formatLastUsed(c.lastUsedAt, now)}` : formatLastUsed(null, now),

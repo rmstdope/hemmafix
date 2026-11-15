@@ -3,6 +3,7 @@ import { createHash } from "node:crypto";
 import { and, eq, gt, inArray, isNull, lt, min, sql } from "drizzle-orm";
 import { db } from "@/db";
 import { appConnectionUse, appToken, membership, oauthClient, oauthRefreshToken } from "@/db/schema";
+import { appDisplayName, registeredAddress, type AppAddress } from "@/lib/connecting-app";
 import { assertCan } from "@/lib/permissions";
 import { connectionId } from "@/lib/validation";
 import { notifyHouseholdChanged } from "./chores";
@@ -14,7 +15,11 @@ import type { Actor } from "./household";
  */
 export type Connection = {
   id: string;
+  /** For headings and sentence starts; a nameless app is named after its address. */
   appName: string;
+  /** For the middle of a sentence. */
+  appNameInline: string;
+  address: AppAddress | null;
   icon: string | null;
   connectedAt: Date;
   lastUsedAt: Date | null;
@@ -30,7 +35,7 @@ const liveHead = (now: Date) => and(isNull(oauthRefreshToken.revoked), gt(oauthR
 /** The person's own live connections, newest first. */
 export async function listConnections(userId: string): Promise<Connection[]> {
   const heads = await db
-    .select({ id: oauthRefreshToken.authorizationCodeId, name: oauthClient.name, icon: oauthClient.icon })
+    .select({ id: oauthRefreshToken.authorizationCodeId, name: oauthClient.name, icon: oauthClient.icon, redirectUris: oauthClient.redirectUris })
     .from(oauthRefreshToken)
     .innerJoin(oauthClient, eq(oauthClient.clientId, oauthRefreshToken.clientId))
     .where(and(eq(oauthRefreshToken.userId, userId), liveHead(new Date())));
@@ -55,10 +60,15 @@ export async function listConnections(userId: string): Promise<Connection[]> {
     .flatMap((h) => {
       const connectedAt = h.id ? firstAt.get(h.id) : null;
       if (!h.id || !connectedAt) return [];
+      const address = registeredAddress(h.redirectUris);
+      const ownName = h.name?.trim() || UNKNOWN_APP_NAME;
+      const display = address ? appDisplayName(h.name, address) : { heading: ownName, inline: ownName };
       return [
         {
           id: h.id,
-          appName: h.name?.trim() || UNKNOWN_APP_NAME,
+          appName: display.heading,
+          appNameInline: display.inline,
+          address,
           icon: h.icon,
           connectedAt,
           lastUsedAt: usedAt.get(h.id) ?? null,
