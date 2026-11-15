@@ -60,6 +60,7 @@ export function createHemmafixMcpServer(userId: string): McpServer {
     {
       title: "Våningar och rum",
       description: "Visar hemmets våningar (översta först) och rummen på dem, med id som kan användas som filter.",
+      annotations: { readOnlyHint: true },
     },
     () =>
       asActor(userId, async ({ householdId }) => {
@@ -72,7 +73,11 @@ export function createHemmafixMcpServer(userId: string): McpServer {
 
   server.registerTool(
     "lista_familjen",
-    { title: "Familjen", description: "Visar vilka som finns i hemmet och om de är vuxna eller barn, med id." },
+    {
+      title: "Familjen",
+      description: "Visar vilka som finns i hemmet och om de är vuxna eller barn, med id.",
+      annotations: { readOnlyHint: true },
+    },
     () => asActor(userId, async ({ householdId }) => formatFamily(await listFamily(householdId))),
   );
 
@@ -87,6 +92,7 @@ export function createHemmafixMcpServer(userId: string): McpServer {
         vaning: z.string().optional().describe("Våningens id"),
         vem: z.string().optional().describe("Personens id, 'jag' eller 'ingen'"),
       }),
+      annotations: { readOnlyHint: true },
     },
     ({ rum, vaning, vem }) =>
       asActor(userId, async (actor) => {
@@ -128,6 +134,7 @@ export function createHemmafixMcpServer(userId: string): McpServer {
         // Checked in the tool, not here, so a wrong period is answered in Swedish.
         period: z.coerce.number().optional().describe("Antal dagar: 7, 30 eller 365"),
       }),
+      annotations: { readOnlyHint: true },
     },
     ({ vem, period }) =>
       asActor(userId, async (actor) => {

@@ -94,7 +94,7 @@ export function formatTaskLookup(input: LookupInput, today: string): string {
     ),
     ...section(
       "Rum:",
-      input.rooms.map((r) => `- ${[r.name, r.floorName].filter(Boolean).join(", ")} (id ${r.id})`),
+      input.rooms.map((r) => `- ${[r.name, r.floorName ? floorLabel(r.floorName) : r.floorName].filter(Boolean).join(", ")} (id ${r.id})`),
     ),
     ...section(
       "Familj:",
