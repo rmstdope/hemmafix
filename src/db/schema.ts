@@ -10,6 +10,8 @@ import {
   primaryKey,
   text,
   timestamp,
+  foreignKey,
+  unique,
   uniqueIndex,
   uuid,
 } from "drizzle-orm/pg-core";
@@ -127,9 +129,18 @@ export const room = pgTable(
       .notNull()
       .references(() => household.id, { onDelete: "cascade" }),
     name: text("name").notNull(),
+    /** Removed rooms are archived, so the history still knows where a task was done. */
+    archivedAt: timestamp("archived_at", { withTimezone: true }),
     ...timestamps,
   },
-  (t) => [uniqueIndex("room_household_name_idx").on(t.householdId, sql`lower(${t.name})`)],
+  (t) => [
+    // Names are unique among the home's current rooms; a removed room's name can be reused.
+    uniqueIndex("room_household_name_idx")
+      .on(t.householdId, sql`lower(${t.name})`)
+      .where(sql`${t.archivedAt} is null`),
+    // Target of chore's (room, household) foreign key.
+    unique("room_id_household_unique").on(t.id, t.householdId),
+  ],
 );
 
 export const recurrenceUnit = pgEnum("recurrence_unit", RECURRENCE_UNITS);
@@ -145,9 +156,8 @@ export const chore = pgTable(
     householdId: uuid("household_id")
       .notNull()
       .references(() => household.id, { onDelete: "cascade" }),
-    // Required while the task is active; a room can only be deleted once its active tasks
-    // are gone, and archived tasks then keep their history without a room.
-    roomId: uuid("room_id").references(() => room.id, { onDelete: "set null" }),
+    /** A room of the same household (enforced by the composite foreign key below). */
+    roomId: uuid("room_id").notNull(),
     title: text("title").notNull(),
     /** Set when the task was made from a predefined one (src/lib/chore-templates.ts). */
     templateKey: text("template_key"),
@@ -166,7 +176,13 @@ export const chore = pgTable(
       "chore_recurrence_check",
       sql`(${t.recurrenceUnit} is null and ${t.recurrenceInterval} is null) or (${t.recurrenceUnit} is not null and ${t.recurrenceInterval} between 1 and ${sql.raw(String(MAX_INTERVAL))})`,
     ),
-    check("chore_active_has_room_check", sql`${t.archivedAt} is not null or ${t.roomId} is not null`),
+    foreignKey({
+      name: "chore_room_same_household_fk",
+      columns: [t.roomId, t.householdId],
+      foreignColumns: [room.id, room.householdId],
+    }),
+    // Target of chore_instance's (chore, household) foreign key.
+    unique("chore_id_household_unique").on(t.id, t.householdId),
   ],
 );
 
@@ -175,9 +191,8 @@ export const choreInstance = pgTable(
   "chore_instance",
   {
     id: uuid("id").primaryKey().defaultRandom(),
-    choreId: uuid("chore_id")
-      .notNull()
-      .references(() => chore.id, { onDelete: "cascade" }),
+    /** A task of the same household (enforced by the composite foreign key below). */
+    choreId: uuid("chore_id").notNull(),
     householdId: uuid("household_id")
       .notNull()
       .references(() => household.id, { onDelete: "cascade" }),
@@ -188,6 +203,11 @@ export const choreInstance = pgTable(
     ...timestamps,
   },
   (t) => [
+    foreignKey({
+      name: "chore_instance_chore_same_household_fk",
+      columns: [t.choreId, t.householdId],
+      foreignColumns: [chore.id, chore.householdId],
+    }).onDelete("cascade"),
     uniqueIndex("chore_instance_one_open_idx").on(t.choreId).where(sql`${t.completedAt} is null`),
     index("chore_instance_household_open_idx").on(t.householdId, t.completedAt),
     index("chore_instance_completed_by_idx").on(t.completedById, t.completedAt),

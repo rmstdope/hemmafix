@@ -1,14 +1,16 @@
 import { eq } from "drizzle-orm";
-import { beforeEach, describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import { db } from "@/db";
 import { chore, choreInstance, household } from "@/db/schema";
 import { todayIso } from "@/lib/dates";
+import { UserError } from "@/lib/errors";
 import { ForbiddenError } from "@/lib/permissions";
 import { nextDueDate } from "@/lib/recurrence";
 import { createFamily } from "../../test/integration/factories";
 import {
   assignChore,
   assignInstance,
+  canUndo,
   completeInstance,
   createChore,
   deleteChore,
@@ -16,7 +18,7 @@ import {
   listRecentlyCompleted,
   uncompleteInstance,
 } from "./chores";
-import { deleteRoom } from "./household";
+import { addRoom, deleteRoom, listRooms } from "./household";
 
 let f: Awaited<ReturnType<typeof createFamily>>;
 
@@ -127,10 +129,35 @@ describe("completeInstance", () => {
 
     const results = await Promise.allSettled([completeInstance(f.adult, first!.id), completeInstance(f.child, first!.id)]);
 
-    expect(results.filter((r) => r.status === "rejected")).toHaveLength(1);
+    const rejected = results.filter((r) => r.status === "rejected");
+    expect(rejected).toHaveLength(1);
+    // A readable message, not a database error from the one-open-instance index.
+    expect(String(rejected[0]!.reason)).toContain("redan bockat av");
     const all = await instancesOf(id);
     expect(all).toHaveLength(2);
     expect(all.filter((i) => i.completedAt === null)).toHaveLength(1);
+  });
+
+  it("counts from today in Swedish time, whatever the server's clock zone", async () => {
+    await createChore(f.adult, weekly("Diska"));
+    const [first] = await open();
+    vi.useFakeTimers({ toFake: ["Date"] });
+    try {
+      // 23:30 UTC on the 15th is already 00:30 on the 16th in Stockholm.
+      vi.setSystemTime(new Date("2026-11-15T23:30:00Z"));
+      await completeInstance(f.adult, first!.id);
+    } finally {
+      vi.useRealTimers();
+    }
+    expect((await open())[0]!.dueDate).toBe("2026-11-23");
+  });
+
+  it("refuses a task that has been deleted", async () => {
+    const { id } = await createChore(f.adult, weekly("Diska"));
+    const [first] = await open();
+    await deleteChore(f.adult, id);
+    await expect(completeInstance(f.adult, first!.id)).rejects.toThrow("finns inte längre");
+    expect(await instancesOf(id)).toHaveLength(0);
   });
 
   it("refuses an instance of another home", async () => {
@@ -166,6 +193,33 @@ describe("uncompleteInstance", () => {
     expect((await open()).map((i) => i.title)).toEqual(["Damma"]);
   });
 
+  it("cannot bring back a deleted task", async () => {
+    const { id } = await createChore(f.adult, weekly("Diska"));
+    const [first] = await open();
+    await completeInstance(f.adult, first!.id);
+    await deleteChore(f.adult, id);
+
+    await expect(uncompleteInstance(f.adult, first!.id)).rejects.toThrow("finns inte längre");
+    const all = await instancesOf(id);
+    expect(all).toHaveLength(1);
+    expect(all[0]!.completedAt).not.toBeNull();
+  });
+
+  it("drops a one-time assignment of the next instance it removes", async () => {
+    // Documented behaviour: the next instance is recreated on the next tick, assigned to
+    // whoever does the task every time.
+    await createChore(f.adult, weekly("Diska"));
+    const [first] = await open();
+    await completeInstance(f.adult, first!.id);
+    const [next] = await open();
+    await assignInstance(f.adult, next!.id, f.child.userId);
+
+    await uncompleteInstance(f.adult, first!.id);
+    await completeInstance(f.adult, first!.id);
+
+    expect((await open())[0]!.assigneeId).toBeNull();
+  });
+
   it("only undoes a task's latest tick", async () => {
     await createChore(f.adult, weekly("Diska"));
     const [first] = await open();
@@ -173,6 +227,13 @@ describe("uncompleteInstance", () => {
     const [second] = await open();
     await completeInstance(f.adult, second!.id);
 
+    const recent = await listRecentlyCompleted(f.adult);
+    expect(recent.map((i) => [i.id, i.isLatestTick])).toEqual([
+      [second!.id, true],
+      [first!.id, false],
+    ]);
+    expect(canUndo(f.adult, recent[1]!)).toBe(false);
+    expect(canUndo(f.adult, recent[0]!)).toBe(true);
     await expect(uncompleteInstance(f.adult, first!.id)).rejects.toThrow("senaste avbockningen");
     await uncompleteInstance(f.adult, second!.id);
     expect((await open())[0]!.id).toBe(second!.id);
@@ -194,6 +255,9 @@ describe("assigning", () => {
 
     await assignChore(f.adult, first!.choreId, null);
     expect((await open())[0]).toMatchObject({ assigneeId: null, seriesAssigneeId: null });
+    // What was already done keeps who it was assigned to.
+    const doneOne = (await instancesOf(first!.choreId)).find((i) => i.id === first!.id);
+    expect(doneOne!.assigneeId).toBe(f.adult.userId);
   });
 
   it("refuses children, people from another home and other homes' tasks", async () => {
@@ -276,14 +340,49 @@ describe("listOpenInstances", () => {
   });
 });
 
-describe("rooms with tasks", () => {
-  it("cannot be deleted while they have tasks on the board", async () => {
+describe("rooms", () => {
+  it("cannot be removed while they have tasks on the board", async () => {
     const { id } = await createChore(f.adult, weekly("Diska"));
     await expect(deleteRoom(f.adult, f.kitchen.id)).rejects.toThrow("Rummet har uppgifter");
+    expect((await listRooms(f.homeId)).map((r) => r.name)).toContain("Kök");
 
     await deleteChore(f.adult, id);
     await deleteRoom(f.adult, f.kitchen.id);
-    // The archived task and its history remain, without a room.
-    expect((await db.select().from(chore).where(eq(chore.id, id)))[0]!.roomId).toBeNull();
+    expect((await listRooms(f.homeId)).map((r) => r.name)).not.toContain("Kök");
+  });
+
+  it("keep their name in the history once removed, and the name can be used again", async () => {
+    const { id } = await createChore(f.adult, weekly("Diska"));
+    const [first] = await open();
+    await completeInstance(f.child, first!.id);
+    await deleteChore(f.adult, id);
+    await deleteRoom(f.adult, f.kitchen.id);
+
+    const [kept] = await db.select().from(chore).where(eq(chore.id, id));
+    expect(kept!.roomId).toBe(f.kitchen.id);
+    const newKitchen = await addRoom(f.adult, "Kök");
+    expect(newKitchen.id).not.toBe(f.kitchen.id);
+  });
+
+  it("get no new tasks once removed", async () => {
+    await deleteRoom(f.adult, f.bathroom.id);
+    await expect(createChore(f.adult, weekly("Toa", { roomId: f.bathroom.id }))).rejects.toThrow("Rummet finns inte");
+  });
+
+  it("never end up removed with a task on the board, however the requests race", async () => {
+    for (let i = 0; i < 10; i++) {
+      const r = await addRoom(f.adult, `Rum ${i}`);
+      const results = await Promise.allSettled([
+        createChore(f.adult, weekly(`Uppgift ${i}`, { roomId: r.id })),
+        deleteRoom(f.adult, r.id),
+      ]);
+      // Whichever wins, the loser fails with a message meant for people, not a database error.
+      for (const result of results) {
+        if (result.status === "rejected") expect(result.reason).toBeInstanceOf(UserError);
+      }
+      const removed = !(await listRooms(f.homeId)).some((x) => x.id === r.id);
+      const tasks = (await open()).filter((t) => t.roomId === r.id);
+      expect(removed && tasks.length > 0).toBe(false);
+    }
   });
 });

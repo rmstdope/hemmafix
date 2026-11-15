@@ -65,7 +65,7 @@ export function ChoreItem({
               variant="secondary"
               size="icon-lg"
               className="size-11 shrink-0 rounded-full"
-              aria-label="Ångra klar"
+              aria-label={`${t.title}: ångra klar`}
               onClick={() => run(() => uncompleteInstance(t.id), () => setHidden(true))}
             >
               <RotateCcw />
@@ -80,7 +80,7 @@ export function ChoreItem({
             variant="outline"
             size="icon-lg"
             className="size-11 shrink-0 rounded-full"
-            aria-label="Markera som klar"
+            aria-label={`${t.title}: markera som klar`}
             onClick={() => run(() => completeInstance(t.id), () => setHidden(true))}
           >
             <Check className="opacity-40" />
@@ -120,7 +120,7 @@ export function ChoreItem({
         {!completed && canManage && (
           <>
             <select
-              aria-label="Tilldela den här gången"
+              aria-label={`${t.title}: tilldela den här gången`}
               value={assigneeId ?? ""}
               onChange={(e) => {
                 const next = e.target.value || null;
@@ -139,7 +139,7 @@ export function ChoreItem({
               variant="ghost"
               size="icon-lg"
               className="size-11 shrink-0 text-muted-foreground"
-              aria-label="Mer"
+              aria-label={`${t.title}: mer`}
               aria-expanded={expanded}
               onClick={() => setExpanded((v) => !v)}
             >
@@ -155,7 +155,7 @@ export function ChoreItem({
             <label className="flex flex-1 items-center gap-2 text-sm text-muted-foreground">
               <span className="whitespace-nowrap">Alla gånger</span>
               <select
-                aria-label="Tilldela alla gånger"
+                aria-label={`${t.title}: tilldela alla gånger`}
                 value={t.seriesAssigneeId ?? ""}
                 onChange={(e) => {
                   const next = e.target.value || null;

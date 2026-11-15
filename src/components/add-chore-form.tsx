@@ -29,9 +29,20 @@ type Draft = {
   kind: "recurring" | "once";
   interval: string;
   unit: RecurrenceUnit;
+  date: string;
+  assigneeId: string;
 };
 
-const EMPTY: Draft = { templateKey: "", title: "", roomId: "", kind: "recurring", interval: "1", unit: "week" };
+const empty = (today: string): Draft => ({
+  templateKey: "",
+  title: "",
+  roomId: "",
+  kind: "recurring",
+  interval: "1",
+  unit: "week",
+  date: today,
+  assigneeId: "",
+});
 
 export function AddChoreForm({
   rooms,
@@ -46,12 +57,12 @@ export function AddChoreForm({
   today: string;
 }) {
   const [open, setOpen] = useState(false);
-  const [draft, setDraft] = useState<Draft>(EMPTY);
+  const [draft, setDraft] = useState<Draft>(() => empty(today));
   const [, action, pending] = useActionState<ActionState, FormData>(async (prev, formData) => {
     const result = await createChore(prev, formData);
     if (result.ok) {
       toast.success("Uppgiften är tillagd");
-      setDraft(EMPTY);
+      setDraft(empty(today));
       // Closing unmounts the form, so it opens empty next time.
       setOpen(false);
     } else if (result.error) {
@@ -135,7 +146,12 @@ export function AddChoreForm({
         <Input
           name="title"
           value={draft.title}
-          onChange={(e) => set({ title: e.target.value })}
+          onChange={(e) => {
+            const title = e.target.value;
+            // A title typed over the template's makes it a task of one's own.
+            const template = findTemplate(draft.templateKey);
+            set({ title, templateKey: template && template.title === title ? draft.templateKey : "" });
+          }}
           aria-label="Titel"
           autoComplete="off"
           required
@@ -177,7 +193,7 @@ export function AddChoreForm({
             <label
               key={value}
               className={cn(
-                "flex h-9 cursor-pointer items-center justify-center rounded-md",
+                "flex h-9 cursor-pointer items-center justify-center rounded-md has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-ring",
                 draft.kind === value ? "bg-background font-medium shadow-sm" : "text-muted-foreground",
               )}
             >
@@ -186,7 +202,7 @@ export function AddChoreForm({
                 name="kind"
                 value={value}
                 checked={draft.kind === value}
-                onChange={() => set({ kind: value })}
+                onChange={() => set({ kind: value, date: value === "recurring" ? today : "" })}
                 className="sr-only"
               />
               {label}
@@ -230,17 +246,23 @@ export function AddChoreForm({
         <label className="space-y-1 text-sm">
           <span className="text-muted-foreground">{recurring ? "Första gången" : "Klart senast"}</span>
           <input
-            key={draft.kind}
             type="date"
             name={recurring ? "startDate" : "dueDate"}
             aria-label={recurring ? "Första gången" : "Klart senast"}
-            defaultValue={recurring ? today : ""}
+            value={draft.date}
+            onChange={(e) => set({ date: e.target.value })}
             className={fieldClass}
           />
         </label>
         <label className="space-y-1 text-sm">
           <span className="text-muted-foreground">{recurring ? "Vem (alla gånger)" : "Vem"}</span>
-          <select name="assigneeId" aria-label="Vem" defaultValue="" className={fieldClass}>
+          <select
+            name="assigneeId"
+            aria-label="Vem"
+            value={draft.assigneeId}
+            onChange={(e) => set({ assigneeId: e.target.value })}
+            className={fieldClass}
+          >
             <option value="">Ingen</option>
             {members.map((m) => (
               <option key={m.id} value={m.id}>

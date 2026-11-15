@@ -62,10 +62,12 @@ export async function createChore(actor: Actor, raw: unknown) {
   const input = createChoreInput.parse(raw);
 
   return db.transaction(async (tx) => {
+    // Share-lock the room so it cannot be removed while the task is being added to it.
     const [r] = await tx
       .select({ id: room.id })
       .from(room)
-      .where(and(eq(room.id, input.roomId), eq(room.householdId, actor.householdId)));
+      .where(and(eq(room.id, input.roomId), eq(room.householdId, actor.householdId), isNull(room.archivedAt)))
+      .for("share");
     if (!r) throw new UserError("Rummet finns inte i hemmet");
     await assertMember(tx, actor.householdId, input.assigneeId);
 
@@ -146,16 +148,6 @@ export async function deleteChore(actor: Actor, id: string) {
   });
 }
 
-/** Whether a room still has tasks on the board (it cannot be deleted then). */
-export async function roomHasActiveChores(householdId: string, roomId: string) {
-  const [row] = await db
-    .select({ id: chore.id })
-    .from(chore)
-    .where(and(eq(chore.householdId, householdId), eq(chore.roomId, roomId), isNull(chore.archivedAt)))
-    .limit(1);
-  return !!row;
-}
-
 // ---------------------------------------------------------------------------
 // Ticking off (everyone)
 // ---------------------------------------------------------------------------
@@ -187,10 +179,14 @@ export async function completeInstance(actor: Actor, id: string) {
     if (!row || row.archivedAt) throw new UserError("Uppgiften finns inte längre");
     if (row.completedAt) throw new UserError("Någon har redan bockat av den");
 
-    await tx
+    // Only if still open: correct even without the lock above, which just makes the loser
+    // of a race wait for a clean answer.
+    const ticked = await tx
       .update(choreInstance)
       .set({ completedAt: new Date(), completedById: actor.userId })
-      .where(eq(choreInstance.id, target));
+      .where(and(eq(choreInstance.id, target), isNull(choreInstance.completedAt)))
+      .returning({ id: choreInstance.id });
+    if (ticked.length === 0) throw new UserError("Någon har redan bockat av den");
 
     const recurrence = recurrenceOf(row);
     if (recurrence) {
@@ -269,6 +265,8 @@ export type InstanceView = {
   completedAt: Date | null;
   completedById: string | null;
   completedByName: string | null;
+  /** Whether this is the task's latest tick, the only one that can be undone. */
+  isLatestTick: boolean;
 };
 
 const completer = aliasedTable(user, "completer");
@@ -294,13 +292,17 @@ type Row = { [K in keyof typeof instanceColumns]: unknown } & {
   recurrenceInterval: number | null;
 };
 
-function toView({ recurrenceUnit, recurrenceInterval, ...rest }: Row): InstanceView {
-  return { ...(rest as Omit<InstanceView, "recurrence">), recurrence: recurrenceOf({ recurrenceUnit, recurrenceInterval }) };
+function toView({ recurrenceUnit, recurrenceInterval, ...rest }: Row & { isLatestTick?: boolean }): InstanceView {
+  return {
+    ...(rest as Omit<InstanceView, "recurrence" | "isLatestTick">),
+    recurrence: recurrenceOf({ recurrenceUnit, recurrenceInterval }),
+    isLatestTick: rest.isLatestTick ?? false,
+  };
 }
 
-function selectInstances(where: SQL | undefined) {
+function selectInstances(where: SQL | undefined, extra = {}) {
   return db
-    .select(instanceColumns)
+    .select({ ...instanceColumns, ...extra })
     .from(choreInstance)
     .innerJoin(chore, eq(chore.id, choreInstance.choreId))
     .leftJoin(room, eq(room.id, chore.roomId))
@@ -342,6 +344,9 @@ export async function listRecentlyCompleted(actor: Actor): Promise<InstanceView[
       isNotNull(choreInstance.completedAt),
       gt(choreInstance.completedAt, sql`now() - interval '7 days'`),
     ),
+    {
+      isLatestTick: sql<boolean>`${choreInstance.completedAt} = max(${choreInstance.completedAt}) over (partition by ${choreInstance.choreId})`,
+    },
   )
     .orderBy(desc(choreInstance.completedAt))
     .limit(20);
@@ -349,6 +354,9 @@ export async function listRecentlyCompleted(actor: Actor): Promise<InstanceView[
 }
 
 /** Whether the actor may undo this tick (the UI shows the undo button only then). */
-export function canUndo(actor: Pick<Actor, "role" | "userId">, instance: Pick<InstanceView, "completedById">) {
-  return instance.completedById === actor.userId || can(actor.role, "task:uncomplete-others");
+export function canUndo(
+  actor: Pick<Actor, "role" | "userId">,
+  instance: Pick<InstanceView, "completedById" | "isLatestTick">,
+) {
+  return instance.isLatestTick && (instance.completedById === actor.userId || can(actor.role, "task:uncomplete-others"));
 }

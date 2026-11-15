@@ -1,5 +1,5 @@
 {
-  "id": "a8fedbc6-e1a4-4b72-a8f8-98cd64311b3e",
+  "id": "265c8095-b5a1-46c7-be86-cd58ef25c59e",
   "prevId": "3bdcfa32-27f9-40a5-bd24-ba674708932c",
   "version": "7",
   "dialect": "postgresql",
@@ -148,7 +148,7 @@
           "name": "room_id",
           "type": "uuid",
           "primaryKey": false,
-          "notNull": false
+          "notNull": true
         },
         "title": {
           "name": "title",
@@ -239,19 +239,6 @@
           "onDelete": "cascade",
           "onUpdate": "no action"
         },
-        "chore_room_id_room_id_fk": {
-          "name": "chore_room_id_room_id_fk",
-          "tableFrom": "chore",
-          "tableTo": "room",
-          "columnsFrom": [
-            "room_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "set null",
-          "onUpdate": "no action"
-        },
         "chore_assignee_id_user_id_fk": {
           "name": "chore_assignee_id_user_id_fk",
           "tableFrom": "chore",
@@ -277,19 +264,39 @@
           ],
           "onDelete": "set null",
           "onUpdate": "no action"
+        },
+        "chore_room_same_household_fk": {
+          "name": "chore_room_same_household_fk",
+          "tableFrom": "chore",
+          "tableTo": "room",
+          "columnsFrom": [
+            "room_id",
+            "household_id"
+          ],
+          "columnsTo": [
+            "id",
+            "household_id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
         }
       },
       "compositePrimaryKeys": {},
-      "uniqueConstraints": {},
+      "uniqueConstraints": {
+        "chore_id_household_unique": {
+          "name": "chore_id_household_unique",
+          "nullsNotDistinct": false,
+          "columns": [
+            "id",
+            "household_id"
+          ]
+        }
+      },
       "policies": {},
       "checkConstraints": {
         "chore_recurrence_check": {
           "name": "chore_recurrence_check",
           "value": "(\"chore\".\"recurrence_unit\" is null and \"chore\".\"recurrence_interval\" is null) or (\"chore\".\"recurrence_unit\" is not null and \"chore\".\"recurrence_interval\" between 1 and 365)"
-        },
-        "chore_active_has_room_check": {
-          "name": "chore_active_has_room_check",
-          "value": "\"chore\".\"archived_at\" is not null or \"chore\".\"room_id\" is not null"
         }
       },
       "isRLSEnabled": false
@@ -417,19 +424,6 @@
         }
       },
       "foreignKeys": {
-        "chore_instance_chore_id_chore_id_fk": {
-          "name": "chore_instance_chore_id_chore_id_fk",
-          "tableFrom": "chore_instance",
-          "tableTo": "chore",
-          "columnsFrom": [
-            "chore_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "cascade",
-          "onUpdate": "no action"
-        },
         "chore_instance_household_id_household_id_fk": {
           "name": "chore_instance_household_id_household_id_fk",
           "tableFrom": "chore_instance",
@@ -467,6 +461,21 @@
             "id"
           ],
           "onDelete": "set null",
+          "onUpdate": "no action"
+        },
+        "chore_instance_chore_same_household_fk": {
+          "name": "chore_instance_chore_same_household_fk",
+          "tableFrom": "chore_instance",
+          "tableTo": "chore",
+          "columnsFrom": [
+            "chore_id",
+            "household_id"
+          ],
+          "columnsTo": [
+            "id",
+            "household_id"
+          ],
+          "onDelete": "cascade",
           "onUpdate": "no action"
         }
       },
@@ -637,6 +646,12 @@
           "primaryKey": false,
           "notNull": true
         },
+        "archived_at": {
+          "name": "archived_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
         "created_at": {
           "name": "created_at",
           "type": "timestamp with time zone",
@@ -670,6 +685,7 @@
             }
           ],
           "isUnique": true,
+          "where": "\"room\".\"archived_at\" is null",
           "concurrently": false,
           "method": "btree",
           "with": {}
@@ -691,7 +707,16 @@
         }
       },
       "compositePrimaryKeys": {},
-      "uniqueConstraints": {},
+      "uniqueConstraints": {
+        "room_id_household_unique": {
+          "name": "room_id_household_unique",
+          "nullsNotDistinct": false,
+          "columns": [
+            "id",
+            "household_id"
+          ]
+        }
+      },
       "policies": {},
       "checkConstraints": {},
       "isRLSEnabled": false
