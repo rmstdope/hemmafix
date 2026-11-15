@@ -2,6 +2,7 @@ import { createHash, randomBytes } from "node:crypto";
 import type { APIRequestContext, Page } from "@playwright/test";
 import { expect, test } from "./support/test";
 import { E2E_BASE_URL } from "./support/env";
+import { captureRedirectToClaude, REDIRECT_URI } from "./support/claude";
 import { logIn, seedConnection, seedOAuthClient } from "./support/family";
 
 const section = (page: Page) => page.getByRole("region", { name: "Anslutna appar" });
@@ -116,8 +117,6 @@ test("a child never sees the section", async ({ page, context }) => {
   await expect(page.getByRole("heading", { name: "Anslutna appar" })).toHaveCount(0);
 });
 
-const REDIRECT_URI = "https://claude.ai/api/mcp/auth_callback";
-
 /** Claude's side: the adult approves in `page`, and Claude trades the code for its tokens. */
 async function connectClaude(page: Page, request: APIRequestContext) {
   const clientId = await seedOAuthClient({ name: "Claude", redirectUri: REDIRECT_URI });
@@ -133,11 +132,7 @@ async function connectClaude(page: Page, request: APIRequestContext) {
     code_challenge: createHash("sha256").update(verifier).digest("base64url"),
     code_challenge_method: "S256",
   }).toString();
-  const sent: URL[] = [];
-  await page.route(`${REDIRECT_URI}**`, (route) => {
-    sent.push(new URL(route.request().url()));
-    return route.fulfill({ status: 200, contentType: "text/html", body: "Claude" });
-  });
+  const sent = await captureRedirectToClaude(page);
   return {
     clientId,
     async approve() {

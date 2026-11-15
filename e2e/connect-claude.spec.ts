@@ -1,10 +1,8 @@
 import { createHash, randomBytes } from "node:crypto";
-import type { Page } from "@playwright/test";
 import { expect, test } from "./support/test";
 import { E2E_BASE_URL } from "./support/env";
+import { captureRedirectToClaude, REDIRECT_URI } from "./support/claude";
 import { logIn, seedOAuthClient } from "./support/family";
-
-const REDIRECT_URI = "https://claude.ai/api/mcp/auth_callback";
 
 /** Claude's side of the connection: a registered client and the authorization link it sends the person to. */
 async function claudeStartsConnecting(opts: { clientId?: string; prompt?: string } = {}) {
@@ -23,16 +21,6 @@ async function claudeStartsConnecting(opts: { clientId?: string; prompt?: string
     ...(opts.prompt ? { prompt: opts.prompt } : {}),
   }).toString();
   return { clientId: client_id as string, verifier, url: url.toString() };
-}
-
-/** Claude's redirect address is not served here: capture where the browser is sent instead. */
-async function captureRedirectToClaude(page: Page) {
-  const sent: URL[] = [];
-  await page.route(`${REDIRECT_URI}**`, (route) => {
-    sent.push(new URL(route.request().url()));
-    return route.fulfill({ status: 200, contentType: "text/html", body: "Claude" });
-  });
-  return sent;
 }
 
 test("an adult approves, and Claude can then list what is left to do", async ({ page, context, request }) => {
