@@ -2,7 +2,7 @@ import { createHash, randomBytes } from "node:crypto";
 import type { APIRequestContext, Page } from "@playwright/test";
 import { expect, test } from "./support/test";
 import { E2E_BASE_URL } from "./support/env";
-import { captureRedirectToClaude, REDIRECT_URI } from "./support/claude";
+import { captureRedirectToClaude, expectSentToClaudeOnce, REDIRECT_URI } from "./support/claude";
 import { logIn, seedConnection, seedOAuthClient } from "./support/family";
 
 const section = (page: Page) => page.getByRole("region", { name: "Anslutna appar" });
@@ -139,7 +139,7 @@ async function connectClaude(page: Page, request: APIRequestContext) {
       await page.goto(url.toString());
       await page.getByRole("button", { name: "Godkänn" }).click();
       // The first approval after the server starts is slow (cold route compilation on CI).
-      await expect.poll(() => sent.length, { timeout: 20_000 }).toBe(1);
+      await expectSentToClaudeOnce(page, sent, { timeout: 20_000 });
       const token = await request.post("/api/auth/oauth2/token", {
         form: {
           grant_type: "authorization_code",
