@@ -256,7 +256,11 @@ export async function addRoutineToHome(actor: Actor, raw: unknown): Promise<{ co
       .where(eq(routineTask.routineId, found.id))
       .orderBy(asc(routineTask.seq));
     if (tasks.length === 0) throw new UserError(SAVE_FAILED);
-    for (const t of tasks) await insertChore(tx, actor, { ...input, title: t.title, templateKey: null });
+    // One transaction means one now(): stamp each task a millisecond apart so the list keeps the routine's order.
+    const start = Date.now();
+    for (const [i, t] of tasks.entries()) {
+      await insertChore(tx, actor, { ...input, title: t.title, templateKey: null, createdAt: new Date(start + i) });
+    }
     return { count: tasks.length };
   });
 }

@@ -278,6 +278,17 @@ describe("addRoutineToHome", () => {
     }
   });
 
+  it("keeps the routine's order on the list", async () => {
+    const id = await makeRoutine("Ordning", ["Tre", "Ett", "Fyra", "Två", "Fem"]);
+    await addRoutineToHome(f.adult, { routineId: id, roomId: f.kitchen.id, kind: "once" });
+    const rows = await db
+      .select({ title: chore.title })
+      .from(choreInstance)
+      .innerJoin(chore, eq(chore.id, choreInstance.choreId))
+      .orderBy(choreInstance.createdAt, choreInstance.id);
+    expect(rows.map((r) => r.title)).toEqual(["Tre", "Ett", "Fyra", "Två", "Fem"]);
+  });
+
   it("adds one-off tasks with a due date, or none", async () => {
     const id = await makeRoutine("Engång", ["Putsa"]);
     await addRoutineToHome(f.adult, { routineId: id, roomId: f.bathroom.id, kind: "once", dueDate: "2026-12-24" });

@@ -33,12 +33,13 @@ async function Board({ searchParams }: { searchParams: PageProps<"/">["searchPar
   const today = todayIso();
   const isAdult = can(member.role, "task:create");
 
-  const [home, members, floors, rooms, completed] = await Promise.all([
+  const [home, members, floors, rooms, completed, routines] = await Promise.all([
     getHousehold(member.householdId),
     listMembers(member.householdId),
     listFloors(member.householdId),
     listRooms(member.householdId),
     listRecentlyCompleted(member),
+    isAdult ? listRoutinesWithTasks(member) : [],
   ]);
   // A room or floor that has since been removed (or is not this home's) means no filter.
   const filter = {
@@ -46,7 +47,6 @@ async function Board({ searchParams }: { searchParams: PageProps<"/">["searchPar
     roomId: rooms.some((r) => r.id === requested.roomId) ? requested.roomId : undefined,
     floorId: floors.some((f) => f.id === requested.floorId) ? requested.floorId : undefined,
   };
-  const routines = isAdult ? await listRoutinesWithTasks(member) : [];
   const open = await listOpenInstances(member, filter);
   const filtered = Boolean(filter.roomId || filter.floorId || filter.who);
   const showFloors = floors.length > 1;

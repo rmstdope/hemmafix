@@ -258,18 +258,36 @@ describe("addRoutine", () => {
     });
   });
 
-  it("answers an unexpected failure with the agreed notice", async () => {
+  it("answers an unexpected failure with the agreed notice and adds none of the tasks", async () => {
     as(f.adult);
     const r = await routines();
     const { id } = await r.createRoutine(f.adult, "Städa");
-    await r.addRoutineTask(f.adult, id, "A");
-    const spy = vi.spyOn(chores, "notifyHouseholdChanged").mockRejectedValueOnce(new Error("down"));
+    for (const t of ["A", "B", "C"]) await r.addRoutineTask(f.adult, id, t);
+    // Fails on the second task, inside the transaction: the first must not stay.
     const quiet = vi.spyOn(console, "error").mockImplementation(() => {});
+    const real = chores.insertChore;
+    let calls = 0;
+    vi.spyOn(chores, "insertChore").mockImplementation((...args) => {
+      if (++calls === 2) throw new Error("down");
+      return real(...args);
+    });
     expect(await actions.addRoutine({ ok: false }, fields(id))).toEqual({
       ok: false,
       error: "Det gick inte att spara. Försök igen.",
     });
-    spy.mockRestore();
+    vi.restoreAllMocks();
     quiet.mockRestore();
+    expect(await db.select().from(chore).where(eq(chore.householdId, f.homeId))).toHaveLength(0);
+  });
+
+  it("does not claim a failure once the tasks are saved", async () => {
+    as(f.adult);
+    const r = await routines();
+    const { id } = await r.createRoutine(f.adult, "Städa");
+    await r.addRoutineTask(f.adult, id, "A");
+    vi.spyOn(chores, "notifyHouseholdChanged").mockRejectedValueOnce(new Error("down"));
+    await expect(actions.addRoutine({ ok: false }, fields(id))).rejects.toThrow("down");
+    vi.restoreAllMocks();
+    expect(await db.select().from(chore).where(eq(chore.householdId, f.homeId))).toHaveLength(1);
   });
 });

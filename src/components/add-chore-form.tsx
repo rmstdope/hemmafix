@@ -217,155 +217,153 @@ export function AddChoreForm({
             </>
           ) : (
             <>
-          <label className="block space-y-1 text-sm">
-            <span className="text-muted-foreground">Välj en vanlig uppgift</span>
-            <select
-              aria-label="Fördefinierad uppgift"
-              value={draft.templateKey}
-              onChange={(e) => pickTemplate(e.target.value)}
-              className={fieldClass}
-            >
-              <option value="">Egen uppgift</option>
-              {CHORE_TEMPLATES.map((t) => (
-                <option key={t.key} value={t.key}>
-                  {t.title}
-                </option>
-              ))}
-            </select>
-          </label>
-          <input type="hidden" name="templateKey" value={draft.templateKey} />
+              <label className="block space-y-1 text-sm">
+                <span className="text-muted-foreground">Välj en vanlig uppgift</span>
+                <select
+                  aria-label="Fördefinierad uppgift"
+                  value={draft.templateKey}
+                  onChange={(e) => pickTemplate(e.target.value)}
+                  className={fieldClass}
+                >
+                  <option value="">Egen uppgift</option>
+                  {CHORE_TEMPLATES.map((t) => (
+                    <option key={t.key} value={t.key}>
+                      {t.title}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <input type="hidden" name="templateKey" value={draft.templateKey} />
 
-          <label className="block space-y-1 text-sm">
-            <span className="text-muted-foreground">Vad ska göras?</span>
-            <Input
-              name="title"
-              value={draft.title}
-              onChange={(e) => {
-                const title = e.target.value;
-                // A title typed over the template's makes it a task of one's own.
-                const template = findTemplate(draft.templateKey);
-                set({ title, templateKey: template && template.title === title ? draft.templateKey : "" });
-              }}
-              aria-label="Titel"
-              autoComplete="off"
-              required
-              maxLength={200}
-              className="h-11 text-base md:text-sm"
-            />
-          </label>
-
+              <label className="block space-y-1 text-sm">
+                <span className="text-muted-foreground">Vad ska göras?</span>
+                <Input
+                  name="title"
+                  value={draft.title}
+                  onChange={(e) => {
+                    const title = e.target.value;
+                    // A title typed over the template's makes it a task of one's own.
+                    const template = findTemplate(draft.templateKey);
+                    set({ title, templateKey: template && template.title === title ? draft.templateKey : "" });
+                  }}
+                  aria-label="Titel"
+                  autoComplete="off"
+                  required
+                  maxLength={200}
+                  className="h-11 text-base md:text-sm"
+                />
+              </label>
             </>
           )}
 
-        <label className="block space-y-1 text-sm">
-          <span className="text-muted-foreground">Rum</span>
-          <select
-            name="roomId"
-            aria-label="Rum"
-            value={draft.roomId}
-            onChange={(e) => set({ roomId: e.target.value })}
-            required
-            className={fieldClass}
-          >
-            <option value="" disabled>
-              Välj rum
-            </option>
-            <RoomOptions floors={floors} rooms={rooms} />
-          </select>
-        </label>
+          <label className="block space-y-1 text-sm">
+            <span className="text-muted-foreground">Rum</span>
+            <select
+              name="roomId"
+              aria-label="Rum"
+              value={draft.roomId}
+              onChange={(e) => set({ roomId: e.target.value })}
+              required
+              className={fieldClass}
+            >
+              <option value="" disabled>
+                Välj rum
+              </option>
+              <RoomOptions floors={floors} rooms={rooms} />
+            </select>
+          </label>
 
-        <fieldset className="space-y-2 text-sm">
-          <legend className="mb-1 text-muted-foreground">Hur ofta?</legend>
-          <div className="grid grid-cols-2 gap-1 rounded-lg bg-muted p-1">
-            {(
-              [
-                ["recurring", "Återkommande"],
-                ["once", "En gång"],
-              ] as const
-            ).map(([value, label]) => (
-              <label
-                key={value}
-                className={cn(
-                  "flex h-9 cursor-pointer items-center justify-center rounded-md has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-ring",
-                  draft.kind === value ? "bg-background font-medium shadow-sm" : "text-muted-foreground",
-                )}
-              >
-                <input
-                  type="radio"
-                  name="kind"
-                  value={value}
-                  checked={draft.kind === value}
-                  onChange={() => set({ kind: value, date: value === "recurring" ? today : "" })}
-                  className="sr-only"
+          <fieldset className="space-y-2 text-sm">
+            <legend className="mb-1 text-muted-foreground">Hur ofta?</legend>
+            <div className="grid grid-cols-2 gap-1 rounded-lg bg-muted p-1">
+              {(
+                [
+                  ["recurring", "Återkommande"],
+                  ["once", "En gång"],
+                ] as const
+              ).map(([value, label]) => (
+                <label
+                  key={value}
+                  className={cn(
+                    "flex h-9 cursor-pointer items-center justify-center rounded-md has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-ring",
+                    draft.kind === value ? "bg-background font-medium shadow-sm" : "text-muted-foreground",
+                  )}
+                >
+                  <input
+                    type="radio"
+                    name="kind"
+                    value={value}
+                    checked={draft.kind === value}
+                    onChange={() => set({ kind: value, date: value === "recurring" ? today : "" })}
+                    className="sr-only"
+                  />
+                  {label}
+                </label>
+              ))}
+            </div>
+
+            {recurring ? (
+              <div className="grid grid-cols-[auto_5rem_1fr] items-center gap-2">
+                <span>Var</span>
+                <Input
+                  type="number"
+                  name="interval"
+                  aria-label="Antal"
+                  inputMode="numeric"
+                  min={1}
+                  max={365}
+                  required
+                  value={draft.interval}
+                  onChange={(e) => set({ interval: e.target.value })}
+                  className="h-11 text-base md:text-sm"
                 />
-                {label}
-              </label>
-            ))}
-          </div>
+                <select
+                  name="unit"
+                  aria-label="Enhet"
+                  value={draft.unit}
+                  onChange={(e) => set({ unit: e.target.value as RecurrenceUnit })}
+                  className={fieldClass}
+                >
+                  {UNIT_OPTIONS.map((u) => (
+                    <option key={u.value} value={u.value}>
+                      {plural ? u.many : u.one}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            ) : null}
+          </fieldset>
 
-          {recurring ? (
-            <div className="grid grid-cols-[auto_5rem_1fr] items-center gap-2">
-              <span>Var</span>
-              <Input
-                type="number"
-                name="interval"
-                aria-label="Antal"
-                inputMode="numeric"
-                min={1}
-                max={365}
-                required
-                value={draft.interval}
-                onChange={(e) => set({ interval: e.target.value })}
-                className="h-11 text-base md:text-sm"
+          <div className="grid grid-cols-2 gap-2">
+            <label className="space-y-1 text-sm">
+              <span className="text-muted-foreground">{recurring ? "Första gången" : "Klart senast"}</span>
+              <input
+                type="date"
+                name={recurring ? "startDate" : "dueDate"}
+                aria-label={recurring ? "Första gången" : "Klart senast"}
+                value={draft.date}
+                onChange={(e) => set({ date: e.target.value })}
+                className={fieldClass}
               />
+            </label>
+            <label className="space-y-1 text-sm">
+              <span className="text-muted-foreground">{recurring ? "Vem (alla gånger)" : "Vem"}</span>
               <select
-                name="unit"
-                aria-label="Enhet"
-                value={draft.unit}
-                onChange={(e) => set({ unit: e.target.value as RecurrenceUnit })}
+                name="assigneeId"
+                aria-label="Vem"
+                value={draft.assigneeId}
+                onChange={(e) => set({ assigneeId: e.target.value })}
                 className={fieldClass}
               >
-                {UNIT_OPTIONS.map((u) => (
-                  <option key={u.value} value={u.value}>
-                    {plural ? u.many : u.one}
+                <option value="">Ingen</option>
+                {members.map((m) => (
+                  <option key={m.id} value={m.id}>
+                    {m.id === currentUserId ? `${m.name} (jag)` : m.name}
                   </option>
                 ))}
               </select>
-            </div>
-          ) : null}
-        </fieldset>
-
-        <div className="grid grid-cols-2 gap-2">
-          <label className="space-y-1 text-sm">
-            <span className="text-muted-foreground">{recurring ? "Första gången" : "Klart senast"}</span>
-            <input
-              type="date"
-              name={recurring ? "startDate" : "dueDate"}
-              aria-label={recurring ? "Första gången" : "Klart senast"}
-              value={draft.date}
-              onChange={(e) => set({ date: e.target.value })}
-              className={fieldClass}
-            />
-          </label>
-          <label className="space-y-1 text-sm">
-            <span className="text-muted-foreground">{recurring ? "Vem (alla gånger)" : "Vem"}</span>
-            <select
-              name="assigneeId"
-              aria-label="Vem"
-              value={draft.assigneeId}
-              onChange={(e) => set({ assigneeId: e.target.value })}
-              className={fieldClass}
-            >
-              <option value="">Ingen</option>
-              {members.map((m) => (
-                <option key={m.id} value={m.id}>
-                  {m.id === currentUserId ? `${m.name} (jag)` : m.name}
-                </option>
-              ))}
-            </select>
-          </label>
-        </div>
-
+            </label>
+          </div>
         </>
       )}
 

@@ -88,6 +88,8 @@ export async function insertChore(
   actor: Actor,
   input: Pick<CreateChoreInput, "title" | "roomId" | "recurrence" | "firstDueDate" | "assigneeId"> & {
     templateKey: string | null;
+    /** When several tasks are added in one transaction, an increasing time keeps their order on the list. */
+    createdAt?: Date;
   },
 ) {
   const [created] = await tx
@@ -101,9 +103,11 @@ export async function insertChore(
       recurrenceInterval: input.recurrence?.interval ?? null,
       assigneeId: input.assigneeId,
       createdById: actor.userId,
+      ...(input.createdAt && { createdAt: input.createdAt }),
     })
     .returning({ id: chore.id });
   await tx.insert(choreInstance).values({
+    ...(input.createdAt && { createdAt: input.createdAt }),
     choreId: created!.id,
     householdId: actor.householdId,
     dueDate: input.firstDueDate ?? (input.recurrence ? todayIso() : null),
