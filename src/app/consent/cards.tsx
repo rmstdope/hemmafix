@@ -14,11 +14,16 @@ const Card = ({ children, left = false }: { children: ReactNode; left?: boolean 
 
 const HemmafixIcon = () => <Image src="/icon.svg" alt="" width={64} height={64} className="size-16" />;
 
-/** Sends the browser back to the app with the server's answer; false when the link no longer works. */
+/**
+ * Sends the browser back to the app with the server's answer; false when the link no longer works.
+ *
+ * The server answers `{ redirect: true, url }`, and Better Auth's client follows that itself.
+ * Navigating here as well sent the browser to the app twice.
+ */
 async function answer(accept: boolean): Promise<boolean> {
   const { data } = await authClient.oauth2.consent({ accept });
   if (!data?.url) return false;
-  window.location.href = data.url;
+  if (!data.redirect) window.location.href = data.url;
   return true;
 }
 
