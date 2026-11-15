@@ -27,9 +27,10 @@ of the complete diff and bead. If its changes are substantial enough to make ano
 the producer chooses the right follow-up scope and obtains it; minor, self-contained answers need
 not create a review loop. Unresolved findings, a red or missing check, or a reviewer that cannot
 produce a usable result go to a person. Whether the navigator also takes part in the plan, the
-review or the merge is `navigator_gates` in `.cerebro/project.conf`; here it is `merge`, because a
-merge to `main` deploys to production (see *Deployment*). A producer never merges its own pull
-request: it leaves the merge to the navigator.
+review or the merge is `navigator_gates` in `.cerebro/project.conf`; absent means none. Once its
+review is addressed and every CI check is green, the producer merges its own pull request. A merge
+to `main` deploys to production (see *Deployment*), so a producer never merges with a finding
+unresolved or a check red or missing.
 
 ## Work tracking
 
@@ -128,7 +129,8 @@ output through `grep`, since that hides failures. No ESLint or TypeScript inline
 ## Deployment
 
 Every push to `main` builds, smoke-tests and publishes an image, and rmstdope-infra rolls it out to
-hemmafix.rmstdope.eu on its own. A merge is a production release, so the navigator does every merge.
+hemmafix.rmstdope.eu on its own. A merge is a production release: the producer merges only a
+reviewed pull request with every check green (*Producer review*).
 The host registration in `deploy/runtime/` is frozen: changes there (Postgres version, memory limits,
 secret files, environment) need a separate, reviewed re-registration and are never part of an
 ordinary bead. The image must keep the rmstdope-infra contract: port 8080, `/healthz`,

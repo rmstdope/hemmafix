@@ -4,7 +4,7 @@ import { db, pg } from "@/db";
 import { chore, choreInstance, floor, household, membership, room, user } from "@/db/schema";
 import { addDays, HOME_TIME_ZONE, todayIso } from "@/lib/dates";
 import { UserError } from "@/lib/errors";
-import { assertCan, can } from "@/lib/permissions";
+import { assertCan, can, type Role } from "@/lib/permissions";
 import { findTemplate } from "@/lib/chore-templates";
 import { nextDueDate, type Recurrence } from "@/lib/recurrence";
 import {
@@ -35,6 +35,18 @@ export async function getHousehold(householdId: string) {
 export async function listMembers(householdId: string): Promise<Member[]> {
   return db
     .select({ id: user.id, name: user.name, image: user.image })
+    .from(membership)
+    .innerJoin(user, eq(user.id, membership.userId))
+    .where(eq(membership.householdId, householdId))
+    .orderBy(asc(user.name));
+}
+
+export type FamilyMember = Member & { role: Role };
+
+/** Everyone in the home with their role, alphabetically. */
+export async function listFamily(householdId: string): Promise<FamilyMember[]> {
+  return db
+    .select({ id: user.id, name: user.name, image: user.image, role: membership.role })
     .from(membership)
     .innerJoin(user, eq(user.id, membership.userId))
     .where(eq(membership.householdId, householdId))

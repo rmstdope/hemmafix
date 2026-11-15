@@ -7,6 +7,7 @@ import type { Role } from "@/lib/permissions";
 import { getCurrentMember, type CurrentMember } from "@/server/dal";
 import * as home from "@/server/household";
 import * as chores from "@/server/chores";
+import * as connections from "@/server/connections";
 
 export type ActionState = { ok: boolean; error?: string };
 
@@ -71,6 +72,11 @@ export async function deleteRoom(id: string) {
 
 export async function setMemberRole(userId: string, role: Role) {
   return act((m) => home.setMemberRole(m, userId, role));
+}
+
+/** Disconnects one of the logged-in adult's own connected apps. */
+export async function disconnectApp(connectionId: string) {
+  return act((m) => connections.revokeConnection(m, connectionId));
 }
 
 // ---------------------------------------------------------------------------

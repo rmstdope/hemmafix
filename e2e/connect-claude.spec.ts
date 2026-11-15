@@ -1,10 +1,8 @@
 import { createHash, randomBytes } from "node:crypto";
-import type { Page } from "@playwright/test";
 import { expect, test } from "./support/test";
 import { E2E_BASE_URL } from "./support/env";
+import { captureRedirectToClaude, expectSentToClaudeOnce, REDIRECT_URI } from "./support/claude";
 import { logIn, seedOAuthClient } from "./support/family";
-
-const REDIRECT_URI = "https://claude.ai/api/mcp/auth_callback";
 
 /** Claude's side of the connection: a registered client and the authorization link it sends the person to. */
 async function claudeStartsConnecting(opts: { clientId?: string; prompt?: string } = {}) {
@@ -23,16 +21,6 @@ async function claudeStartsConnecting(opts: { clientId?: string; prompt?: string
     ...(opts.prompt ? { prompt: opts.prompt } : {}),
   }).toString();
   return { clientId: client_id as string, verifier, url: url.toString() };
-}
-
-/** Claude's redirect address is not served here: capture where the browser is sent instead. */
-async function captureRedirectToClaude(page: Page) {
-  const sent: URL[] = [];
-  await page.route(`${REDIRECT_URI}**`, (route) => {
-    sent.push(new URL(route.request().url()));
-    return route.fulfill({ status: 200, contentType: "text/html", body: "Claude" });
-  });
-  return sent;
 }
 
 test("an adult approves, and Claude can then list what is left to do", async ({ page, context, request }) => {
@@ -58,7 +46,7 @@ test("an adult approves, and Claude can then list what is left to do", async ({ 
   await expect(page.getByRole("button", { name: "Godkänn" })).not.toBeFocused();
 
   await page.getByRole("button", { name: "Godkänn" }).click();
-  await expect.poll(() => sent.length).toBe(1);
+  await expectSentToClaudeOnce(page, sent);
   const code = sent[0]!.searchParams.get("code");
   expect(code).toBeTruthy();
   expect(sent[0]!.searchParams.get("state")).toBe("xyz");
@@ -91,7 +79,7 @@ test("the approval is asked every time, also of an app that was approved before"
   const first = await claudeStartsConnecting();
   await page.goto(first.url);
   await page.getByRole("button", { name: "Godkänn" }).click();
-  await expect.poll(() => sent.length).toBe(1);
+  await expectSentToClaudeOnce(page, sent);
 
   // The same app connects again: the person is asked again.
   await page.goto((await claudeStartsConnecting({ clientId: first.clientId })).url);
@@ -163,7 +151,7 @@ test("Avbryt sends the adult back to Claude with nothing granted", async ({ page
 
   await page.getByRole("button", { name: "Avbryt" }).click();
 
-  await expect.poll(() => sent.length).toBe(1);
+  await expectSentToClaudeOnce(page, sent);
   expect(sent[0]!.searchParams.get("error")).toBe("access_denied");
   expect(sent[0]!.searchParams.get("code")).toBeNull();
 });
@@ -178,7 +166,7 @@ test("a child cannot connect an app", async ({ page, context }) => {
   await expect(page.getByRole("button", { name: "Godkänn" })).toHaveCount(0);
 
   await page.getByRole("button", { name: "Tillbaka till Claude" }).click();
-  await expect.poll(() => sent.length).toBe(1);
+  await expectSentToClaudeOnce(page, sent);
   expect(sent[0]!.searchParams.get("error")).toBe("access_denied");
 });
 
