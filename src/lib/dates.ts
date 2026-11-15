@@ -18,7 +18,8 @@ function parse(iso: string) {
   return new Date(Date.UTC(y!, m! - 1, d!));
 }
 
-function addDays(iso: string, days: number) {
+/** Calendar arithmetic on YYYY-MM-DD dates. */
+export function addDays(iso: string, days: number) {
   const date = parse(iso);
   date.setUTCDate(date.getUTCDate() + days);
   return date.toISOString().slice(0, 10);

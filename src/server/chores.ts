@@ -1,8 +1,8 @@
 import "server-only";
-import { aliasedTable, and, asc, desc, eq, gt, isNotNull, isNull, ne, sql, type SQL } from "drizzle-orm";
+import { aliasedTable, and, asc, desc, eq, gt, gte, isNotNull, isNull, ne, sql, type SQL } from "drizzle-orm";
 import { db, pg } from "@/db";
 import { chore, choreInstance, household, membership, room, user } from "@/db/schema";
-import { todayIso } from "@/lib/dates";
+import { addDays, HOME_TIME_ZONE, todayIso } from "@/lib/dates";
 import { UserError } from "@/lib/errors";
 import { assertCan, can } from "@/lib/permissions";
 import { nextDueDate, type Recurrence } from "@/lib/recurrence";
@@ -335,7 +335,10 @@ export async function listOpenInstances(actor: Actor, filter: BoardFilter): Prom
   return rows.map((r) => toView(r as Row));
 }
 
-/** Ticked off in the last week, newest first, so a mistaken tick can be undone. */
+/**
+ * Ticked off in the last week, newest first, so a mistaken tick can be undone. Children see
+ * only their own: seeing what someone else has done is for adults.
+ */
 export async function listRecentlyCompleted(actor: Actor): Promise<InstanceView[]> {
   assertCan(actor, "task:view");
   const rows = await selectInstances(
@@ -344,6 +347,8 @@ export async function listRecentlyCompleted(actor: Actor): Promise<InstanceView[
       isNull(chore.archivedAt),
       isNotNull(choreInstance.completedAt),
       gt(choreInstance.completedAt, sql`now() - interval '7 days'`),
+      // Who did what is for adults to see; children see their own ticks.
+      can(actor.role, "history:view-anyone") ? undefined : eq(choreInstance.completedById, actor.userId),
     ),
     {
       isLatestTick: sql<boolean>`${choreInstance.completedAt} = max(${choreInstance.completedAt}) over (partition by ${choreInstance.choreId})`,
@@ -376,8 +381,12 @@ export type DoneView = {
   completedAt: Date;
 };
 
+/** At most this many entries are shown; the page says so when the list is cut. */
+export const HISTORY_LIMIT = 500;
+
 /**
- * What `personId` ticked off in the last `days` days, newest first. Everyone may see their
+ * What `personId` ticked off in the last `days` calendar days in Swedish time (today
+ * included), newest first. Everyone may see their
  * own; only adults may see someone else's. Deleted tasks and removed rooms are included:
  * what was done stays done.
  */
@@ -401,9 +410,15 @@ export async function listCompletedBy(actor: Actor, personId: string, days: Hist
       and(
         eq(choreInstance.householdId, actor.householdId),
         eq(choreInstance.completedById, person),
-        gt(choreInstance.completedAt, sql`now() - make_interval(days => ${days})`),
+        gte(choreInstance.completedAt, startOfDayInHomeZone(addDays(todayIso(), 1 - days))),
       ),
     )
-    .orderBy(desc(choreInstance.completedAt), desc(choreInstance.id));
+    .orderBy(desc(choreInstance.completedAt), desc(choreInstance.id))
+    .limit(HISTORY_LIMIT);
   return rows as DoneView[];
+}
+
+/** The instant a calendar day (YYYY-MM-DD) begins in the household's time zone. */
+function startOfDayInHomeZone(day: string) {
+  return sql`(${day}::date)::timestamp at time zone ${HOME_TIME_ZONE}`;
 }

@@ -6,7 +6,7 @@ import { LiveUpdates } from "@/components/live-updates";
 import { formatDay, formatTime, todayIso } from "@/lib/dates";
 import { can } from "@/lib/permissions";
 import { requireMember } from "@/server/dal";
-import { HISTORY_PERIODS, listCompletedBy, listMembers, type DoneView, type HistoryPeriod } from "@/server/chores";
+import { HISTORY_LIMIT, HISTORY_PERIODS, listCompletedBy, listMembers, type DoneView, type HistoryPeriod } from "@/server/chores";
 
 export const metadata = { title: "Gjort – Hemmafix" };
 
@@ -69,7 +69,9 @@ async function History({ searchParams }: { searchParams: PageProps<"/gjort">["se
       <p className="mt-4 mb-3 text-sm text-muted-foreground" aria-live="polite">
         {done.length === 0
           ? `${who} har inte bockat av något ${PERIOD_LABELS[period]}.`
-          : `${who} har gjort ${done.length} ${done.length === 1 ? "uppgift" : "uppgifter"} ${PERIOD_LABELS[period]}.`}
+          : done.length >= HISTORY_LIMIT
+            ? `${who} har gjort minst ${HISTORY_LIMIT} uppgifter ${PERIOD_LABELS[period]}. De ${HISTORY_LIMIT} senaste visas.`
+            : `${who} har gjort ${done.length} ${done.length === 1 ? "uppgift" : "uppgifter"} ${PERIOD_LABELS[period]}.`}
       </p>
 
       <div className="space-y-6">

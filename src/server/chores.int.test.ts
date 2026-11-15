@@ -1,8 +1,8 @@
-import { eq } from "drizzle-orm";
+import { eq, sql } from "drizzle-orm";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { db } from "@/db";
-import { chore, choreInstance, household } from "@/db/schema";
-import { todayIso } from "@/lib/dates";
+import { chore, choreInstance, household, membership } from "@/db/schema";
+import { addDays, todayIso } from "@/lib/dates";
 import { UserError } from "@/lib/errors";
 import { ForbiddenError } from "@/lib/permissions";
 import { nextDueDate } from "@/lib/recurrence";
@@ -398,10 +398,15 @@ describe("listCompletedBy", () => {
   };
   const titles = (rows: { title: string }[]) => rows.map((r) => r.title);
 
+  const setDoneAt = (instanceId: string, at: Date) =>
+    db.update(choreInstance).set({ completedAt: at }).where(eq(choreInstance.id, instanceId));
+
   it("shows what a person ticked off, newest first, with the room", async () => {
-    await tick("Diska", f.child);
-    await tick("Toa", f.child, { roomId: f.bathroom.id });
+    const diska = await tick("Diska", f.child);
+    const toa = await tick("Toa", f.child, { roomId: f.bathroom.id });
     await tick("Annas", f.adult);
+    await setDoneAt(diska.instanceId, new Date(Date.now() - 2 * 60_000));
+    await setDoneAt(toa.instanceId, new Date(Date.now() - 60_000));
 
     const bos = await listCompletedBy(f.child, f.child.userId, 30);
     expect(bos.map((d) => [d.title, d.roomName])).toEqual([
@@ -450,22 +455,58 @@ describe("listCompletedBy", () => {
     expect(titles(await listCompletedBy(f.child, f.child.userId, 30))).toEqual(["Diska", "Diska"]);
   });
 
-  it("covers only the chosen period", async () => {
+  it("covers whole calendar days in Swedish time, today included", async () => {
+    // The 7-day period starts at midnight, Swedish time, six days ago.
+    const [{ start }] = (await db.execute(
+      sql`select ((${addDays(todayIso(), -6)}::date)::timestamp at time zone 'Europe/Stockholm') as start`,
+    )) as unknown as [{ start: string }];
+    const startsAt = new Date(start).getTime();
+    const minute = 60_000;
+
+    const justInside = await tick("Strax efter midnatt", f.child);
+    await setDoneAt(justInside.instanceId, new Date(startsAt + minute));
+    const justOutside = await tick("Strax före midnatt", f.child);
+    await setDoneAt(justOutside.instanceId, new Date(startsAt - minute));
     const old = await tick("Länge sen", f.child);
-    await db
-      .update(choreInstance)
-      .set({ completedAt: new Date(Date.now() - 40 * 86_400_000) })
-      .where(eq(choreInstance.id, old.instanceId));
-    const lastWeek = await tick("Förra veckan", f.child);
-    await db
-      .update(choreInstance)
-      .set({ completedAt: new Date(Date.now() - 10 * 86_400_000) })
-      .where(eq(choreInstance.id, lastWeek.instanceId));
+    await setDoneAt(old.instanceId, new Date(Date.now() - 40 * 86_400_000));
     await tick("Idag", f.child);
 
-    expect(titles(await listCompletedBy(f.child, f.child.userId, 7))).toEqual(["Idag"]);
-    expect(titles(await listCompletedBy(f.child, f.child.userId, 30))).toEqual(["Idag", "Förra veckan"]);
-    expect(titles(await listCompletedBy(f.child, f.child.userId, 365))).toEqual(["Idag", "Förra veckan", "Länge sen"]);
+    expect(titles(await listCompletedBy(f.child, f.child.userId, 7))).toEqual(["Idag", "Strax efter midnatt"]);
+    expect(titles(await listCompletedBy(f.child, f.child.userId, 30))).toEqual([
+      "Idag",
+      "Strax efter midnatt",
+      "Strax före midnatt",
+    ]);
+    expect(titles(await listCompletedBy(f.child, f.child.userId, 365))).toEqual([
+      "Idag",
+      "Strax efter midnatt",
+      "Strax före midnatt",
+      "Länge sen",
+    ]);
     await expect(listCompletedBy(f.child, f.child.userId, 5 as never)).rejects.toThrow("Ogiltig period");
   });
+
+  it("shows only this home's tasks for someone who belongs to two homes", async () => {
+    await db.insert(membership).values({ userId: f.child.userId, householdId: f.neighbour.householdId, role: "child" });
+    await createChore(f.neighbour, { title: "Hos grannen", roomId: f.garage.id, kind: "once" });
+    const [theirs] = await listOpenInstances(f.neighbour, {});
+    await completeInstance({ ...f.child, householdId: f.neighbour.householdId }, theirs!.id);
+    await tick("Hemma", f.child);
+
+    expect(titles(await listCompletedBy(f.adult, f.child.userId, 30))).toEqual(["Hemma"]);
+  });
 });
+
+describe("listRecentlyCompleted", () => {
+  it("shows adults everyone's recent ticks, and children only their own", async () => {
+    await createChore(f.adult, once("Annas"));
+    await createChore(f.adult, once("Bos"));
+    const [annas, bos] = await open();
+    await completeInstance(f.adult, annas!.id);
+    await completeInstance(f.child, bos!.id);
+
+    expect((await listRecentlyCompleted(f.adult)).map((i) => i.title).sort()).toEqual(["Annas", "Bos"]);
+    expect((await listRecentlyCompleted(f.child)).map((i) => i.title)).toEqual(["Bos"]);
+  });
+});
+

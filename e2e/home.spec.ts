@@ -84,23 +84,32 @@ test("a child sees the tasks and ticks them off, but cannot manage anything", as
   await childContext.close();
 });
 
-test("a child cannot undo someone else's tick", async ({ page, context }) => {
+test("among the recently done, a child sees only their own ticks", async ({ page, context }) => {
   await logIn(context, "anna", "adult");
   const childContext = await context.browser()!.newContext({ baseURL: E2E_BASE_URL, locale: "sv-SE" });
   const childPage = await childContext.newPage();
   await logIn(childContext, "bo", "child");
   const rooms = await seedRooms("Kök");
   await seedChore({ title: "Diska", roomId: rooms["Kök"]!.id, recurrence: null });
+  await seedChore({ title: "Damma", roomId: rooms["Kök"]!.id, recurrence: null });
 
+  // Anna ticks one, Bo the other.
   await page.goto("/");
-  await page.getByRole("button", { name: "Markera som klar" }).click();
-  await expect(page.getByText("Inget att göra just nu")).toBeVisible();
-
+  await page.getByRole("button", { name: "Diska: markera som klar" }).click();
   await childPage.goto("/");
+  await childPage.getByRole("button", { name: "Damma: markera som klar" }).click();
+  await expect(childPage.getByText("Inget att göra just nu")).toBeVisible();
+
   await childPage.getByText(/Klart senaste veckan/).click();
-  const ticked = childPage.getByRole("list", { name: "Klart" }).getByRole("listitem").filter({ hasText: "Diska" });
-  await expect(ticked).toContainText("Klar av Anna");
-  await expect(ticked.getByRole("button", { name: "Ångra klar" })).toHaveCount(0);
+  const recent = childPage.getByRole("list", { name: "Klart" });
+  await expect(recent.getByRole("listitem")).toHaveCount(1);
+  await expect(recent).toContainText("Damma");
+
+  // The adult sees both, with who did each.
+  await page.reload();
+  await page.getByText(/Klart senaste veckan/).click();
+  await expect(page.getByRole("list", { name: "Klart" }).getByRole("listitem")).toHaveCount(2);
+  await expect(page.getByRole("list", { name: "Klart" })).toContainText("Klar av Bo");
   await childContext.close();
 });
 
