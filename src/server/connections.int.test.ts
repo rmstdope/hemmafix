@@ -6,7 +6,7 @@ process.env.ALLOWED_EMAILS = "anna@example.com, bo@example.com";
 process.env.BETTER_AUTH_SECRET = "integration-secret-not-for-production-0123456789";
 process.env.BETTER_AUTH_URL = "http://localhost:3000";
 
-const { listConnections, revokeConnection, resolveConnection, recordUse } = await import("./connections");
+const { listConnections, revokeConnection, resolveConnection, recordUse, onTokenIssued } = await import("./connections");
 
 const adult = (userId: string) => ({ userId, householdId: "h", role: "adult" as const });
 const at = (iso: string) => new Date(iso);
@@ -38,6 +38,7 @@ beforeAll(async () => {
 });
 beforeEach(async () => {
   await db.delete(user);
+  await db.delete(appToken);
   await db.delete(oauthClient);
   await db.delete(household);
   const [h] = await db.insert(household).values({ name: "Hemma" }).returning({ id: household.id });
@@ -144,5 +145,26 @@ describe("telling whether a token still belongs to a live connection", () => {
     expect((await db.select().from(appConnectionUse))[0]!.lastUsedAt).toEqual(at("2026-11-14T08:00:00Z"));
     await recordUse("anna", "f", at("2026-11-14T08:01:30Z"));
     expect((await db.select().from(appConnectionUse))[0]!.lastUsedAt).toEqual(at("2026-11-14T08:01:30Z"));
+  });
+});
+
+describe("when the token endpoint issues tokens", () => {
+  const jwt = (payload: object) => `h.${Buffer.from(JSON.stringify(payload)).toString("base64url")}.s`;
+
+  it("records the access token against the connection of the refresh token it came with", async () => {
+    const c = await client("Claude");
+    await refresh({ userId: "anna", clientId: c, family: "f", createdAt: "2026-11-10T10:00:00Z" });
+    const exp = Math.floor(Date.now() / 1000) + 3600;
+
+    await onTokenIssued({ access_token: jwt({ jti: "j9", exp }), refresh_token: `t${n}` });
+
+    expect(await resolveConnection("anna", "j9")).toBe("f");
+  });
+
+  it("ignores anything that is not a token response", async () => {
+    await onTokenIssued({ error: "invalid_grant" });
+    await onTokenIssued(null);
+    await onTokenIssued({ access_token: "not-a-jwt", refresh_token: "t" });
+    expect(await db.select().from(appToken)).toEqual([]);
   });
 });

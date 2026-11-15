@@ -1,8 +1,9 @@
 import "server-only";
 import { and, eq, gt, inArray, isNull, lt, min, sql } from "drizzle-orm";
 import { db } from "@/db";
-import { appConnectionUse, appToken, oauthClient, oauthRefreshToken } from "@/db/schema";
+import { appConnectionUse, appToken, membership, oauthClient, oauthRefreshToken } from "@/db/schema";
 import { assertCan } from "@/lib/permissions";
+import { notifyHouseholdChanged } from "./chores";
 import type { Actor } from "./household";
 
 /**
@@ -113,4 +114,37 @@ export async function recordUse(userId: string, connectionId: string, now: Date)
       set: { lastUsedAt: now },
       setWhere: sql`${appConnectionUse.lastUsedAt} <= ${new Date(now.getTime() - USE_WRITE_INTERVAL_MS).toISOString()}::timestamptz`,
     });
+}
+
+/**
+ * After the token endpoint answered: remember the new access token against its connection
+ * (so a disconnect can refuse it at once) and tell the person's devices a connection may have
+ * appeared. Anything that is not a token response is ignored.
+ */
+export async function onTokenIssued(body: unknown): Promise<void> {
+  if (!body || typeof body !== "object") return;
+  const { access_token: accessToken, refresh_token: refreshToken } = body as Record<string, unknown>;
+  if (typeof accessToken !== "string" || typeof refreshToken !== "string") return;
+  const claims = decodeJwtClaims(accessToken);
+  if (!claims) return;
+
+  const [row] = await db
+    .select({ family: oauthRefreshToken.authorizationCodeId, userId: oauthRefreshToken.userId })
+    .from(oauthRefreshToken)
+    .where(eq(oauthRefreshToken.token, refreshToken))
+    .limit(1);
+  if (!row?.family) return;
+  await recordToken(claims.jti, row.family, new Date(claims.exp * 1000));
+
+  const [m] = await db.select({ householdId: membership.householdId }).from(membership).where(eq(membership.userId, row.userId)).limit(1);
+  if (m) await notifyHouseholdChanged(m.householdId);
+}
+
+function decodeJwtClaims(jwt: string): { jti: string; exp: number } | null {
+  try {
+    const payload = JSON.parse(Buffer.from(jwt.split(".")[1] ?? "", "base64url").toString("utf8"));
+    return typeof payload.jti === "string" && typeof payload.exp === "number" ? { jti: payload.jti, exp: payload.exp } : null;
+  } catch {
+    return null;
+  }
 }
