@@ -115,10 +115,15 @@ Efter första releasen:
 
   Förvara dumpar utanför VPS:en. Dumpar på samma disk skyddar inte mot att värden går förlorad.
 - **Automatisk dump före varje release:** `deploy/runtime/app.json` har fältet
-  `pre_release_backup` (pg_dump från `db`). Det gör ingenting förrän två saker är gjorda,
-  båda granskade ingrepp i produktion:
-  1. rmstdope-infra PR #24 (*Take an optional database dump before each release*) är mergad,
-     och operatörs-CLI:t (en editable install av rmstdope-infra) är på den versionen.
-  2. hemmafix registreras om från `deploy/runtime`, eftersom registreringen är fryst.
-
-  Till dess gäller den manuella dumpen ovan före riskabla ändringar.
+  `pre_release_backup`. Före varje release, manuell eller automatisk, kör rmstdope-infra
+  `pg_dump` i `db` i den release som körs och sparar dumpen som `pre-release.dump` i den
+  nya releasens katalog på VPS:en. Misslyckas dumpen startar releasen inte, och den gamla
+  fortsätter köra. `timeout 290` stoppar `pg_dump` inne i containern strax före infras
+  gräns på 300 sekunder, eftersom infra bara kan döda sin egen klient.
+  - Förutsättningar: rmstdope-infra PR #24 är installerad på VPS:en, och hemmafix är
+    omregistrerad från den här versionen av `deploy/runtime` (registreringen är fryst).
+  - Återställning görs alltid för hand, eftersom den kastar allt som skrivits efter dumpen.
+    Följ rmstdope-infras runbook, *Restore a pre-release database dump* i
+    `docs/operations.md`. `rollback` och en misslyckad release skriver ut sökvägen till dumpen.
+  - Dumparna ligger på samma disk som databasen. De skyddar mot en dålig migrering, inte mot
+    att värden går förlorad, så den manuella dumpen ovan ska fortfarande förvaras utanför VPS:en.
