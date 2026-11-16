@@ -79,7 +79,7 @@ export function DueGroupSection({
         <span className="shrink-0 font-semibold">{label}</span>
         <span className="shrink-0 font-normal text-muted-foreground/70">{count}</span>
         <span aria-hidden className="h-px min-w-0 flex-1 bg-border" />
-        <Arrow className="size-4 shrink-0" aria-hidden />
+        <Arrow className="size-4 shrink-0 text-muted-foreground" aria-hidden />
       </button>
       <div id={listId} hidden={isFolded}>
         {children}

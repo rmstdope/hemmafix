@@ -47,11 +47,12 @@ test("rows show the date only under Försenade and Senare, and never how often t
   await page.goto("/");
 
   await expect(item(page, "Vattna")).toContainText("Igår");
+  await expect(item(page, "Vattna").getByText("Igår")).toHaveClass(/text-destructive/);
   await expect(item(page, "Rensa")).toContainText(/\d+ \w+\./);
   await expect(item(page, "Diska")).toContainText("Kök");
   await expect(item(page, "Diska")).not.toContainText("Idag");
   await expect(item(page, "Torka")).not.toContainText("Imorgon");
-  await expect(todo(page)).not.toContainText(/Varje|Var \d/);
+  await expect(todo(page)).not.toContainText(/Varje|Var \d|Varannan/);
 });
 
 test("a divider folds and unfolds its tasks, and the fold is remembered on this device", async ({ page, context }) => {
@@ -128,4 +129,36 @@ test("with nothing to do there are no dividers, only the message", async ({ page
   await page.goto("/");
   await expect(page.getByText("Inget att göra just nu")).toBeVisible();
   await expect(page.getByRole("button", { name: /^(Idag|Försenade|Senare) \d/ })).toHaveCount(0);
+});
+
+test("a fold stays whatever filter is chosen", async ({ page, context }) => {
+  await logIn(context, "anna", "adult");
+  await seedBoard();
+  await page.goto("/");
+
+  await divider(page, "Idag").click();
+  await page.getByRole("combobox", { name: "Filtrera på rum" }).selectOption({ label: "Kök" });
+  await expect(divider(page, "Idag")).toHaveAttribute("aria-expanded", "false");
+  await page.getByRole("combobox", { name: "Filtrera på rum" }).selectOption({ label: "Alla rum" });
+  await expect(divider(page, "Idag")).toHaveAttribute("aria-expanded", "false");
+});
+
+test("in a browser that cannot remember, everything starts open and folding still works", async ({ page, context }) => {
+  await logIn(context, "anna", "adult");
+  await seedBoard();
+  await page.addInitScript(() => {
+    const fail = () => {
+      throw new Error("storage unavailable");
+    };
+    Object.defineProperty(window, "localStorage", { get: fail });
+  });
+  await page.goto("/");
+
+  const idag = divider(page, "Idag");
+  await expect(idag).toHaveAttribute("aria-expanded", "true");
+  await idag.click();
+  await expect(idag).toHaveAttribute("aria-expanded", "false");
+  await expect(item(page, "Diska")).toBeHidden();
+  await idag.click();
+  await expect(item(page, "Diska")).toBeVisible();
 });
