@@ -5,6 +5,7 @@ import { toast } from "sonner";
 import { editChore, type ActionState } from "@/app/actions";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { submitKeepingValues } from "@/components/submit-keeping-values";
 import type { Recurrence, RecurrenceUnit } from "@/lib/recurrence";
 import { cn } from "@/lib/utils";
 import { RoomOptions } from "./room-options";
@@ -51,7 +52,7 @@ export function EditChoreForm({
   const roomStillThere = rooms.some((r) => r.id === task.roomId);
 
   return (
-    <form action={action} className="w-full space-y-3" aria-label={`Ändra ${task.title}`}>
+    <form onSubmit={submitKeepingValues(action)} className="w-full space-y-3" aria-label={`Ändra ${task.title}`}>
       <label className="block space-y-1 text-sm">
         <span className="text-muted-foreground">Vad ska göras?</span>
         <Input

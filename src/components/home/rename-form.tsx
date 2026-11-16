@@ -5,6 +5,7 @@ import { toast } from "sonner";
 import { renameHousehold, type ActionState } from "@/app/actions";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { submitKeepingValues } from "@/components/submit-keeping-values";
 
 export function RenameForm({ name }: { name: string }) {
   const [state, action, pending] = useActionState<ActionState, FormData>(renameHousehold, { ok: false });
@@ -15,7 +16,7 @@ export function RenameForm({ name }: { name: string }) {
   }, [state]);
 
   return (
-    <form action={action} className="flex gap-2">
+    <form onSubmit={submitKeepingValues(action)} className="flex gap-2">
       <Input
         name="name"
         defaultValue={name}
