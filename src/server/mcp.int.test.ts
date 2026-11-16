@@ -183,7 +183,9 @@ describe("the task tools", () => {
     const roomId = await seedKitchen();
     const { choreId, instanceId } = await createDiska(roomId);
     const text = said(await taskCall("anna", "visa_sysslor_med_id"));
-    expect(text).toContain(`(syssla ${choreId}, tillfälle ${instanceId}, kind recurring, interval 1, unit day, dueDate ${todayIso()})`);
+    expect(text).toContain(`(syssla ${choreId}, tillfälle ${instanceId}, nästa datum ${todayIso()})`);
+    expect(text).toContain("- Diska – Kök · Plan 1, ingen tilldelad, Idag, Varje dag (");
+    expect(text).not.toMatch(/kind |interval |unit |dueDate/);
     expect(text).toContain(`- Kök, Plan 1 (id ${roomId})`);
     expect(text).toContain("- Bo, barn (id bo)");
   });
@@ -301,7 +303,7 @@ describe("the task tools", () => {
     const roomId = await seedKitchen();
     await taskCall("anna", "skapa_syssla", { title: "Diska", roomId, kind: "recurring", interval: 2, unit: "week", startDate: "2027-03-01" });
     const lookup = said(await taskCall("anna", "visa_sysslor_med_id"));
-    const [, instanceId] = /tillfälle ([0-9a-f-]{36}), kind recurring, interval 2, unit week, dueDate 2027-03-01/.exec(lookup) ?? [];
+    const [, instanceId] = /Varannan vecka \(syssla [0-9a-f-]{36}, tillfälle ([0-9a-f-]{36}), nästa datum 2027-03-01\)/.exec(lookup) ?? [];
     expect(instanceId).toBeDefined();
     const r = await taskCall("anna", "andra_syssla", { instanceId, title: "Diska och torka", roomId, kind: "recurring", interval: 2, unit: "week", dueDate: "2027-03-01" });
     expect(r.isError).toBeFalsy();
