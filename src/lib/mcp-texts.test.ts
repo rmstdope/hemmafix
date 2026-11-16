@@ -92,9 +92,9 @@ describe("the lookup of ids", () => {
     );
     expect(text).toBe(
       [
-        "Öppna sysslor:",
-        "- Diska – Kök · Plan 1, Anna, Idag, Varannan vecka (syssla c1, tillfälle i1, nästa datum 2026-11-15)",
-        "- Byt lampa – ingen tilldelad, inget datum (syssla c4, tillfälle i4)",
+        "Öppna uppgifter:",
+        "- Diska – Kök · Plan 1, Anna, Idag, Varannan vecka (uppgift c1, tillfälle i1, nästa datum 2026-11-15)",
+        "- Byt lampa – ingen tilldelad, inget datum (uppgift c4, tillfälle i4)",
         "Rum:",
         "- Kök, Plan 1 (id r1)",
         "Familj:",
@@ -109,7 +109,7 @@ describe("the lookup of ids", () => {
   it("says so for sections with nothing in them", () => {
     const text = formatTaskLookup({ open: [], rooms: [], members: [], recentlyDone: [] }, "2026-11-15");
     expect(text).toBe(
-      ["Öppna sysslor:", "(inga)", "Rum:", "(inga)", "Familj:", "(inga)", "Nyligen avbockade:", "(inga)"].join("\n"),
+      ["Öppna uppgifter:", "(inga)", "Rum:", "(inga)", "Familj:", "(inga)", "Nyligen avbockade:", "(inga)"].join("\n"),
     );
   });
 });

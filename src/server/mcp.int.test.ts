@@ -174,7 +174,25 @@ describe("the task tools", () => {
     const props = tools.find((t) => t.name === "andra_syssla")!.inputSchema.properties;
     expect(props.interval.description).toContain("Varannan vecka = 2 week");
     expect(props.unit.description).toContain("Varannan vecka = 2 week");
-    expect(props.kind.description).toContain("Saknar sysslan en schemafras i visa_sysslor_med_id är den once");
+    expect(props.kind.description).toContain("Saknar uppgiften en schemafras i visa_sysslor_med_id är den once");
+  });
+
+  it("says uppgift, never uppgift, in every tool title, description and schema hint", async () => {
+    const res = await rpc("anna", "tools/list");
+    const tools = res.result.tools as { name: string }[];
+    const names = tools.map((t) => t.name);
+    // Tool identifiers keep their names; only the words a person may read count.
+    const words = (value: unknown): string[] => {
+      if (typeof value === "string") return [value];
+      if (Array.isArray(value)) return value.flatMap(words);
+      if (value && typeof value === "object") return Object.values(value).flatMap(words);
+      return [];
+    };
+    const text = tools
+      .flatMap((t) => words({ ...t, name: undefined }))
+      .map((s) => names.reduce((acc, n) => acc.split(n).join(""), s))
+      .join("\n");
+    expect(text).not.toMatch(/syssl/i);
   });
 
   it("marks every tool that only reads as read-only", async () => {
@@ -195,7 +213,7 @@ describe("the task tools", () => {
     const roomId = await seedKitchen();
     const { choreId, instanceId } = await createDiska(roomId);
     const text = said(await taskCall("anna", "visa_sysslor_med_id"));
-    expect(text).toContain(`(syssla ${choreId}, tillfälle ${instanceId}, nästa datum ${todayIso()})`);
+    expect(text).toContain(`(uppgift ${choreId}, tillfälle ${instanceId}, nästa datum ${todayIso()})`);
     expect(text).toContain("- Diska – Kök · Plan 1, ingen tilldelad, Idag, Varje dag (");
     expect(text).not.toMatch(/kind |interval |unit |dueDate/);
     expect(text).toContain(`- Kök, Plan 1 (id ${roomId})`);
@@ -210,7 +228,7 @@ describe("the task tools", () => {
   it("creates a recurring task from a predefined one, due today", async () => {
     const roomId = await seedKitchen();
     const r = await taskCall("anna", "skapa_syssla", { title: "Diska", templateKey: "diska", roomId, kind: "recurring", interval: 1, unit: "day" });
-    expect(said(r)).toBe("Sysslan Diska är skapad i Kök.");
+    expect(said(r)).toBe("Uppgiften Diska är skapad i Kök.");
     const [c] = await db.select().from(chore);
     expect(c).toMatchObject({ title: "Diska", templateKey: "diska", recurrenceUnit: "day", recurrenceInterval: 1 });
   });
@@ -295,7 +313,7 @@ describe("the task tools", () => {
     await taskCall("anna", "bocka_av_syssla", { instanceId });
     const [next] = await openOf(choreId);
     const r = await taskCall("anna", "andra_syssla", { instanceId: next!.id, title: "Diska och torka", roomId, kind: "recurring", interval: 2, unit: "day" });
-    expect(said(r)).toBe("Sysslan Diska och torka är ändrad.");
+    expect(said(r)).toBe("Uppgiften Diska och torka är ändrad.");
     const [c] = await db.select().from(chore).where(eq(chore.id, choreId));
     expect(c).toMatchObject({ title: "Diska och torka", recurrenceInterval: 2 });
     const [done] = await db.select().from(choreInstance).where(eq(choreInstance.id, instanceId));
@@ -307,7 +325,7 @@ describe("the task tools", () => {
     const { choreId, instanceId } = await createDiska(roomId);
     await taskCall("anna", "bocka_av_syssla", { instanceId });
     expect(said(await taskCall("anna", "ta_bort_syssla", { choreId }))).toBe(
-      "Sysslan Diska är borttagen. Det som redan är gjort finns kvar i historiken.",
+      "Uppgiften Diska är borttagen. Det som redan är gjort finns kvar i historiken.",
     );
     expect(await openOf(choreId)).toEqual([]);
     const [done] = await db.select().from(choreInstance).where(eq(choreInstance.id, instanceId));
@@ -329,7 +347,7 @@ describe("the task tools", () => {
     const roomId = await seedKitchen();
     await taskCall("anna", "skapa_syssla", { title: "Diska", roomId, kind: "recurring", interval: 2, unit: "week", startDate: "2027-03-01" });
     const lookup = said(await taskCall("anna", "visa_sysslor_med_id"));
-    const [, instanceId] = /Varannan vecka \(syssla [0-9a-f-]{36}, tillfälle ([0-9a-f-]{36}), nästa datum 2027-03-01\)/.exec(lookup) ?? [];
+    const [, instanceId] = /Varannan vecka \(uppgift [0-9a-f-]{36}, tillfälle ([0-9a-f-]{36}), nästa datum 2027-03-01\)/.exec(lookup) ?? [];
     expect(instanceId).toBeDefined();
     const r = await taskCall("anna", "andra_syssla", { instanceId, title: "Diska och torka", roomId, kind: "recurring", interval: 2, unit: "week", dueDate: "2027-03-01" });
     expect(r.isError).toBeFalsy();
