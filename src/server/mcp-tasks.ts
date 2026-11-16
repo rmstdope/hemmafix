@@ -50,10 +50,10 @@ async function runAsMember(userId: string, changes: boolean, fn: (actor: Actor) 
 // strict one would answer in English and before the access check. src/lib/validation.ts
 // (inside chores.ts) does the real checking, in Swedish, once the member is known.
 const id = z.string().describe("Ett id från visa_sysslor_med_id");
-const kind = z.string().optional().describe(`recurring (kommer tillbaka, standard) eller once (görs en gång)`);
+const kind = z.string().optional().describe(`recurring (kommer tillbaka, standard) eller once (görs en gång; "utan schema = once")`);
 const when = {
-  interval: z.number().optional().describe("Hur ofta, i antal enheter (bara för recurring)"),
-  unit: z.string().optional().describe(`${RECURRENCE_UNITS.join(", ")} (bara för recurring)`),
+  interval: z.number().optional().describe("Hur ofta, i antal enheter (bara för recurring). Varje vecka = 1 week, Varannan vecka = 2 week, Var 3:e månad = 3 month"),
+  unit: z.string().optional().describe(`${RECURRENCE_UNITS.join(", ")} (bara för recurring). Varannan vecka = 2 week, Varje månad = 1 month`),
 };
 
 function assertIds(...ids: string[]) {
