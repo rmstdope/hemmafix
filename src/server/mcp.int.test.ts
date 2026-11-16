@@ -165,6 +165,18 @@ describe("the task tools", () => {
     expect(tools.flatMap((t) => arrays(t.inputSchema, t.name))).toEqual([]);
   });
 
+  it("tells andra_syssla how a Swedish schedule phrase maps to interval and unit", async () => {
+    const res = await rpc("anna", "tools/list");
+    const tools = res.result.tools as {
+      name: string;
+      inputSchema: { properties: Record<string, { description?: string }> };
+    }[];
+    const props = tools.find((t) => t.name === "andra_syssla")!.inputSchema.properties;
+    expect(props.interval.description).toContain("Varannan vecka = 2 week");
+    expect(props.unit.description).toContain("Varannan vecka = 2 week");
+    expect(props.kind.description).toContain("Saknar sysslan en schemafras i visa_sysslor_med_id är den once");
+  });
+
   it("marks every tool that only reads as read-only", async () => {
     const res = await rpc("anna", "tools/list");
     const tools = res.result.tools as { name: string; annotations?: { readOnlyHint?: boolean } }[];
