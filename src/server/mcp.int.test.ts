@@ -174,7 +174,7 @@ describe("the task tools", () => {
     const props = tools.find((t) => t.name === "andra_syssla")!.inputSchema.properties;
     expect(props.interval.description).toContain("Varannan vecka = 2 week");
     expect(props.unit.description).toContain("Varannan vecka = 2 week");
-    expect(props.kind.description).toContain("utan schema = once");
+    expect(props.kind.description).toContain("Saknar sysslan en schemafras i visa_sysslor_med_id är den once");
   });
 
   it("marks every tool that only reads as read-only", async () => {
