@@ -39,16 +39,16 @@ type Draft = {
   assigneeId: string;
 };
 
-const empty = (today: string): Draft => ({
+const empty = (): Draft => ({
   mode: "task",
   routineId: "",
   templateKey: "",
   title: "",
   roomId: "",
-  kind: "recurring",
+  kind: "once",
   interval: "1",
   unit: "week",
-  date: today,
+  date: "",
   assigneeId: "",
 });
 
@@ -70,15 +70,18 @@ export function AddChoreForm({
   today: string;
 }) {
   const [open, setOpen] = useState(false);
-  const [draft, setDraft] = useState<Draft>(() => empty(today));
+  const [draft, setDraft] = useState<Draft>(() => empty());
+  // Closing starts the next opening from a clean draft, since the draft lives here and not in the form.
+  const close = () => {
+    setDraft(empty());
+    setOpen(false);
+  };
   const [, action, pending] = useActionState<ActionState, FormData>(async (prev, formData) => {
     const isRoutine = formData.get("mode") === "routine";
     const result = isRoutine ? await addRoutine(prev, formData) : await createChore(prev, formData);
     if (result.ok) {
       toast.success(isRoutine ? routineAddedNotice(result.count ?? 0) : "Uppgiften är tillagd");
-      setDraft(empty(today));
-      // Closing unmounts the form, so it opens empty next time.
-      setOpen(false);
+      close();
     } else if (result.error) {
       toast.error(result.error);
     }
@@ -140,7 +143,7 @@ export function AddChoreForm({
     <form action={action} className="space-y-3 rounded-xl border bg-card p-4" aria-label="Ny uppgift">
       <div className="flex items-center justify-between">
         <h2 className="font-medium">Ny uppgift</h2>
-        <Button type="button" variant="ghost" size="icon-lg" aria-label="Stäng" onClick={() => setOpen(false)}>
+        <Button type="button" variant="ghost" size="icon-lg" aria-label="Stäng" onClick={close}>
           <X />
         </Button>
       </div>

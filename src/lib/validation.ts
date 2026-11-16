@@ -57,7 +57,7 @@ function resolveCadence(v: Cadence, ctx: z.RefinementCtx) {
   return { recurrence, firstDueDate: recurrence ? v.startDate : v.dueDate };
 }
 
-/** The "new task" form. Recurring is the default; a one-off task may have a due date. */
+/** The "new task" form and Claude's tool. A one-off is the default and may have a due date. */
 export const createChoreInput = z
   .object({
     title: choreTitle,
@@ -67,6 +67,7 @@ export const createChoreInput = z
       .transform((v) => v || null)
       .refine((v) => v === null || findTemplate(v) !== undefined, "Okänd fördefinierad uppgift"),
     ...cadenceFields,
+    kind: cadenceFields.kind.unwrap().default("once"),
   })
   .transform((v, ctx) => {
     const { recurrence, firstDueDate } = resolveCadence(v, ctx);
