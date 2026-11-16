@@ -2,7 +2,7 @@
 
 import { Plus, X } from "lucide-react";
 import Link from "next/link";
-import { useActionState, useState } from "react";
+import { startTransition, useActionState, useState } from "react";
 import { toast } from "sonner";
 import { addRoutine, createChore, type ActionState } from "@/app/actions";
 import { Button } from "@/components/ui/button";
@@ -142,7 +142,17 @@ export function AddChoreForm({
   const recurring = draft.kind === "recurring";
 
   return (
-    <form action={action} className="space-y-3 rounded-xl border bg-card p-4" aria-label="Ny uppgift">
+    <form
+      // Not `action`: React resets a form after its action, and the selects would then show their
+      // first option while the draft still holds what was chosen.
+      onSubmit={(e) => {
+        e.preventDefault();
+        const formData = new FormData(e.currentTarget);
+        startTransition(() => action(formData));
+      }}
+      className="space-y-3 rounded-xl border bg-card p-4"
+      aria-label="Ny uppgift"
+    >
       <div className="flex items-center justify-between">
         <h2 className="font-medium">Ny uppgift</h2>
         <Button type="button" variant="ghost" size="icon-lg" aria-label="Stäng" onClick={close}>
