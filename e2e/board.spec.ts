@@ -95,6 +95,36 @@ test("an adult adds a one-off task of their own; once done it is gone", async ({
   await expect(page.getByText("Inget att göra just nu")).toBeVisible();
 });
 
+test("a new task starts as a one-off, and the form opens that way every time", async ({ page, context }) => {
+  await logIn(context, "anna", "adult");
+  await seedRooms("Kök", "Vardagsrum");
+  await page.goto("/");
+
+  let form = await openNewTaskForm(page);
+  await expect(form.getByRole("radio", { name: "En gång" })).toBeChecked();
+  await expect(form.getByLabel("Klart senast")).toHaveValue("");
+  await expect(form.getByText("Var", { exact: true })).toHaveCount(0);
+
+  await form.getByText("Återkommande", { exact: true }).click();
+  await expect(form.getByLabel("Första gången")).toHaveValue(today());
+  await expect(form.getByText("Vem (alla gånger)")).toBeVisible();
+  await form.getByText("En gång", { exact: true }).click();
+  await expect(form.getByLabel("Klart senast")).toHaveValue("");
+
+  // A common repeating task still sets how often, and stays so when the person goes back to a task of their own.
+  await form.getByRole("combobox", { name: "Fördefinierad uppgift" }).selectOption({ label: "Dammsuga" });
+  await expect(form.getByRole("radio", { name: "Återkommande" })).toBeChecked();
+  await expect(form.getByLabel("Första gången")).toHaveValue(today());
+  await form.getByRole("combobox", { name: "Fördefinierad uppgift" }).selectOption({ label: "Egen uppgift" });
+  await expect(form.getByRole("radio", { name: "Återkommande" })).toBeChecked();
+
+  // Closing and opening again starts over on "En gång".
+  await form.getByRole("button", { name: "Stäng" }).click();
+  form = await openNewTaskForm(page);
+  await expect(form.getByRole("radio", { name: "En gång" })).toBeChecked();
+  await expect(form.getByLabel("Klart senast")).toHaveValue("");
+});
+
 test("the open tasks can be filtered on room and on person, and the filter survives a reload", async ({
   page,
   context,

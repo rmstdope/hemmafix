@@ -13,6 +13,8 @@ async function openForm(page: Page) {
 /** The second room, a unit other than the first, and a person: none of them a select's first option. */
 async function chooseNonDefaults(form: Locator, me: string) {
   await form.getByRole("combobox", { name: "Rum" }).selectOption({ label: "Kök" });
+  // The unit only exists for a recurring task, and a new one starts as a one-off.
+  await form.getByText("Återkommande", { exact: true }).click();
   await form.getByRole("combobox", { name: "Enhet" }).selectOption({ label: "vecka" });
   await form.getByRole("combobox", { name: "Vem" }).selectOption({ label: `${me} (jag)` });
 }

@@ -32,6 +32,7 @@ beforeEach(async () => {
 const weekly = (title: string, extra: Record<string, string> = {}) => ({
   title,
   roomId: f.kitchen.id,
+  kind: "recurring",
   interval: "1",
   unit: "week",
   ...extra,
@@ -164,7 +165,7 @@ describe("completeInstance", () => {
   });
 
   it("refuses an instance of another home", async () => {
-    await createChore(f.neighbour, { title: "Tvätta bilen", roomId: f.garage.id, interval: "1", unit: "week" });
+    await createChore(f.neighbour, { title: "Tvätta bilen", roomId: f.garage.id, kind: "recurring", interval: "1", unit: "week" });
     const [theirs] = await listOpenInstances(f.neighbour, {});
     await expect(completeInstance(f.adult, theirs!.id)).rejects.toThrow("finns inte längre");
     expect(await listOpenInstances(f.neighbour, {})).toHaveLength(1);
@@ -311,7 +312,7 @@ describe("listOpenInstances", () => {
     await createChore(f.adult, weekly("Toa", { roomId: f.bathroom.id, assigneeId: f.adult.userId, startDate: "2026-01-02" }));
     await createChore(f.adult, once("Byta lampa", { roomId: f.bathroom.id }));
     await createChore(f.adult, once("Torka bänken", { dueDate: "2026-01-01" }));
-    await createChore(f.neighbour, { title: "Grannens", roomId: f.garage.id, interval: "1", unit: "day" });
+    await createChore(f.neighbour, { title: "Grannens", roomId: f.garage.id, kind: "recurring", interval: "1", unit: "day" });
   });
 
   const titles = async (filter: Parameters<typeof listOpenInstances>[1], who = f.adult) =>

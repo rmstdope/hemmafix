@@ -40,16 +40,16 @@ type Draft = {
   assigneeId: string;
 };
 
-const empty = (today: string): Draft => ({
+const empty = (): Draft => ({
   mode: "task",
   routineId: "",
   templateKey: "",
   title: "",
   roomId: "",
-  kind: "recurring",
+  kind: "once",
   interval: "1",
   unit: "week",
-  date: today,
+  date: "",
   assigneeId: "",
 });
 
@@ -71,15 +71,18 @@ export function AddChoreForm({
   today: string;
 }) {
   const [open, setOpen] = useState(false);
-  const [draft, setDraft] = useState<Draft>(() => empty(today));
+  const [draft, setDraft] = useState<Draft>(() => empty());
+  // Closing starts the next opening from a clean draft, since the draft lives here and not in the form.
+  const close = () => {
+    setDraft(empty());
+    setOpen(false);
+  };
   const [, action, pending] = useActionState<ActionState, FormData>(async (prev, formData) => {
     const isRoutine = formData.get("mode") === "routine";
     const result = isRoutine ? await addRoutine(prev, formData) : await createChore(prev, formData);
     if (result.ok) {
       toast.success(isRoutine ? routineAddedNotice(result.count ?? 0) : "Uppgiften är tillagd");
-      setDraft(empty(today));
-      // Closing unmounts the form, so it opens empty next time.
-      setOpen(false);
+      close();
     } else if (result.error) {
       toast.error(result.error);
     }
@@ -100,6 +103,8 @@ export function AddChoreForm({
       title: template.title,
       roomId: room?.id ?? draft.roomId,
       kind: template.recurrence ? "recurring" : "once",
+      // As when the person presses "Återkommande": the first time is today.
+      date: template.recurrence ? today : "",
       interval: String(template.recurrence?.interval ?? draft.interval),
       unit: template.recurrence?.unit ?? draft.unit,
     });
@@ -121,7 +126,7 @@ export function AddChoreForm({
           <Link href="/hemmet" className="flex h-11 items-center rounded-lg bg-primary px-4 font-medium text-primary-foreground">
             Lägg till rum
           </Link>
-          <Button variant="ghost" className="h-11" onClick={() => setOpen(false)}>
+          <Button variant="ghost" className="h-11" onClick={close}>
             Avbryt
           </Button>
         </div>
@@ -147,7 +152,7 @@ export function AddChoreForm({
     >
       <div className="flex items-center justify-between">
         <h2 className="font-medium">Ny uppgift</h2>
-        <Button type="button" variant="ghost" size="icon-lg" aria-label="Stäng" onClick={() => setOpen(false)}>
+        <Button type="button" variant="ghost" size="icon-lg" aria-label="Stäng" onClick={close}>
           <X />
         </Button>
       </div>

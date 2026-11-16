@@ -5,8 +5,15 @@ const ROOM = "6f1c3b0e-5f8a-4c7e-9d2a-1b3c4d5e6f70";
 const parse = (fields: Record<string, string>) => createChoreInput.safeParse(fields);
 
 describe("createChoreInput", () => {
-  it("is recurring by default and trims the title", () => {
-    const parsed = createChoreInput.parse({ title: "  Dammsuga ", roomId: ROOM, interval: "1", unit: "week" });
+  it("is a one-off by default", () => {
+    expect(createChoreInput.parse({ title: "Laga cykeln", roomId: ROOM })).toMatchObject({
+      recurrence: null,
+      firstDueDate: null,
+    });
+  });
+
+  it("trims the title and keeps a recurring task's interval", () => {
+    const parsed = createChoreInput.parse({ title: "  Dammsuga ", roomId: ROOM, kind: "recurring", interval: "1", unit: "week" });
     expect(parsed).toEqual({
       title: "Dammsuga",
       templateKey: null,
@@ -41,19 +48,19 @@ describe("createChoreInput", () => {
   });
 
   it("keeps a known template and refuses an unknown one", () => {
-    expect(createChoreInput.parse({ title: "Diska", templateKey: "diska", roomId: ROOM, interval: "1", unit: "day" }))
+    expect(createChoreInput.parse({ title: "Diska", templateKey: "diska", roomId: ROOM, kind: "recurring", interval: "1", unit: "day" }))
       .toMatchObject({ templateKey: "diska" });
     expect(parse({ title: "x", templateKey: "nope", roomId: ROOM, interval: "1", unit: "day" }).success).toBe(false);
   });
 
   it("requires a title, a room and a sensible interval for a recurring task", () => {
-    expect(parse({ title: "  ", roomId: ROOM, interval: "1", unit: "day" }).success).toBe(false);
-    expect(parse({ title: "x", roomId: "", interval: "1", unit: "day" }).success).toBe(false);
-    expect(parse({ title: "x", roomId: ROOM, unit: "day" }).success).toBe(false);
-    expect(parse({ title: "x", roomId: ROOM, interval: "0", unit: "day" }).success).toBe(false);
-    expect(parse({ title: "x", roomId: ROOM, interval: "1.5", unit: "day" }).success).toBe(false);
-    expect(parse({ title: "x", roomId: ROOM, interval: "366", unit: "day" }).success).toBe(false);
-    expect(parse({ title: "x", roomId: ROOM, interval: "1", unit: "year" }).success).toBe(false);
+    expect(parse({ title: "  ", roomId: ROOM, kind: "recurring", interval: "1", unit: "day" }).success).toBe(false);
+    expect(parse({ title: "x", roomId: "", kind: "recurring", interval: "1", unit: "day" }).success).toBe(false);
+    expect(parse({ title: "x", roomId: ROOM, kind: "recurring", unit: "day" }).success).toBe(false);
+    expect(parse({ title: "x", roomId: ROOM, kind: "recurring", interval: "0", unit: "day" }).success).toBe(false);
+    expect(parse({ title: "x", roomId: ROOM, kind: "recurring", interval: "1.5", unit: "day" }).success).toBe(false);
+    expect(parse({ title: "x", roomId: ROOM, kind: "recurring", interval: "366", unit: "day" }).success).toBe(false);
+    expect(parse({ title: "x", roomId: ROOM, kind: "recurring", interval: "1", unit: "year" }).success).toBe(false);
   });
 
   it("rejects dates that do not exist", () => {

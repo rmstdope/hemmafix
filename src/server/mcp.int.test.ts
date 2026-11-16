@@ -223,6 +223,20 @@ describe("the task tools", () => {
     expect(i).toMatchObject({ dueDate: "2026-12-01", assigneeId: "bo" });
   });
 
+  it("creates a one-off with no deadline when the kind is left out, and says so in the tool description", async () => {
+    const roomId = await seedKitchen();
+    const r = await taskCall("anna", "skapa_syssla", { title: "Laga cykeln", roomId });
+    expect(r.isError).toBeFalsy();
+    const [c] = await db.select().from(chore).where(eq(chore.title, "Laga cykeln"));
+    expect(c).toMatchObject({ recurrenceUnit: null, recurrenceInterval: null });
+    const [i] = await openOf(c!.id);
+    expect(i).toMatchObject({ dueDate: null });
+
+    const tools = (await rpc("anna", "tools/list")).result.tools as { name: string; inputSchema: { properties: { kind: { description: string } } } }[];
+    const create = tools.find((t) => t.name === "skapa_syssla")!;
+    expect(create.inputSchema.properties.kind.description).toContain("Utelämnad kind ger once");
+  });
+
   it("answers in Swedish when the room is not in the home or the input is wrong", async () => {
     await seedKitchen();
     const other = await taskCall("anna", "skapa_syssla", { title: "X", roomId: crypto.randomUUID(), kind: "once" });
