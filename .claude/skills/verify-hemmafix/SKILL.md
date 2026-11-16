@@ -167,8 +167,7 @@ looked at through the official **MCP Inspector**, which speaks the same OAuth an
    registered OAuth clients, but the Inspector keeps its saved `hemmafix` entry with the old
    registration, and the first connect then fails with `invalid_client` / "client not found". Before
    connecting, use **Clear stored OAuth state** on that saved entry (or add a fresh entry). Use its
-   OAuth flow: it registers
-   itself, the browser goes to Hemmafix's login (skipped while logged in) and approval page. Those
+   OAuth flow: it registers itself, the browser goes to Hemmafix's login (skipped while logged in) and approval page. Those
    pages are part of the evidence: screenshot each, at phone size too when the bead changed them.
    The Inspector calls itself by its own name and returns to this computer, so the approval page shows
    it as such; that is expected.
