@@ -15,7 +15,7 @@ import {
 } from "@/app/actions";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { SAVE_FAILED } from "@/lib/routine-texts";
+import { removeRoutineNotice, SAVE_FAILED } from "@/lib/routine-texts";
 
 type Routine = { id: string; name: string; tasks: { id: string; title: string }[] };
 
@@ -299,8 +299,7 @@ function RemoveRoutine({ routine }: { routine: Routine }) {
               Ta bort {routine.name}?
             </h2>
             <p className="mt-2 text-sm text-muted-foreground">
-              Rutinen och dess {routine.tasks.length} uppgifter tas bort. Uppgifter som redan finns i hemmet påverkas
-              inte.
+              {removeRoutineNotice(routine.tasks.length)}
             </p>
             <div className="mt-4 flex flex-col gap-2">
               <button
