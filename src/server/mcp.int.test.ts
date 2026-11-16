@@ -177,7 +177,7 @@ describe("the task tools", () => {
     expect(props.kind.description).toContain("Saknar uppgiften en schemafras i visa_sysslor_med_id är den once");
   });
 
-  it("says uppgift, never uppgift, in every tool title, description and schema hint", async () => {
+  it("says uppgift, never the old word, in every tool title, description and schema hint", async () => {
     const res = await rpc("anna", "tools/list");
     const tools = res.result.tools as { name: string }[];
     const names = tools.map((t) => t.name);
