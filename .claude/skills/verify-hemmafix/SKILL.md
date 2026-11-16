@@ -163,7 +163,11 @@ looked at through the official **MCP Inspector**, which speaks the same OAuth an
    background: `npx -y @modelcontextprotocol/inspector@2.13.0` (pinned; a newer version is a change
    to this skill, not a choice in a look). It prints a URL with a session token: open
    that exact URL in a tab you opened.
-2. Transport *Streamable HTTP*, URL `http://localhost:3000/mcp`. Use its OAuth flow: it registers
+2. Transport *Streamable HTTP*, URL `http://localhost:3000/mcp`. `verify-app reset` removes the app's
+   registered OAuth clients, but the Inspector keeps its saved `hemmafix` entry with the old
+   registration, and the first connect then fails with `invalid_client` / "client not found". Before
+   connecting, use **Clear stored OAuth state** on that saved entry (or add a fresh entry). Use its
+   OAuth flow: it registers
    itself, the browser goes to Hemmafix's login (skipped while logged in) and approval page. Those
    pages are part of the evidence: screenshot each, at phone size too when the bead changed them.
    The Inspector calls itself by its own name and returns to this computer, so the approval page shows
