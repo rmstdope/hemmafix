@@ -1,7 +1,9 @@
 import type { Page } from "@playwright/test";
+import { eq, sql } from "drizzle-orm";
+import { chore, household, room } from "../src/db/schema";
 import { formatDue, todayIso } from "../src/lib/dates";
 import { E2E_BASE_URL } from "./support/env";
-import { logIn, seedChore, seedRooms } from "./support/family";
+import { db, logIn, seedChore, seedRooms } from "./support/family";
 import { expect, test } from "./support/test";
 
 const item = (page: Page, title: string) =>
@@ -83,4 +85,35 @@ test("an adult renames a room, and tasks follow", async ({ page, context }) => {
 
   await page.getByRole("link", { name: "Tillbaka" }).click();
   await expect(item(page, "Diska")).toContainText("Kokvrå");
+});
+
+test("a room chosen in Ändra and removed elsewhere meanwhile has to be chosen again", async ({ page, context }) => {
+  await logIn(context, "anna", "adult");
+  const rooms = await seedRooms("Badrum", "Kök", "Tvättstuga");
+  const diska = await seedChore({ title: "Diska", roomId: rooms["Kök"]!.id, dueDate: todayIso() });
+  await page.goto("/");
+  await item(page, "Diska").getByRole("button", { name: "Mer" }).click();
+  await item(page, "Diska").getByRole("button", { name: "Ändra" }).click();
+  const form = page.getByRole("form", { name: "Ändra Diska" });
+  const roomSelect = form.getByRole("combobox", { name: "Rum" });
+  await roomSelect.selectOption({ label: "Tvättstuga" });
+
+  // Another adult removes Tvättstuga; the live refresh takes its option out of the open form.
+  await db.delete(room).where(eq(room.id, rooms["Tvättstuga"]!.id));
+  const [home] = await db.select({ id: household.id }).from(household);
+  await db.execute(sql`select pg_notify('hemmafix_tasks', ${home!.id})`);
+  await expect(roomSelect.locator("option", { hasText: "Tvättstuga" })).toHaveCount(0);
+
+  // Not quietly another room: back to "Välj rum", and Spara does not save until one is picked.
+  await expect(roomSelect).toHaveValue("");
+  await form.getByRole("button", { name: "Spara" }).click();
+  await expect(form).toBeVisible();
+  await expect(page.getByText("Uppgiften är ändrad")).toHaveCount(0);
+  const [saved] = await db.select({ roomId: chore.roomId }).from(chore).where(eq(chore.id, diska.id));
+  expect(saved!.roomId).toBe(rooms["Kök"]!.id);
+
+  await roomSelect.selectOption({ label: "Badrum" });
+  await form.getByRole("button", { name: "Spara" }).click();
+  await expect(page.getByText("Uppgiften är ändrad")).toBeVisible();
+  await expect(item(page, "Diska")).toContainText("Badrum");
 });

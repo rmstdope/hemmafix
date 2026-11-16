@@ -37,6 +37,7 @@ export function EditChoreForm({
 }) {
   const [kind, setKind] = useState<"recurring" | "once">(task.recurrence ? "recurring" : "once");
   const [interval, setInterval] = useState(String(task.recurrence?.interval ?? 1));
+  const [roomId, setRoomId] = useState(task.roomId ?? "");
   const [, action, pending] = useActionState<ActionState, FormData>(async (prev, formData) => {
     const result = await editChore(task.id, prev, formData);
     if (result.ok) {
@@ -48,8 +49,10 @@ export function EditChoreForm({
     return result;
   }, { ok: false });
   const recurring = kind === "recurring";
-  // The room may have been removed since; then it has to be chosen again.
-  const roomStillThere = rooms.some((r) => r.id === task.roomId);
+  // The chosen room may be removed while the form is open, and the live refresh then takes its
+  // option away. Left to itself the browser would fall back to the first room; it has to be chosen
+  // again instead, and "Välj rum" is required.
+  const shownRoomId = rooms.some((r) => r.id === roomId) ? roomId : "";
 
   return (
     <form onSubmit={submitKeepingValues(action)} className="w-full space-y-3" aria-label={`Ändra ${task.title}`}>
@@ -71,7 +74,8 @@ export function EditChoreForm({
         <select
           name="roomId"
           aria-label="Rum"
-          defaultValue={roomStillThere ? (task.roomId ?? "") : ""}
+          value={shownRoomId}
+          onChange={(e) => setRoomId(e.target.value)}
           required
           className={fieldClass}
         >
