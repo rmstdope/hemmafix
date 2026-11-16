@@ -85,9 +85,10 @@ export function ApprovalCard({
           Om du godkänner kan {appNameInline}, i hemmet <strong>{homeName}</strong>:
         </p>
         <ul className="list-disc space-y-1 pl-5 text-sm">
-          <li>se våningar, rum, sysslor och familjen</li>
-          <li>lägga till, ändra, ta bort och tilldela sysslor</li>
-          <li>bocka av sysslor</li>
+          <li>se våningar, rum, uppgifter, rutiner och familjen</li>
+          <li>lägga till, ändra, ta bort och tilldela uppgifter</li>
+          <li>bocka av uppgifter</li>
+          <li>skapa, ändra och ta bort rutiner och lägga till dem i hemmet</li>
           <li>ändra hemmet, rummen och familjens roller</li>
         </ul>
       </div>

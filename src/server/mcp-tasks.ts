@@ -117,6 +117,7 @@ export function registerTaskTools(server: McpServer, userId: string): void {
               choreId: i.choreId,
               title: i.title,
               roomName: i.roomName,
+              floorName: i.floorName,
               assigneeName: i.assigneeId ? (names.get(i.assigneeId) ?? null) : null,
               dueDate: i.dueDate,
               recurrence: i.recurrence,

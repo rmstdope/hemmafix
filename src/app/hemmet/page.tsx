@@ -3,6 +3,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { Suspense } from "react";
 import { LiveUpdates } from "@/components/live-updates";
+import { ScrollToHash } from "@/components/scroll-to-hash";
 import { MemberRoles } from "@/components/home/member-roles";
 import { RenameForm } from "@/components/home/rename-form";
 import { FloorsAndRooms } from "@/components/home/floors-and-rooms";
@@ -103,6 +104,7 @@ async function HomeSettings() {
           lastUsedLine: c.lastUsedAt ? `Senast använd ${formatLastUsed(c.lastUsedAt, now)}` : formatLastUsed(null, now),
         }))}
       />
+      <ScrollToHash />
     </>
   );
 }

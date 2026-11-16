@@ -1,5 +1,6 @@
 import { routineAddedNotice } from "./routine-texts";
 import { formatDay, formatDue, formatTime, todayIso } from "./dates";
+import { formatRecurrence, type Recurrence } from "./recurrence";
 import { floorLabel, roomLabel } from "./floors";
 import { ROLE_LABELS, type Role } from "./permissions";
 
@@ -72,7 +73,7 @@ export function formatOpenTasks(tasks: OpenTask[], today: string, showFloors = f
 const NONE = "(inga)";
 
 export type LookupInput = {
-  open: (OpenTask & { id: string; choreId: string; recurrence: { unit: string; interval: number } | null })[];
+  open: (OpenTask & { id: string; choreId: string; recurrence: Recurrence | null })[];
   rooms: { id: string; name: string; floorName: string | null }[];
   members: { id: string; name: string; role: "adult" | "child" }[];
   recentlyDone: { id: string; title: string; doneByName: string | null; isLatestTick: boolean }[];
@@ -85,11 +86,10 @@ export function formatTaskLookup(input: LookupInput, today: string): string {
     ...section(
       "Öppna sysslor:",
       input.open.map((t) => {
-        // What andra_syssla needs to hand back unchanged: kind, interval, unit and the ISO due date.
-        const shape = t.recurrence
-          ? `kind recurring, interval ${t.recurrence.interval}, unit ${t.recurrence.unit}`
-          : "kind once";
-        return `${formatOpenTasks([t], today)} (syssla ${t.choreId}, tillfälle ${t.id}, ${shape}${t.dueDate ? `, dueDate ${t.dueDate}` : ""})`;
+        // The room with its floor and the schedule read as in the app; the ISO date is what
+        // andra_syssla needs handed back unchanged.
+        const line = formatOpenTasks([t], today, true) + (t.recurrence ? `, ${formatRecurrence(t.recurrence)}` : "");
+        return `${line} (syssla ${t.choreId}, tillfälle ${t.id}${t.dueDate ? `, nästa datum ${t.dueDate}` : ""})`;
       }),
     ),
     ...section(
