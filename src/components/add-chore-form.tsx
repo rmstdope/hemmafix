@@ -141,6 +141,10 @@ export function AddChoreForm({
   const canSubmit = isRoutine ? Boolean(draft.routineId) && (!chosen || taskCount > 0) : true;
   const plural = draft.interval !== "1";
   const recurring = draft.kind === "recurring";
+  // The chosen room may be removed while the form is open, and the live refresh then takes its
+  // option away. Left to itself the browser would fall back to the first room; it has to be chosen
+  // again instead, and "Välj rum" is required.
+  const shownRoomId = rooms.some((r) => r.id === draft.roomId) ? draft.roomId : "";
 
   return (
     <form
@@ -273,7 +277,7 @@ export function AddChoreForm({
             <select
               name="roomId"
               aria-label="Rum"
-              value={draft.roomId}
+              value={shownRoomId}
               onChange={(e) => set({ roomId: e.target.value })}
               required
               className={fieldClass}
