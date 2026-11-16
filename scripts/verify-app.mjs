@@ -19,6 +19,10 @@ import postgres from "postgres";
 
 // VERIFY_APP_DB is for the integration test, so it never touches the real verify home.
 const VERIFY_DB = process.env.VERIFY_APP_DB ?? "hemmafix_verify";
+if (VERIFY_DB !== "hemmafix_verify" && !/^hemmafix_test_[a-z0-9_]+$/.test(VERIFY_DB)) {
+  console.error(`verify-app: refusing VERIFY_APP_DB=${VERIFY_DB}: only hemmafix_verify or a hemmafix_test_* database`);
+  process.exit(1);
+}
 const PORT = "3000"; // the only local port Google redirects back to
 // Its own name, so a page showing it is known to be the verify home and not the dev or real one.
 const HOME_NAME = "Familjen (verifiering)";

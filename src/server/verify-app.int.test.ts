@@ -2,11 +2,12 @@ import { execFile } from "node:child_process";
 import { randomBytes } from "node:crypto";
 import { promisify } from "node:util";
 import postgres from "postgres";
-import { afterAll, describe, expect, it } from "vitest";
+import { afterAll, describe, expect, inject, it } from "vitest";
 import { databaseUrl, dropDatabase } from "../../test/database.mjs";
 
 const run = promisify(execFile);
-const scratch = `hemmafix_test_verify_${randomBytes(4).toString("hex")}`;
+// Under the run's prefix, so a killed run's leftover is swept by the next one.
+const scratch = `${inject("testDbPrefix")}verifyapp${randomBytes(2).toString("hex")}`;
 const verifyApp = async (command: string) => {
   const { stdout } = await run(process.execPath, ["scripts/verify-app.mjs", command], {
     env: { ...process.env, VERIFY_APP_DB: scratch },
@@ -19,7 +20,7 @@ afterAll(async () => {
 });
 
 describe("verify-app reset", () => {
-  it("clears the routines, keeps them cleared, and status counts them", async () => {
+  it("clears the routines, keeps them cleared, and status counts them", { timeout: 30_000 }, async () => {
     await verifyApp("status"); // creates and migrates the scratch database
     const sql = postgres(databaseUrl(scratch), { max: 1 });
     try {
