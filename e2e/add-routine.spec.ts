@@ -4,7 +4,7 @@ import { household, routine, routineTask } from "../src/db/schema";
 import { db, logIn, seedRooms } from "./support/family";
 import { expect, test } from "./support/test";
 
-const todo = (page: Page) => page.getByRole("list", { name: "Att göra" });
+const todo = (page: Page) => page.getByRole("group", { name: "Att göra" });
 
 async function openForm(page: Page) {
   await page.goto("/");

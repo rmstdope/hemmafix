@@ -8,7 +8,7 @@ import { expect, test } from "./support/test";
 const today = () => todayIso();
 const dueLabel = (iso: string) => formatDue(iso, today())!.label;
 
-const todo = (page: Page) => page.getByRole("list", { name: "Att göra" });
+const todo = (page: Page) => page.getByRole("group", { name: "Att göra" });
 const item = (page: Page, title: string) => todo(page).getByRole("listitem").filter({ hasText: title });
 const done = (page: Page) => page.getByRole("list", { name: "Klart" });
 
@@ -56,8 +56,10 @@ test("an adult adds a recurring task from a template; ticking it off brings the 
 
   const task = item(page, "Dammsuga");
   await expect(task).toContainText("Vardagsrum");
-  await expect(task).toContainText("Idag");
-  await expect(task).toContainText("Varje vecka");
+  // It is due today: the Idag divider says so, and the row says neither that nor how often it recurs.
+  await expect(todo(page).getByRole("list", { name: "Idag", exact: true }).getByRole("listitem").filter({ hasText: "Dammsuga" })).toBeVisible();
+  await expect(task).not.toContainText("Idag");
+  await expect(task).not.toContainText("Varje");
 
   await task.getByRole("button", { name: "Markera som klar" }).click();
   await expect(item(page, "Dammsuga")).toContainText(dueLabel(nextDueDate(today(), { unit: "week", interval: 1 })));
@@ -68,7 +70,7 @@ test("an adult adds a recurring task from a template; ticking it off brings the 
   const ticked = done(page).getByRole("listitem").filter({ hasText: "Dammsuga" });
   await expect(ticked).toContainText("Klar av mig");
   await ticked.getByRole("button", { name: "Ångra klar" }).click();
-  await expect(item(page, "Dammsuga")).toContainText("Idag");
+  await expect(todo(page).getByRole("list", { name: "Idag", exact: true }).getByRole("listitem").filter({ hasText: "Dammsuga" })).toHaveCount(1);
   await expect(item(page, "Dammsuga")).toHaveCount(1);
 });
 

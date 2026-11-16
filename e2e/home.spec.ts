@@ -54,7 +54,7 @@ test("a child sees the tasks and ticks them off, but cannot manage anything", as
   await seedChore({ title: "Mata katten", roomId: rooms["Kök"]!.id });
 
   await childPage.goto("/");
-  const todo = childPage.getByRole("list", { name: "Att göra" });
+  const todo = childPage.getByRole("group", { name: "Att göra" });
   const task = todo.getByRole("listitem").filter({ hasText: "Bädda sängen" });
   await expect(task).toBeVisible();
   await expect(task.getByText("Jag")).toBeVisible();

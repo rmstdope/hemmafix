@@ -7,7 +7,7 @@ import { db, logIn, seedChore, seedRooms } from "./support/family";
 import { expect, test } from "./support/test";
 
 const item = (page: Page, title: string) =>
-  page.getByRole("list", { name: "Att göra" }).getByRole("listitem").filter({ hasText: title });
+  page.getByRole("group", { name: "Att göra" }).getByRole("listitem").filter({ hasText: title });
 
 test("an adult edits a task's title, room, how often and next date", async ({ page, context }) => {
   await logIn(context, "anna", "adult");
@@ -28,10 +28,13 @@ test("an adult edits a task's title, room, how often and next date", async ({ pa
 
   const edited = item(page, "Torka handfatet");
   await expect(edited).toContainText("Badrum");
-  await expect(edited).toContainText("Var 3:e dag");
+  await expect(edited).not.toContainText("Var 3:e dag");
   await expect(edited).toContainText(formatDue("2030-06-01", todayIso())!.label);
+  // How often it recurs is no longer on the row; it is still in Ändra.
   await page.reload();
-  await expect(item(page, "Torka handfatet")).toContainText("Var 3:e dag");
+  await item(page, "Torka handfatet").getByRole("button", { name: "Mer" }).click();
+  await item(page, "Torka handfatet").getByRole("button", { name: "Ändra" }).click();
+  await expect(page.getByRole("form", { name: "Ändra Torka handfatet" }).getByRole("spinbutton", { name: "Antal" })).toHaveValue("3");
 });
 
 test("a task ticked off before an edit keeps its old name in the history", async ({ page, context }) => {

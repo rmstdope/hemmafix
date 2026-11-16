@@ -9,7 +9,7 @@ import { expect, test } from "./support/test";
 // pin that a refused save leaves each form showing what the family member typed and chose.
 
 const item = (page: Page, title: string) =>
-  page.getByRole("list", { name: "Att göra" }).getByRole("listitem").filter({ hasText: title });
+  page.getByRole("group", { name: "Att göra" }).getByRole("listitem").filter({ hasText: title });
 
 /** The browser caps a field's length; lift the cap so the server's own check answers. */
 const liftCap = (field: Locator) => field.evaluate((el) => el.removeAttribute("maxlength"));

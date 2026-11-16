@@ -68,7 +68,7 @@ test("with several floors, tasks show their floor and can be filtered on a whole
   await seedChore({ title: "Toa uppe", roomId: upper["Badrum"]!.id });
   await seedChore({ title: "Diska", roomId: ground["Kök"]!.id });
   await page.goto("/");
-  const todo = page.getByRole("list", { name: "Att göra" });
+  const todo = page.getByRole("group", { name: "Att göra" });
   const titles = () => todo.getByRole("listitem").locator("p.font-medium");
 
   await expect(todo.getByRole("listitem").filter({ hasText: "Toa uppe" })).toContainText("Badrum · Plan 2");
@@ -102,7 +102,7 @@ test("a template leaves the room to the person when the home has two of that roo
   await form.getByRole("combobox", { name: "Fördefinierad uppgift" }).selectOption({ label: "Städa toaletten" });
   await room.selectOption(upper["Badrum"]!.id);
   await form.getByRole("button", { name: "Lägg till" }).click();
-  await expect(page.getByRole("list", { name: "Att göra" })).toContainText("Badrum · Plan 2");
+  await expect(page.getByRole("group", { name: "Att göra" })).toContainText("Badrum · Plan 2");
 });
 
 test("a home with one floor shows rooms without a floor", async ({ page, context }) => {
@@ -111,7 +111,7 @@ test("a home with one floor shows rooms without a floor", async ({ page, context
   await seedChore({ title: "Diska", roomId: rooms["Kök"]!.id });
   expect(await floors()).toHaveLength(1);
   await page.goto("/");
-  const row = page.getByRole("list", { name: "Att göra" }).getByRole("listitem").filter({ hasText: "Diska" });
+  const row = page.getByRole("group", { name: "Att göra" }).getByRole("listitem").filter({ hasText: "Diska" });
   await expect(row).toContainText("Kök");
   await expect(row).not.toContainText("Plan");
 });
