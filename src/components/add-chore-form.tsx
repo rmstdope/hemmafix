@@ -2,11 +2,12 @@
 
 import { Plus, X } from "lucide-react";
 import Link from "next/link";
-import { startTransition, useActionState, useState } from "react";
+import { useActionState, useState } from "react";
 import { toast } from "sonner";
 import { addRoutine, createChore, type ActionState } from "@/app/actions";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { submitKeepingValues } from "@/components/submit-keeping-values";
 import { CHORE_TEMPLATES, findTemplate } from "@/lib/chore-templates";
 import type { RecurrenceUnit } from "@/lib/recurrence";
 import { addRoutineButtonLabel, routineAddedNotice } from "@/lib/routine-texts";
@@ -140,11 +141,7 @@ export function AddChoreForm({
     <form
       // Not `action`: React resets a form after its action, and the selects would then show their
       // first option while the draft still holds what was chosen.
-      onSubmit={(e) => {
-        e.preventDefault();
-        const formData = new FormData(e.currentTarget);
-        startTransition(() => action(formData));
-      }}
+      onSubmit={submitKeepingValues(action)}
       className="space-y-3 rounded-xl border bg-card p-4"
       aria-label="Ny uppgift"
     >
