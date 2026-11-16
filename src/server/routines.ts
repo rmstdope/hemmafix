@@ -214,21 +214,21 @@ export type RoutineWithTasks = { id: string; name: string; tasks: string[] };
 /** The home's routines with their task titles, for the add-a-routine form (adults). */
 export async function listRoutinesWithTasks(actor: Actor): Promise<RoutineWithTasks[]> {
   return inHome(actor, async (tx) => {
-    const routines = await tx
-      .select({ id: routine.id, name: routine.name })
+    // One statement, so routines and tasks come from one snapshot: two would let a routine
+    // removed in between show up with no tasks.
+    const rows = await tx
+      .select({ id: routine.id, name: routine.name, title: routineTask.title })
       .from(routine)
+      .leftJoin(routineTask, eq(routineTask.routineId, routine.id))
       .where(eq(routine.householdId, actor.householdId))
-      .orderBy(asc(routine.seq));
-    const tasks = await tx
-      .select({ routineId: routineTask.routineId, title: routineTask.title })
-      .from(routineTask)
-      .innerJoin(routine, eq(routine.id, routineTask.routineId))
-      .where(eq(routine.householdId, actor.householdId))
-      .orderBy(asc(routineTask.seq));
-    return routines.map((r) => ({
-      ...r,
-      tasks: tasks.filter((t) => t.routineId === r.id).map((t) => t.title),
-    }));
+      .orderBy(asc(routine.seq), asc(routineTask.seq));
+    const routines = new Map<string, RoutineWithTasks>();
+    for (const { id, name, title } of rows) {
+      const r = routines.get(id) ?? { id, name, tasks: [] };
+      routines.set(id, r);
+      if (title !== null) r.tasks.push(title);
+    }
+    return [...routines.values()];
   });
 }
 

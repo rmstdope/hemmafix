@@ -1,4 +1,4 @@
-import { eq } from "drizzle-orm";
+import { eq, sql } from "drizzle-orm";
 import { beforeEach, describe, expect, it } from "vitest";
 import { db } from "@/db";
 import { chore, choreInstance, household, routine } from "@/db/schema";
@@ -357,4 +357,35 @@ describe("listRoutinesWithTasks", () => {
     expect((await listRoutinesWithTasks(f.adult)).map((r) => r.name)).toEqual(["Städa badrum", "Städa kök", "Städa sovrum"]);
     await expect(listRoutinesWithTasks(f.child)).rejects.toThrow(ForbiddenError);
   });
+
+  it("never lists a routine without its tasks when it is removed during the read", async () => {
+    const kitchen = (await listRoutinesWithTasks(f.adult)).find((r) => r.name === "Städa kök")!;
+    let read: ReturnType<typeof listRoutinesWithTasks> | undefined;
+    await db.transaction(async (tx) => {
+      // Hold routine_task, so the read stops where it first needs it, and remove the routine
+      // (its tasks go with it) while it waits: a page rendering as another adult removes it.
+      await tx.execute(sql`lock table routine_task in access exclusive mode`);
+      read = listRoutinesWithTasks(f.adult);
+      await waitForLockOn("routine_task");
+      await tx.delete(routine).where(eq(routine.id, kitchen.id));
+    });
+    expect((await read!).map((r) => [r.name, r.tasks.length])).toEqual([
+      ["Städa badrum", 5],
+      ["Städa sovrum", 4],
+    ]);
+  });
 });
+
+/** Waits until a session is queued for a lock on `table` in this database (pg_locks is server-wide). */
+async function waitForLockOn(table: string) {
+  for (let i = 0; i < 200; i++) {
+    const waiting = await db.execute(
+      sql`select 1 from pg_locks
+          where locktype = 'relation' and relation = ${table}::regclass and not granted
+            and database = (select oid from pg_database where datname = current_database())`,
+    );
+    if (waiting.length > 0) return;
+    await new Promise((resolve) => setTimeout(resolve, 10));
+  }
+  throw new Error(`nobody waited for a lock on ${table}`);
+}
