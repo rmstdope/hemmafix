@@ -144,7 +144,7 @@ export function registerTaskTools(server: McpServer, userId: string): void {
         title: z.string().describe("Vad som ska göras"),
         templateKey: z.string().optional().describe("Nyckel för en fördefinierad syssla"),
         roomId: id,
-        kind: kind.describe("Utelämnad kind ger once (görs en gång, utan förfallodatum om inget anges); recurring kommer tillbaka"),
+        kind: kind.describe("Utelämnad kind ger once (görs en gång, utan förfallodatum om inget anges); recurring kommer tillbaka och kräver interval och unit"),
         ...when,
         startDate: z.string().optional().describe("Första datum, ÅÅÅÅ-MM-DD (recurring; annars idag)"),
         dueDate: z.string().optional().describe("Förfallodatum, ÅÅÅÅ-MM-DD (once)"),

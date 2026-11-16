@@ -114,6 +114,7 @@ test("a new task starts as a one-off, and the form opens that way every time", a
   // A common repeating task still sets how often, and stays so when the person goes back to a task of their own.
   await form.getByRole("combobox", { name: "Fördefinierad uppgift" }).selectOption({ label: "Dammsuga" });
   await expect(form.getByRole("radio", { name: "Återkommande" })).toBeChecked();
+  await expect(form.getByLabel("Första gången")).toHaveValue(today());
   await form.getByRole("combobox", { name: "Fördefinierad uppgift" }).selectOption({ label: "Egen uppgift" });
   await expect(form.getByRole("radio", { name: "Återkommande" })).toBeChecked();
 

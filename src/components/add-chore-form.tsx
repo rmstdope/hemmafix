@@ -102,6 +102,8 @@ export function AddChoreForm({
       title: template.title,
       roomId: room?.id ?? draft.roomId,
       kind: template.recurrence ? "recurring" : "once",
+      // As when the person presses "Återkommande": the first time is today.
+      date: template.recurrence ? today : "",
       interval: String(template.recurrence?.interval ?? draft.interval),
       unit: template.recurrence?.unit ?? draft.unit,
     });
@@ -123,7 +125,7 @@ export function AddChoreForm({
           <Link href="/hemmet" className="flex h-11 items-center rounded-lg bg-primary px-4 font-medium text-primary-foreground">
             Lägg till rum
           </Link>
-          <Button variant="ghost" className="h-11" onClick={() => setOpen(false)}>
+          <Button variant="ghost" className="h-11" onClick={close}>
             Avbryt
           </Button>
         </div>
