@@ -6,6 +6,7 @@ import { toast } from "sonner";
 import { addRoom, deleteRoom, renameRoom, type ActionState } from "@/app/actions";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { submitKeepingValues } from "@/components/submit-keeping-values";
 import { ROOM_SUGGESTIONS } from "@/lib/rooms";
 
 type Room = { id: string; name: string };
@@ -111,7 +112,7 @@ export function RoomList({ rooms, floorId, where = "" }: { rooms: Room[]; floorI
         </ul>
       )}
 
-      <form ref={formRef} action={action} className="flex gap-2">
+      <form ref={formRef} onSubmit={submitKeepingValues(action)} className="flex gap-2">
         <input type="hidden" name="floorId" value={floorId} />
         <Input
           name="name"
