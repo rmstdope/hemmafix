@@ -20,3 +20,10 @@ export function routineAddedNotice(count: number): string {
 
 /** The routine was removed (or never was this home's) before it could be added. */
 export const ROUTINE_GONE = "Rutinen finns inte längre";
+
+/** The line of the remove-routine confirmation: counts the tasks that go with it, none when there are none. */
+export function removeRoutineNotice(count: number): string {
+  const tail = " Uppgifter som redan finns i hemmet påverkas inte.";
+  if (count === 0) return `Rutinen tas bort.${tail}`;
+  return count === 1 ? `Rutinen och dess 1 uppgift tas bort.${tail}` : `Rutinen och dess ${count} uppgifter tas bort.${tail}`;
+}
