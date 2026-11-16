@@ -376,11 +376,13 @@ describe("listRoutinesWithTasks", () => {
   });
 });
 
-/** Waits until some session is queued for a lock on `table`. */
+/** Waits until a session is queued for a lock on `table` in this database (pg_locks is server-wide). */
 async function waitForLockOn(table: string) {
   for (let i = 0; i < 200; i++) {
     const waiting = await db.execute(
-      sql`select 1 from pg_locks where relation = ${table}::regclass and not granted`,
+      sql`select 1 from pg_locks
+          where locktype = 'relation' and relation = ${table}::regclass and not granted
+            and database = (select oid from pg_database where datname = current_database())`,
     );
     if (waiting.length > 0) return;
     await new Promise((resolve) => setTimeout(resolve, 10));
