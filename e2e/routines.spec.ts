@@ -104,6 +104,25 @@ test("an adult makes a routine, fills it with tasks and keeps it tidy", async ({
   await expect(page.getByText("En rutin kan ha högst 30 uppgifter")).toBeVisible();
 });
 
+test("a refused new name's notice leaves the field and Spara free to try again", async ({ page, context }) => {
+  await logIn(context, "anna", "adult");
+  await openHome(page);
+  await section(page).getByRole("link", { name: /Städa badrum/ }).click();
+  await page.getByRole("button", { name: "Byt namn på Städa badrum" }).click();
+  const form = page.locator("form").filter({ has: page.getByRole("textbox", { name: "Nytt namn för Städa badrum" }) });
+  await form.getByRole("textbox").fill("städa kök");
+  await form.getByRole("button", { name: "Spara" }).click();
+
+  const notice = page.locator("[data-sonner-toast]").filter({ hasText: "Det finns redan en rutin som heter Städa kök" });
+  await expect(notice).toHaveAttribute("data-mounted", "true");
+  // Wait for the notice to slide in fully, so its box is where it stays.
+  await notice.evaluate((el) => Promise.all(el.getAnimations({ subtree: true }).map((a) => a.finished)));
+  const [n, f] = [await notice.boundingBox(), await form.boundingBox()];
+  if (!n || !f) throw new Error("the notice or the rename field is not on screen");
+  const overlaps = n.x < f.x + f.width && f.x < n.x + n.width && n.y < f.y + f.height && f.y < n.y + n.height;
+  expect(overlaps, `notice ${JSON.stringify(n)} covers the rename field ${JSON.stringify(f)}`).toBe(false);
+});
+
 test("removing a routine asks first and never brings it back", async ({ page, context }) => {
   await logIn(context, "anna", "adult");
   await openHome(page);

@@ -29,7 +29,8 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
       <body className="min-h-full flex flex-col bg-background text-foreground">
         <ThemeProvider attribute="class" defaultTheme="system" enableSystem disableTransitionOnChange>
           {children}
-          <Toaster position="top-center" />
+          {/* At the bottom, as the agreed mockups draw notices: at the top they covered the field they were about. */}
+          <Toaster position="bottom-center" />
         </ThemeProvider>
       </body>
     </html>
