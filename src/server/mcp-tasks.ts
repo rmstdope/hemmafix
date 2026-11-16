@@ -50,7 +50,7 @@ async function runAsMember(userId: string, changes: boolean, fn: (actor: Actor) 
 // strict one would answer in English and before the access check. src/lib/validation.ts
 // (inside chores.ts) does the real checking, in Swedish, once the member is known.
 const id = z.string().describe("Ett id från visa_sysslor_med_id");
-const kind = z.string().optional().describe(`recurring (kommer tillbaka, standard) eller once (görs en gång). Saknar sysslan en schemafras i visa_sysslor_med_id är den once; utelämnas kind blir den recurring`);
+const kind = z.string().optional().describe(`recurring (kommer tillbaka, standard) eller once (görs en gång). Saknar uppgiften en schemafras i visa_sysslor_med_id är den once; utelämnas kind blir den recurring`);
 const when = {
   interval: z.number().optional().describe("Hur ofta, i antal enheter (bara för recurring). Varje vecka = 1 week, Varannan vecka = 2 week, Var 3:e månad = 3 month"),
   unit: z.string().optional().describe(`${RECURRENCE_UNITS.join(", ")} (bara för recurring). Varannan vecka = 2 week, Varje månad = 1 month`),
@@ -94,9 +94,9 @@ export function registerTaskTools(server: McpServer, userId: string): void {
   server.registerTool(
     "visa_sysslor_med_id",
     {
-      title: "Visa sysslor, rum och familj med id",
+      title: "Visa uppgifter, rum och familj med id",
       description:
-        "Visar öppna sysslor, rum, familjemedlemmar och det som nyligen bockats av, med de id:n som behövs för att skapa, ändra, ta bort, tilldela, bocka av eller ångra en syssla. Använd den först.",
+        "Visar öppna uppgifter, rum, familjemedlemmar och det som nyligen bockats av, med de id:n som behövs för att skapa, ändra, ta bort, tilldela, bocka av eller ångra en uppgift. Använd den först.",
       annotations: { readOnlyHint: true },
     },
     () =>
@@ -139,17 +139,17 @@ export function registerTaskTools(server: McpServer, userId: string): void {
   server.registerTool(
     "skapa_syssla",
     {
-      title: "Skapa en syssla",
-      description: `Skapar en syssla i ett rum, återkommande eller en gång. Fördefinierade sysslor anges med templateKey (${CHORE_TEMPLATES.map((t) => t.key).join(", ")}); annars skriv egen titel.`,
+      title: "Skapa en uppgift",
+      description: `Skapar en uppgift i ett rum, återkommande eller en gång. Fördefinierade uppgifter anges med templateKey (${CHORE_TEMPLATES.map((t) => t.key).join(", ")}); annars skriv egen titel.`,
       inputSchema: z.object({
         title: z.string().describe("Vad som ska göras"),
-        templateKey: z.string().optional().describe("Nyckel för en fördefinierad syssla"),
+        templateKey: z.string().optional().describe("Nyckel för en fördefinierad uppgift"),
         roomId: id,
         kind: kind.describe("Utelämnad kind ger once (görs en gång, utan förfallodatum om inget anges); recurring kommer tillbaka och kräver interval och unit"),
         ...when,
         startDate: z.string().optional().describe("Första datum, ÅÅÅÅ-MM-DD (recurring; annars idag)"),
         dueDate: z.string().optional().describe("Förfallodatum, ÅÅÅÅ-MM-DD (once)"),
-        assigneeId: z.string().optional().describe("Vem sysslan tilldelas, varje gång (utelämna för ingen)"),
+        assigneeId: z.string().optional().describe("Vem uppgiften tilldelas, varje gång (utelämna för ingen)"),
       }),
       annotations: WRITES,
     },
@@ -165,8 +165,8 @@ export function registerTaskTools(server: McpServer, userId: string): void {
   server.registerTool(
     "andra_syssla",
     {
-      title: "Ändra en syssla",
-      description: "Ändrar en syssla (titel, rum, hur ofta, nästa datum) utifrån dess öppna tillfälle. Skriver över det som finns.",
+      title: "Ändra en uppgift",
+      description: "Ändrar en uppgift (titel, rum, hur ofta, nästa datum) utifrån dess öppna tillfälle. Skriver över det som finns.",
       inputSchema: z.object({
         instanceId: id,
         title: z.string(),
@@ -188,8 +188,8 @@ export function registerTaskTools(server: McpServer, userId: string): void {
   server.registerTool(
     "ta_bort_syssla",
     {
-      title: "Ta bort en syssla",
-      description: "Tar bort en syssla från listan. Det som redan är gjort finns kvar i historiken.",
+      title: "Ta bort en uppgift",
+      description: "Tar bort en uppgift från listan. Det som redan är gjort finns kvar i historiken.",
       inputSchema: z.object({ choreId: id }),
       annotations: OVERWRITES,
     },
@@ -205,13 +205,13 @@ export function registerTaskTools(server: McpServer, userId: string): void {
   server.registerTool(
     "tilldela_syssla",
     {
-      title: "Tilldela en syssla",
+      title: "Tilldela en uppgift",
       description:
-        "Tilldelar en syssla till en person, eller till ingen (utelämna assigneeId). scope denna_gang: id är ett tillfälle; varje_gang: id är sysslan. Skriver över den som var tilldelad.",
+        "Tilldelar en uppgift till en person, eller till ingen (utelämna assigneeId). scope denna_gang: id är ett tillfälle; varje_gang: id är uppgiften. Skriver över den som var tilldelad.",
       inputSchema: z.object({
         id,
-        assigneeId: z.string().optional().describe("Vem sysslan tilldelas; utelämna för ingen"),
-        scope: z.string().describe("denna_gang (id är ett tillfälle) eller varje_gang (id är sysslan)"),
+        assigneeId: z.string().optional().describe("Vem uppgiften tilldelas; utelämna för ingen"),
+        scope: z.string().describe("denna_gang (id är ett tillfälle) eller varje_gang (id är uppgiften)"),
       }),
       annotations: OVERWRITES,
     },
@@ -236,8 +236,8 @@ export function registerTaskTools(server: McpServer, userId: string): void {
   server.registerTool(
     "bocka_av_syssla",
     {
-      title: "Bocka av en syssla",
-      description: "Bockar av ett öppet tillfälle. En återkommande syssla kommer tillbaka efter sitt intervall.",
+      title: "Bocka av en uppgift",
+      description: "Bockar av ett öppet tillfälle. En återkommande uppgift kommer tillbaka efter sitt intervall.",
       inputSchema: z.object({ instanceId: id }),
       annotations: WRITES,
     },
@@ -254,7 +254,7 @@ export function registerTaskTools(server: McpServer, userId: string): void {
     "angra_avbockning",
     {
       title: "Ångra en avbockning",
-      description: "Ångrar den senaste avbockningen av en syssla. Id:t är det avbockade tillfället.",
+      description: "Ångrar den senaste avbockningen av en uppgift. Id:t är det avbockade tillfället.",
       inputSchema: z.object({ instanceId: id }),
       annotations: WRITES,
     },

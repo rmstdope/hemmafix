@@ -86,7 +86,7 @@ export function createHemmafixMcpServer(userId: string): McpServer {
     {
       title: "Vad är kvar att göra",
       description:
-        "Visar vad som är kvar att göra i hemmet: de öppna sysslorna. Kan begränsas till ett rum (rum), en hel våning (vaning) eller en person (vem: ett id, 'jag' eller 'ingen' för ej tilldelade).",
+        "Visar vad som är kvar att göra i hemmet: de öppna uppgifterna. Kan begränsas till ett rum (rum), en hel våning (vaning) eller en person (vem: ett id, 'jag' eller 'ingen' för ej tilldelade).",
       inputSchema: z.object({
         rum: z.string().optional().describe("Rummets id"),
         vaning: z.string().optional().describe("Våningens id"),
