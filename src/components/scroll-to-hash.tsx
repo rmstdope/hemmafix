@@ -9,7 +9,8 @@ import { useEffect } from "react";
  */
 export function ScrollToHash() {
   useEffect(() => {
-    const id = decodeURIComponent(window.location.hash.slice(1));
+    // Not decoded: the ids are plain ASCII, and a malformed escape would throw.
+    const id = window.location.hash.slice(1);
     if (id) document.getElementById(id)?.scrollIntoView();
   }, []);
   return null;
