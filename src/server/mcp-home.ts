@@ -167,7 +167,7 @@ export function registerHomeTools(server: McpServer, userId: string): void {
     "ta_bort_rum",
     {
       title: "Ta bort rum",
-      description: `Tar bort ett rum utan sysslor.${idsHint}`,
+      description: `Tar bort ett rum utan uppgifter.${idsHint}`,
       inputSchema: z.object({ rum_id: z.string() }),
       annotations: removal,
     },

@@ -1,6 +1,6 @@
 import type { Locator, Page } from "@playwright/test";
-import { eq } from "drizzle-orm";
-import { routine } from "../src/db/schema";
+import { eq, sql } from "drizzle-orm";
+import { chore, household, room, routine } from "../src/db/schema";
 import { db, logIn, seedRooms } from "./support/family";
 import { expect, test } from "./support/test";
 
@@ -65,4 +65,32 @@ test("a routine removed before the save leaves the form showing what was chosen"
   await expect(page.getByText("Rutinen finns inte längre")).toBeVisible();
   await expect(form).toBeVisible();
   await expectChosenShown(form, anna.name);
+});
+
+test("a room chosen in Ny uppgift and removed elsewhere meanwhile has to be chosen again", async ({ page, context }) => {
+  await logIn(context, "anna", "adult");
+  const rooms = await seedRooms("Badrum", "Kök", "Tvättstuga");
+  const form = await openForm(page);
+  await form.getByRole("textbox", { name: "Titel" }).fill("Tvätta");
+  const roomSelect = form.getByRole("combobox", { name: "Rum" });
+  await roomSelect.selectOption({ label: "Tvättstuga" });
+
+  // Another adult removes Tvättstuga; the live refresh takes its option out of the open form.
+  await db.delete(room).where(eq(room.id, rooms["Tvättstuga"]!.id));
+  const [home] = await db.select({ id: household.id }).from(household);
+  await db.execute(sql`select pg_notify('hemmafix_tasks', ${home!.id})`);
+  await expect(roomSelect.locator("option", { hasText: "Tvättstuga" })).toHaveCount(0);
+
+  // Not quietly another room: back to "Välj rum", and Lägg till adds nothing until one is picked.
+  await expect(roomSelect).toHaveValue("");
+  await form.getByRole("button", { name: "Lägg till" }).click();
+  await expect(form).toBeVisible();
+  await expect(page.getByText("Uppgiften är tillagd")).toHaveCount(0);
+  expect(await db.select({ id: chore.id }).from(chore)).toHaveLength(0);
+
+  await roomSelect.selectOption({ label: "Badrum" });
+  await form.getByRole("button", { name: "Lägg till" }).click();
+  await expect(page.getByText("Uppgiften är tillagd")).toBeVisible();
+  const [added] = await db.select({ roomId: chore.roomId }).from(chore);
+  expect(added!.roomId).toBe(rooms["Badrum"]!.id);
 });

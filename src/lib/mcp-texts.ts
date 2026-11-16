@@ -84,12 +84,12 @@ export function formatTaskLookup(input: LookupInput, today: string): string {
   const section = (heading: string, lines: string[]) => [heading, ...(lines.length ? lines : [NONE])];
   return [
     ...section(
-      "Öppna sysslor:",
+      "Öppna uppgifter:",
       input.open.map((t) => {
         // The room with its floor and the schedule read as in the app; the ISO date is what
         // andra_syssla needs handed back unchanged.
         const line = formatOpenTasks([t], today, true) + (t.recurrence ? `, ${formatRecurrence(t.recurrence)}` : "");
-        return `${line} (syssla ${t.choreId}, tillfälle ${t.id}${t.dueDate ? `, nästa datum ${t.dueDate}` : ""})`;
+        return `${line} (uppgift ${t.choreId}, tillfälle ${t.id}${t.dueDate ? `, nästa datum ${t.dueDate}` : ""})`;
       }),
     ),
     ...section(
@@ -112,10 +112,10 @@ export function formatTaskLookup(input: LookupInput, today: string): string {
 
 /** One short sentence per change, naming the task. */
 export const taskCreatedText = (title: string, roomName: string | null) =>
-  `Sysslan ${title} är skapad${roomName ? ` i ${roomName}` : ""}.`;
-export const taskEditedText = (title: string) => `Sysslan ${title} är ändrad.`;
+  `Uppgiften ${title} är skapad${roomName ? ` i ${roomName}` : ""}.`;
+export const taskEditedText = (title: string) => `Uppgiften ${title} är ändrad.`;
 export const taskRemovedText = (title: string) =>
-  `Sysslan ${title} är borttagen. Det som redan är gjort finns kvar i historiken.`;
+  `Uppgiften ${title} är borttagen. Det som redan är gjort finns kvar i historiken.`;
 export const taskAssignedText = (title: string, who: string | null, everyTime: boolean) =>
   `${title} är ${who ? `tilldelad ${who}` : "inte längre tilldelad någon"} ${everyTime ? "varje gång" : "den här gången"}.`;
 export const taskTickedText = (title: string) => `Klart: ${title} är avbockad.`;
