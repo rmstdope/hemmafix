@@ -1,0 +1,19 @@
+<!doctype html><html lang="sv"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>A — samma ordning</title>
+<style>
+body{font-family:system-ui,sans-serif;background:#f4f4f5;margin:0;padding:24px 16px;color:#18181b}
+.wrap{max-width:380px;margin:0 auto} .note{background:#fff8db;border:1px solid #e6d27a;border-radius:8px;padding:10px 12px;font-size:13px;margin-bottom:16px}
+.card{background:#fff;border:1px solid #e4e4e7;border-radius:12px;padding:16px} h2{font-size:16px;margin:0} .row{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px}
+.grp{display:grid;grid-template-columns:1fr 1fr;gap:4px;background:#f4f4f5;border-radius:8px;padding:4px;font-size:14px;margin-bottom:12px}
+.seg{height:36px;display:flex;align-items:center;justify-content:center;border-radius:6px;color:#71717a} .seg.on{background:#fff;color:#18181b;font-weight:600;box-shadow:0 1px 2px #0002}
+label{display:block;font-size:13px;color:#71717a;margin-bottom:4px} .f{height:40px;border:1px solid #d4d4d8;border-radius:8px;padding:0 10px;display:flex;align-items:center;font-size:14px;color:#18181b;margin-bottom:12px}
+.f.ph{color:#a1a1aa} .two{display:grid;grid-template-columns:1fr 1fr;gap:8px} .btn{height:44px;background:#18181b;color:#fff;border-radius:8px;display:flex;align-items:center;justify-content:center;font-weight:600}
+.hl{outline:2px dashed #e11d48;outline-offset:3px} h1{font-size:18px;margin:0 0 8px}
+</style></head><body><div class="wrap"><h1>A — samma ordning</h1><div class="note">The form as it opens. The choice stays where it is today, <b>Återkommande</b> on the left, but <b>En gång</b> is the one pressed. “Klart senast” is empty: no deadline unless one is picked.</div>
+<div class="card"><div class="row"><h2>Ny uppgift</h2><span>✕</span></div>
+<div class="grp"><div class="seg on">En uppgift</div><div class="seg">En rutin</div></div>
+<label>Välj en vanlig uppgift</label><div class="f">Egen uppgift ▾</div>
+<label>Vad ska göras?</label><div class="f"></div>
+<label>Rum</label><div class="f ph">Välj rum ▾</div>
+<label>Hur ofta?</label><div class="grp hl"><div class="seg ">Återkommande</div><div class="seg on">En gång</div></div>
+<div class="two"><div><label>Klart senast</label><div class="f ph hl">åååå-mm-dd</div></div><div><label>Vem</label><div class="f">Ingen ▾</div></div></div>
+<div class="btn">Lägg till</div></div></div></body></html>
