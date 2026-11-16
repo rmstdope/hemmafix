@@ -60,6 +60,10 @@ test("an edit to a room removed meanwhile leaves Ändra showing what was typed a
   await logIn(context, "anna", "adult");
   const rooms = await seedRooms("Kök", "Badrum");
   await seedChore({ title: "Diska", roomId: rooms["Kök"]!.id, dueDate: todayIso() });
+  // The server's refusal is what is pinned here, so no live refresh may reach this page: one that
+  // lands before Spara takes the removed room out of Rum, which edit.spec.ts covers. A 204 makes
+  // EventSource give up for good rather than reconnect.
+  await page.route("**/api/events", (route) => route.fulfill({ status: 204 }));
   const form = await openEdit(page);
   await changeEverything(form, "Torka handfatet");
 
@@ -69,6 +73,7 @@ test("an edit to a room removed meanwhile leaves Ändra showing what was typed a
   await expect(page.getByText("Rummet finns inte")).toBeVisible();
   await expect(form.getByRole("button", { name: "Spara" })).toBeEnabled();
   await expect(form.getByRole("textbox", { name: "Titel" })).toHaveValue("Torka handfatet");
+  await expect(form.getByRole("combobox", { name: "Rum" })).toHaveValue(rooms["Badrum"]!.id);
   await expect(form.getByRole("combobox", { name: "Enhet" })).toHaveValue("day");
   await expect(form.getByLabel("Nästa gång")).toHaveValue("2030-06-01");
 });
