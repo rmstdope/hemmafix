@@ -73,6 +73,18 @@ test("a home without routines points to Hemmet", async ({ page, context }) => {
   await expect(page).toHaveURL(/\/hemmet#routines-heading$/);
 });
 
+test("following Skapa en rutin scrolls Hemmet to Rutiner", async ({ page, context }) => {
+  await logIn(context, "anna", "adult");
+  // Enough rooms that Rutiner is below the fold on phone and desktop.
+  await seedRooms(...Array.from({ length: 20 }, (_, i) => `Rum ${i + 1}`));
+  await page.goto("/");
+  await db.delete(routine);
+  const form = await openForm(page);
+  await form.getByText("En rutin", { exact: true }).click();
+  await form.getByRole("link", { name: "Skapa en rutin" }).click();
+  await expect(page.getByRole("heading", { name: "Rutiner" })).toBeInViewport();
+});
+
 test("a routine removed while the form is open is answered with a notice and nothing is added", async ({ page, context }) => {
   await logIn(context, "anna", "adult");
   await seedRooms("Badrum");

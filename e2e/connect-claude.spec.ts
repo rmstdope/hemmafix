@@ -37,9 +37,10 @@ test("an adult approves, and Claude can then list what is left to do", async ({ 
   await expect(page.getByRole("heading", { name: "Claude vill ansluta till Hemmafix" })).toBeVisible();
   await expect(page.getByText("i hemmet Familjen E2E:")).toBeVisible();
   for (const line of [
-    "se våningar, rum, sysslor och familjen",
-    "lägga till, ändra, ta bort och tilldela sysslor",
-    "bocka av sysslor",
+    "se våningar, rum, uppgifter, rutiner och familjen",
+    "lägga till, ändra, ta bort och tilldela uppgifter",
+    "bocka av uppgifter",
+    "skapa, ändra och ta bort rutiner och lägga till dem i hemmet",
     "ändra hemmet, rummen och familjens roller",
   ]) {
     await expect(page.getByRole("listitem").filter({ hasText: line })).toBeVisible();
