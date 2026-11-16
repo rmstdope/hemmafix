@@ -17,7 +17,8 @@ import { drizzle } from "drizzle-orm/postgres-js";
 import { migrate } from "drizzle-orm/postgres-js/migrator";
 import postgres from "postgres";
 
-const VERIFY_DB = "hemmafix_verify";
+// VERIFY_APP_DB is for the integration test, so it never touches the real verify home.
+const VERIFY_DB = process.env.VERIFY_APP_DB ?? "hemmafix_verify";
 const PORT = "3000"; // the only local port Google redirects back to
 // Its own name, so a page showing it is known to be the verify home and not the dev or real one.
 const HOME_NAME = "Familjen (verifiering)";
@@ -105,7 +106,7 @@ async function status() {
              (select max(s.expires_at) from session s where s.user_id = u.id and s.expires_at > now()) as login_until
       from membership m join "user" u on u.id = m.user_id order by u.created_at`;
     const [counts] = await sql`select (select count(*) from floor) floors, (select count(*) from room) rooms,
-      (select count(*) from chore) chores, (select count(*) from oauth_client) registered_clients,
+      (select count(*) from chore) chores, (select count(*) from routine) routines, (select count(*) from oauth_client) registered_clients,
       (select count(*) from app_connection_use) connections`;
     console.log(JSON.stringify({ homes: homes.map((h) => h.name), members, ...counts }, null, 2));
   });
@@ -138,12 +139,12 @@ async function member(name, newRole) {
 async function reset() {
   await withSql(await ensureDatabase(true), async (sql) => {
     await sql.begin(async (tx) => {
-      // The home's contents and every connected app go; users, accounts, sessions and the home stay.
-      await tx`truncate chore_instance, chore, room, floor, app_connection_use, app_token, oauth_consent,
+      // The home's contents and every connected app go (and the ready-made routines stay away: the home counts as seeded); users, accounts, sessions and the home stay.
+      await tx`truncate chore_instance, chore, room, floor, routine, app_connection_use, app_token, oauth_consent,
         oauth_access_token, oauth_refresh_token, oauth_client_assertion, oauth_client_resource, oauth_client cascade`;
       await tx`delete from "user" u where not exists (select 1 from account a where a.user_id = u.id)`;
       await tx`update membership set role = 'adult', updated_at = now()`;
-      const homes = await tx`update household set name = ${HOME_NAME}, updated_at = now() returning id`;
+      const homes = await tx`update household set name = ${HOME_NAME}, routines_seeded_at = now(), updated_at = now() returning id`;
       for (const home of homes) await tx`insert into floor (household_id, name, position) values (${home.id}, '1', 1)`;
     });
     console.log("verify-app: the home is empty again; logins kept");
