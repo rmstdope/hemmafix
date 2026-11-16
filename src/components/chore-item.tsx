@@ -1,6 +1,6 @@
 "use client";
 
-import { Check, ChevronDown, Pencil, Repeat, RotateCcw, Trash2 } from "lucide-react";
+import { Check, ChevronDown, Pencil, RotateCcw, Trash2 } from "lucide-react";
 import { useOptimistic, useState, useTransition } from "react";
 import { toast } from "sonner";
 import {
@@ -14,7 +14,6 @@ import {
 import { Button } from "@/components/ui/button";
 import { formatDue } from "@/lib/dates";
 import { roomLabel } from "@/lib/floors";
-import { formatRecurrence } from "@/lib/recurrence";
 import { EditChoreForm } from "./edit-chore-form";
 import { cn } from "@/lib/utils";
 import type { InstanceView, Member } from "@/server/chores";
@@ -28,6 +27,7 @@ export function ChoreItem({
   today,
   canManage,
   canUndo,
+  showDue,
   showFloors,
   floors,
   rooms,
@@ -41,6 +41,8 @@ export function ChoreItem({
   canManage: boolean;
   /** Whether this person may undo the tick (their own, or anyone's for adults). */
   canUndo: boolean;
+  /** Whether the row says when it is due; under a named day the divider already does. */
+  showDue: boolean;
   /** Whether the home has several floors, so rooms are shown with theirs. */
   showFloors: boolean;
   /** The home's floors and rooms, for editing the task (adults). */
@@ -53,7 +55,7 @@ export function ChoreItem({
   const [expanded, setExpanded] = useState(false);
   const [editing, setEditing] = useState(false);
   const completed = t.completedAt !== null;
-  const due = completed ? null : formatDue(t.dueDate, today);
+  const due = completed || !showDue ? null : formatDue(t.dueDate, today);
   const firstName = (id: string | null) =>
     id === currentUserId ? "Jag" : (members.find((m) => m.id === id)?.name.split(" ")[0] ?? "");
 
@@ -106,15 +108,6 @@ export function ChoreItem({
               <>
                 <span aria-hidden>·</span>
                 <span className={cn(due.overdue && "font-medium text-destructive")}>{due.label}</span>
-              </>
-            )}
-            {t.recurrence && !completed && (
-              <>
-                <span aria-hidden>·</span>
-                <span className="inline-flex items-center gap-1 whitespace-nowrap">
-                  <Repeat className="size-3 shrink-0" aria-hidden />
-                  {formatRecurrence(t.recurrence)}
-                </span>
               </>
             )}
             {completed && t.completedByName && (

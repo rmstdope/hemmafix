@@ -5,8 +5,10 @@ import { AddChoreForm } from "@/components/add-chore-form";
 import { BoardFilters } from "@/components/board-filters";
 import { ChoreItem } from "@/components/chore-item";
 import { LiveUpdates } from "@/components/live-updates";
+import { DueGroupSection } from "@/components/home/due-group";
 import { UserMenu } from "@/components/user-menu";
 import { todayIso } from "@/lib/dates";
+import { groupByDue } from "@/lib/due-groups";
 import { can } from "@/lib/permissions";
 import { boardFilter } from "@/lib/validation";
 import { requireMember } from "@/server/dal";
@@ -97,22 +99,36 @@ async function Board({ searchParams }: { searchParams: PageProps<"/">["searchPar
           {filtered ? "Inga uppgifter här." : "Inget att göra just nu 🎉"}
         </p>
       ) : (
-        <ul className="space-y-2" aria-label="Att göra">
-          {open.map((t) => (
-            <ChoreItem
-              key={t.id}
-              instance={t}
-              members={members}
-              currentUserId={member.userId}
+        <div role="group" aria-label="Att göra">
+          {groupByDue(open, today).map((g) => (
+            <DueGroupSection
+              key={g.key}
+              groupKey={g.key}
+              label={g.label}
+              count={g.items.length}
+              overdue={g.overdue}
               today={today}
-              canManage={isAdult}
-              canUndo={false}
-              showFloors={showFloors}
-              floors={floors}
-              rooms={rooms}
-            />
+            >
+              <ul className="space-y-2" aria-label={g.label}>
+                {g.items.map((t) => (
+                  <ChoreItem
+                    key={t.id}
+                    instance={t}
+                    members={members}
+                    currentUserId={member.userId}
+                    today={today}
+                    canManage={isAdult}
+                    canUndo={false}
+                    showDue={g.showDate}
+                    showFloors={showFloors}
+                    floors={floors}
+                    rooms={rooms}
+                  />
+                ))}
+              </ul>
+            </DueGroupSection>
           ))}
-        </ul>
+        </div>
       )}
 
       {completed.length > 0 && (
@@ -130,6 +146,7 @@ async function Board({ searchParams }: { searchParams: PageProps<"/">["searchPar
                 today={today}
                 canManage={false}
                 canUndo={canUndo(member, t)}
+                showDue
                 showFloors={showFloors}
                 floors={floors}
                 rooms={rooms}
