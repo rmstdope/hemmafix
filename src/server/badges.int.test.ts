@@ -260,3 +260,39 @@ describe("the week card", () => {
     expect((await weekCounts(f.child, addDays(thisWeek, -7))).badges).toBe(0);
   });
 });
+
+describe("what a tick-off reports to celebrate", () => {
+  async function tickReport(coins = 10) {
+    const title = `Uppgift ${++n}`;
+    await createChore(f.adult, { title, roomId: f.kitchen.id, kind: "once", coins: String(coins) });
+    const [t] = (await listOpenInstances(f.adult, {})).filter((i) => i.title === title);
+    return completeInstance(f.child, t!.id);
+  }
+
+  it("names the badge the tick won, and none afterwards", async () => {
+    expect((await tickReport()).badges).toEqual(["first-task"]);
+    expect((await tickReport()).badges).toEqual([]);
+  });
+
+  it("reports the level a tick reached, counting the badge's coins, and none when it stayed", async () => {
+    // 10 + 25 (Första uppgiften) = 35: still level 1.
+    expect((await tickReport()).levelUp).toBeNull();
+    // 35 + 70 = 105: level 2.
+    expect((await tickReport(70)).levelUp).toMatchObject({ level: 2, title: "Hjälpreda" });
+    expect((await tickReport(1)).levelUp).toBeNull();
+  });
+
+  it("reports a level that only the badge's coins reached", async () => {
+    // 80 alone stays in level 1, but the first badge's 25 makes it 105.
+    const report = await tickReport(80);
+    expect(report.badges).toEqual(["first-task"]);
+    expect(report.levelUp).toMatchObject({ level: 2 });
+  });
+
+  it("reports no badge for a task ticked again after an undo", async () => {
+    const id = await tick();
+    await uncompleteInstance(f.child, id);
+    const [again] = (await listOpenInstances(f.adult, {})).filter((i) => i.id === id);
+    expect((await completeInstance(f.child, again!.id)).badges).toEqual([]);
+  });
+});

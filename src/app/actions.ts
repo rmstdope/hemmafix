@@ -29,6 +29,9 @@ export type ActionState = {
   chestCoins?: number;
   /** An undo that would leave the person below zero asks first and writes nothing (uncompleteInstance only). */
   confirm?: UndoDebt;
+  /** Badges the tick-off just won, and the level it reached (completeInstance only). */
+  badges?: string[];
+  levelUp?: { level: number; title: string; name: string; image: string | null };
 };
 
 const LOGGED_OUT = "Du är utloggad – ladda om sidan och logga in igen.";
@@ -49,10 +52,17 @@ async function act(
     const out = await fn(member);
     // Asked, not done: nothing changed, so nobody is told and nothing is refreshed.
     if (out && typeof out === "object" && "confirm" in out) return { ok: true, confirm: out.confirm as UndoDebt };
-    // Only what a tick-off reports about its chest goes back; other results stay on the server.
+    // Only what a tick-off reports (its chest, badges and level) goes back; other results stay on the server.
     if (out && typeof out === "object") {
-      const { chestId, chestCoins } = out as Partial<ActionState>;
+      const { chestId, chestCoins, badges, levelUp } = out as {
+        chestId?: string;
+        chestCoins?: number;
+        badges?: string[];
+        levelUp?: { level: number; title: string } | null;
+      };
       if (chestId && chestCoins !== undefined) extra = { chestId, chestCoins };
+      if (badges?.length) extra = { ...extra, badges };
+      if (levelUp) extra = { ...extra, levelUp: { ...levelUp, name: member.name, image: member.image } };
     }
   } catch (e) {
     if (e instanceof UserError) return { ok: false, error: e.message };

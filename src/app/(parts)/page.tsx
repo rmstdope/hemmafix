@@ -82,7 +82,7 @@ async function Board({ searchParams }: { searchParams: PageProps<"/">["searchPar
     filtered
       ? "Inga uppgifter här."
       : key === "nu"
-        ? "Inget att göra just nu 🎉"
+        ? "🎉 Allt i Nu är klart!"
         : key === "senare"
           ? "Inget planerat längre fram."
           : "Inget att göra den här dagen.";
@@ -90,7 +90,11 @@ async function Board({ searchParams }: { searchParams: PageProps<"/">["searchPar
     items.length === 0 ? (
       <p className="rounded-xl border border-dashed p-6 text-center text-muted-foreground">{emptyText(key)}</p>
     ) : (
-      <ul className="space-y-2" aria-label={tabs.find((t) => t.key === key)?.ariaLabel}>
+      <ul
+        className="space-y-2"
+        aria-label={tabs.find((t) => t.key === key)?.ariaLabel}
+        data-clears-nu={key === "nu" && !filtered ? "" : undefined}
+      >
         {items.map((t) => (
           <ChoreItem
             key={t.id}

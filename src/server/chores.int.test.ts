@@ -928,7 +928,7 @@ describe("daily chest", () => {
     expect(first.chestId).toEqual(expect.any(String));
     expect(first.chestCoins).toBeGreaterThanOrEqual(5);
     expect(first.chestCoins).toBeLessThanOrEqual(10);
-    expect(second).toEqual({ chestId: null, chestCoins: null });
+    expect(second).toMatchObject({ chestId: null, chestCoins: null });
     expect(await chestsOf(f.child.userId)).toHaveLength(1);
   });
 
@@ -953,7 +953,7 @@ describe("daily chest", () => {
     await createChore(f.adult, once("Diska"));
     await createChore(f.adult, once("Damma"));
     const [a, b] = await open();
-    expect(await completeInstance(f.child, a!.id, { offerChest: false })).toEqual({ chestId: null, chestCoins: null });
+    expect(await completeInstance(f.child, a!.id, { offerChest: false })).toMatchObject({ chestId: null, chestCoins: null });
     expect(await chestsOf(f.child.userId)).toHaveLength(0);
     expect((await completeInstance(f.child, b!.id)).chestId).not.toBeNull();
   });

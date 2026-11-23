@@ -218,3 +218,15 @@
 .coin-dot::after {
   content: var(--coin-star);
 }
+
+/* Confetti: pieces fall from above the screen; the burst unmounts itself after two seconds. */
+@keyframes confetti-fall {
+  from {
+    transform: translate3d(0, -5vh, 0) rotate(0deg);
+    opacity: 1;
+  }
+  to {
+    transform: translate3d(var(--confetti-drift), 105vh, 0) rotate(var(--confetti-spin));
+    opacity: 1;
+  }
+}
