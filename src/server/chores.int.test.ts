@@ -642,7 +642,7 @@ describe("editChore", () => {
 });
 
 describe("coins", () => {
-  const total = (who: { userId: string; householdId: string; role: "adult" | "child" }) => getCoinTotal(who as typeof f.adult);
+  const total = getCoinTotal;
 
   it("starts at 0", async () => {
     expect(await total(f.adult)).toBe(0);
@@ -671,12 +671,14 @@ describe("coins", () => {
 
   it("is taken back by Ångra, also from a child when an adult undoes it, and earned again by a new tick", async () => {
     await createChore(f.adult, once("Diska"));
-    const [t] = await open();
+    await createChore(f.adult, once("Damma"));
+    const [t, own] = await open();
+    await completeInstance(f.adult, own!.id);
     await completeInstance(f.child, t!.id);
 
     await uncompleteInstance(f.adult, t!.id);
     expect(await total(f.child)).toBe(0);
-    expect(await total(f.adult)).toBe(0);
+    expect(await total(f.adult)).toBe(COINS_PER_TASK);
 
     await completeInstance(f.child, t!.id);
     expect(await total(f.child)).toBe(COINS_PER_TASK);

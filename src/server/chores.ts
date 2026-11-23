@@ -1,4 +1,5 @@
 import "server-only";
+import { cache } from "react";
 import { aliasedTable, and, asc, desc, eq, gt, gte, isNotNull, isNull, ne, sql, type SQL } from "drizzle-orm";
 import { db, pg } from "@/db";
 import { chore, choreInstance, floor, household, membership, room, user } from "@/db/schema";
@@ -275,7 +276,9 @@ export async function completeInstance(actor: Actor, id: string) {
     // of a race wait for a clean answer.
     const ticked = await tx
       .update(choreInstance)
-      .set({ completedAt: new Date(), completedById: actor.userId,
+      .set({
+        completedAt: new Date(),
+        completedById: actor.userId,
         doneTitle: row.title,
         doneRoomId: row.roomId,
         coins: COINS_PER_TASK,
@@ -348,19 +351,23 @@ export async function uncompleteInstance(actor: Actor, id: string) {
  * The actor's coins: what the ticks they hold are worth. Derived, so Ångra takes coins back by
  * clearing the tick, and a tick from before coins existed (null) earns nothing.
  */
-export async function getCoinTotal(actor: Actor): Promise<number> {
+async function sumCoins(householdId: string, userId: string): Promise<number> {
   const [row] = await db
     .select({ total: sql<number>`coalesce(sum(${choreInstance.coins}), 0)::int` })
     .from(choreInstance)
     .where(
       and(
-        eq(choreInstance.householdId, actor.householdId),
-        eq(choreInstance.completedById, actor.userId),
+        eq(choreInstance.householdId, householdId),
+        eq(choreInstance.completedById, userId),
         isNotNull(choreInstance.completedAt),
       ),
     );
   return row?.total ?? 0;
 }
+
+/** Once per request, though the corner is rendered by both the desktop strip and the phone header. */
+const coinTotalOf = cache(sumCoins);
+export const getCoinTotal = (actor: Actor) => coinTotalOf(actor.householdId, actor.userId);
 
 // ---------------------------------------------------------------------------
 // The board

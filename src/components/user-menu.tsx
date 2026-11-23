@@ -55,7 +55,7 @@ export function UserMenu({
   const opening = () => rememberPart(litPart(pathname, remembered) ?? remembered);
 
   return (
-    <div className="flex items-center gap-2">
+    <div className="flex shrink-0 items-center gap-2">
       <Popover.Root {...panelState("coins")}>
         <Popover.Trigger
           aria-label={coinsLabel(coins)}
@@ -81,7 +81,7 @@ export function UserMenu({
           </Popover.Positioner>
         </Popover.Portal>
       </Popover.Root>
-      <Menu.Root modal={false} {...panelState("menu")}>
+      <Menu.Root {...panelState("menu")}>
         <Menu.Trigger
           aria-label="Meny"
           className="flex size-11 items-center justify-center rounded-full outline-none focus-visible:ring-3 focus-visible:ring-ring/50 data-[popup-open]:bg-muted"
