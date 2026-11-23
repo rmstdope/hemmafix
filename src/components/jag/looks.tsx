@@ -39,7 +39,11 @@ function Visual({ look, name, image, large }: { look: Look; name: string; image:
 
 /** Butik's three rows of looks: Ramar, Teman and Mynt. */
 export function Looks({ name, image, coins, owned, chosen }: Props) {
-  const [preview, setPreview] = useState<Look | null>(null);
+  // What the sheet was opened with: the coins then, so a live refresh never takes Köp away
+  // from under a finger. Pressing it asks the server, which has the last word.
+  const [open, setOpen] = useState<{ look: Look; coins: number } | null>(null);
+  const preview = open?.look ?? null;
+  const setPreview = (look: Look | null) => setOpen(look ? { look, coins } : null);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const opener = useRef<HTMLElement | null>(null);
@@ -65,7 +69,8 @@ export function Looks({ name, image, coins, owned, chosen }: Props) {
     else setError(result.error ?? null);
   };
 
-  const affordable = preview ? coins >= preview.price : false;
+  const openedWith = open?.coins ?? coins;
+  const affordable = preview ? openedWith >= preview.price : false;
 
   return (
     <div className="space-y-4">
@@ -118,7 +123,7 @@ export function Looks({ name, image, coins, owned, chosen }: Props) {
               <Visual look={preview} name={name} image={image} large />
             </div>
             <p>{previewText(preview.kind)}</p>
-            {!affordable && <p className="text-sm text-muted-foreground">{coinsLeft(preview.price, coins)}</p>}
+            {!affordable && <p className="text-sm text-muted-foreground">{coinsLeft(preview.price, openedWith)}</p>}
             {error && (
               <p role="alert" className="text-sm text-destructive">
                 {error}
