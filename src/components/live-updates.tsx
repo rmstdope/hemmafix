@@ -22,25 +22,41 @@ export function LiveUpdates() {
 
   useEffect(() => {
     let timer: ReturnType<typeof setTimeout> | undefined;
+    let reconnect: ReturnType<typeof setTimeout> | undefined;
+    let source: EventSource | undefined;
     const refreshSoon = () => {
       clearTimeout(timer);
       timer = setTimeout(async () => {
         // When it does not answer, the event stream reconnects once it does, and catches up then.
+        // The server can still go away between the probe and the refresh; that window is
+        // milliseconds, and the router has no way to turn its fallback off.
         if (await serverAnswers()) router.refresh();
       }, 150);
     };
 
-    const source = new EventSource("/api/events");
-    source.onmessage = refreshSoon;
-    // After a dropped connection (phone asleep, network switch, a deploy) catch up.
-    source.onopen = refreshSoon;
+    const connect = () => {
+      const stream = new EventSource("/api/events");
+      source = stream;
+      stream.onmessage = refreshSoon;
+      // After a dropped connection (phone asleep, network switch, a deploy) catch up.
+      stream.onopen = refreshSoon;
+      // A network error is retried by EventSource itself, but any other answer than the stream
+      // (the proxy's 502 while the app restarts) ends its retries for good: open a new one.
+      stream.onerror = () => {
+        if (stream.readyState !== EventSource.CLOSED) return;
+        clearTimeout(reconnect);
+        reconnect = setTimeout(connect, 5000);
+      };
+    };
+    connect();
 
     const onVisible = () => document.visibilityState === "visible" && refreshSoon();
     document.addEventListener("visibilitychange", onVisible);
 
     return () => {
       clearTimeout(timer);
-      source.close();
+      clearTimeout(reconnect);
+      source?.close();
       document.removeEventListener("visibilitychange", onVisible);
     };
   }, [router]);
