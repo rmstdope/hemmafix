@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { PARTS, partOf } from "./parts";
+import { PARTS, litPart, partOf, rememberedPart } from "./parts";
 
 describe("partOf", () => {
   it("puts the board and its history under Uppgifter", () => {
@@ -15,5 +15,26 @@ describe("partOf", () => {
   });
   it("lists the parts in tab order", () => {
     expect(PARTS.map((p) => p.label)).toEqual(["Uppgifter", "Listor"]);
+  });
+});
+
+describe("rememberedPart", () => {
+  it("remembers Listor, and falls back to Uppgifter", () => {
+    expect(rememberedPart("listor")).toBe("listor");
+    expect(rememberedPart("uppgifter")).toBe("uppgifter");
+    expect(rememberedPart(null)).toBe("uppgifter");
+    expect(rememberedPart("junk")).toBe("uppgifter");
+  });
+});
+
+describe("litPart", () => {
+  it("lights the part Gjort was opened from", () => {
+    expect(litPart("/gjort", "listor")).toBe("listor");
+    expect(litPart("/gjort", "uppgifter")).toBe("uppgifter");
+  });
+  it("ignores the remembered part everywhere else", () => {
+    expect(litPart("/", "listor")).toBe("uppgifter");
+    expect(litPart("/listor", "uppgifter")).toBe("listor");
+    expect(litPart("/hemmet", "listor")).toBeNull();
   });
 });

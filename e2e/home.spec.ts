@@ -1,11 +1,12 @@
 import type { Page } from "@playwright/test";
+import { chooseFromMenu, menuItem } from "./support/menu";
 import { expect, test } from "./support/test";
 import { E2E_BASE_URL } from "./support/env";
 import { logIn, seedChore, seedRooms } from "./support/family";
 
 const openHome = async (page: Page) => {
   await page.goto("/");
-  await page.getByRole("link", { name: "Hemmet" }).click();
+  await chooseFromMenu(page, "Hemmet");
   await expect(page.getByRole("heading", { name: "Hemmet" })).toBeVisible();
 };
 
@@ -59,7 +60,9 @@ test("a child sees the tasks and ticks them off, but cannot manage anything", as
   await expect(task).toBeVisible();
   await expect(task.getByText("Jag")).toBeVisible();
   await expect(childPage.getByRole("button", { name: "Ny uppgift" })).toHaveCount(0);
-  await expect(childPage.getByRole("link", { name: "Hemmet" })).toHaveCount(0);
+  await expect(await menuItem(childPage, "Gjort")).toBeVisible();
+  await expect(childPage.getByRole("menuitem", { name: "Hemmet" })).toHaveCount(0);
+  await childPage.keyboard.press("Escape");
   await expect(childPage.getByRole("button", { name: "Mer" })).toHaveCount(0);
   await expect(childPage.getByRole("combobox", { name: "Tilldela den här gången" })).toHaveCount(0);
   // Children can filter too.
@@ -141,7 +144,8 @@ test("an adult makes a child an adult, which takes effect on the child's device 
   await expect(page.getByText("Bo är nu vuxen")).toBeVisible();
 
   await expect(boPage.getByRole("button", { name: "Ny uppgift" })).toBeVisible();
-  await expect(boPage.getByRole("link", { name: "Hemmet" })).toBeVisible();
+  await expect(await menuItem(boPage, "Hemmet")).toBeVisible();
+  await boPage.keyboard.press("Escape");
   await boContext.close();
 });
 
