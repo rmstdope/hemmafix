@@ -5,11 +5,13 @@ import { Popover } from "@base-ui/react/popover";
 import { History, LogOut, Settings } from "lucide-react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { useState, useTransition } from "react";
+import { useRef, useState, useTransition } from "react";
 import { authClient } from "@/lib/auth-client";
 import { coinsLabel, formatCoins } from "@/lib/coins";
 import { litPart } from "@/lib/parts";
 import { cn } from "@/lib/utils";
+import { coinPillClass, CoinDot } from "./coin-pill";
+import { useShownCoins } from "./coin-shower";
 import { MemberAvatar } from "./member-avatar";
 import { rememberPart, useRememberedPart } from "./part-links";
 
@@ -27,7 +29,7 @@ export function UserMenu({
   image,
   role,
   canManageHome,
-  coins,
+  coins: serverCoins,
 }: {
   name: string;
   image: string | null;
@@ -35,6 +37,8 @@ export function UserMenu({
   canManageHome: boolean;
   coins: number;
 }) {
+  const pill = useRef<HTMLButtonElement>(null);
+  const { coins, glow } = useShownCoins(serverCoins, pill);
   const router = useRouter();
   const pathname = usePathname();
   const remembered = useRememberedPart();
@@ -58,13 +62,15 @@ export function UserMenu({
     <div className="flex shrink-0 items-center gap-2">
       <Popover.Root {...panelState("coins")}>
         <Popover.Trigger
+          ref={pill}
           aria-label={coinsLabel(coins)}
-          className="flex h-8 items-center gap-1.5 rounded-full border border-amber-300 bg-amber-100 py-0.5 pr-2.5 pl-1 text-sm font-semibold whitespace-nowrap text-zinc-900 tabular-nums outline-none focus-visible:ring-3 focus-visible:ring-ring/50 data-[popup-open]:ring-3 data-[popup-open]:ring-amber-200 dark:border-amber-700 dark:bg-amber-950 dark:text-amber-100 dark:data-[popup-open]:ring-amber-800"
+          data-glow={glow ? "" : undefined}
+          className={cn(
+            coinPillClass,
+            "focus-visible:ring-3 focus-visible:ring-ring/50 data-[glow]:ring-3 data-[glow]:ring-amber-200 data-[popup-open]:ring-3 data-[popup-open]:ring-amber-200 dark:data-[glow]:ring-amber-800 dark:data-[popup-open]:ring-amber-800",
+          )}
         >
-          <span
-            aria-hidden
-            className="size-[18px] shrink-0 rounded-full bg-[radial-gradient(circle_at_35%_35%,#fde68a,#f59e0b_70%,#b45309)] shadow-[inset_0_0_0_1.5px_#d97706]"
-          />
+          <CoinDot />
           {formatCoins(coins)}
         </Popover.Trigger>
         <Popover.Portal>

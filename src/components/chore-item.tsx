@@ -12,8 +12,10 @@ import {
   type ActionState,
 } from "@/app/actions";
 import { Button } from "@/components/ui/button";
+import { COINS_PER_TASK } from "@/lib/coins";
 import { formatDue } from "@/lib/dates";
 import { roomLabel } from "@/lib/floors";
+import { useCoinShower, type Shower } from "./coin-shower";
 import { EditChoreForm } from "./edit-chore-form";
 import { cn } from "@/lib/utils";
 import type { InstanceView, Member } from "@/server/chores";
@@ -49,6 +51,7 @@ export function ChoreItem({
   floors: { id: string; name: string }[];
   rooms: { id: string; name: string; floorId: string }[];
 }) {
+  const startShower = useCoinShower();
   const [pending, startTransition] = useTransition();
   const [assigneeId, setOptimisticAssignee] = useOptimistic(t.assigneeId);
   const [hidden, setHidden] = useOptimistic(false);
@@ -59,12 +62,23 @@ export function ChoreItem({
   const firstName = (id: string | null) =>
     id === currentUserId ? "Jag" : (members.find((m) => m.id === id)?.name.split(" ")[0] ?? "");
 
-  const run = (fn: () => Promise<ActionState>, optimistic?: () => void, success?: string) =>
+  const run = (fn: () => Promise<ActionState>, optimistic?: () => void, success?: string, shower?: Shower) =>
     startTransition(async () => {
       optimistic?.();
-      const result = await fn();
-      if (result.error) toast.error(result.error);
-      else if (success) toast.success(success);
+      let result: ActionState;
+      try {
+        result = await fn();
+      } catch (e) {
+        shower?.failed();
+        throw e;
+      }
+      if (result.error) {
+        shower?.failed();
+        toast.error(result.error);
+      } else {
+        shower?.saved();
+        if (success) toast.success(success);
+      }
     });
 
   if (hidden) return null;
@@ -94,7 +108,14 @@ export function ChoreItem({
             size="icon-lg"
             className="size-11 shrink-0 rounded-full"
             aria-label={`${t.title}: markera som klar`}
-            onClick={() => run(() => completeInstance(t.id), () => setHidden(true))}
+            onClick={(e) =>
+              run(
+                () => completeInstance(t.id),
+                () => setHidden(true),
+                undefined,
+                startShower(e.currentTarget.getBoundingClientRect(), COINS_PER_TASK),
+              )
+            }
           >
             <Check className="opacity-40" />
           </Button>
