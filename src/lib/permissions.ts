@@ -21,6 +21,8 @@ const ADULTS_ONLY = new Set<Action>([
   "task:delete",
   "task:uncomplete-others",
   "history:view-anyone",
+  "reward:manage",
+  "reward:give",
   "app:connect",
 ]);
 
@@ -41,6 +43,10 @@ export type Action =
   | "task:view"
   | "history:view-own"
   | "history:view-anyone"
+  /** Add, change and remove the rewards the family can buy with coins. */
+  | "reward:manage"
+  /** Give a bought reward, or decline to. */
+  | "reward:give"
   /** Let an app such as Claude act on the home, through its approval page. */
   | "app:connect";
 
