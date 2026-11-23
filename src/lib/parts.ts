@@ -18,7 +18,12 @@ export function rememberedPart(raw: string | null): PartKey {
   return raw === "listor" ? "listor" : "uppgifter";
 }
 
-/** The part whose tab is lit: Gjort lights the part it was opened from. */
+/** Whether a path is Hemmet or one of its pages (a routine's). */
+export function isHemmet(pathname: string): boolean {
+  return pathname === "/hemmet" || pathname.startsWith("/hemmet/");
+}
+
+/** The part whose tab is lit: Gjort and Hemmet light the part they were opened from. */
 export function litPart(pathname: string, remembered: PartKey): PartKey | null {
-  return pathname === "/gjort" ? remembered : partOf(pathname);
+  return pathname === "/gjort" || isHemmet(pathname) ? remembered : partOf(pathname);
 }

@@ -8,7 +8,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { useRef, useState, useTransition } from "react";
 import { authClient } from "@/lib/auth-client";
 import { coinsLabel, formatCoins } from "@/lib/coins";
-import { litPart } from "@/lib/parts";
+import { isHemmet, litPart } from "@/lib/parts";
 import { cn } from "@/lib/utils";
 import { coinPillClass, CoinDot } from "./coin-pill";
 import { useShownCoins } from "./coin-shower";
@@ -112,7 +112,13 @@ export function UserMenu({
                 Gjort
               </Menu.LinkItem>
               {canManageHome && (
-                <Menu.LinkItem render={<Link href="/hemmet" />} closeOnClick onClick={opening} className={itemClass}>
+                <Menu.LinkItem
+                  render={<Link href="/hemmet" />}
+                  closeOnClick
+                  onClick={pathname === "/hemmet" ? undefined : opening}
+                  aria-current={isHemmet(pathname) ? "page" : undefined}
+                  className={cn(itemClass, isHemmet(pathname) && "bg-muted font-medium")}
+                >
                   <Settings className="size-5" aria-hidden />
                   Hemmet
                 </Menu.LinkItem>

@@ -32,9 +32,15 @@ describe("litPart", () => {
     expect(litPart("/gjort", "listor")).toBe("listor");
     expect(litPart("/gjort", "uppgifter")).toBe("uppgifter");
   });
+  it("lights the part Hemmet and a routine's page were opened from", () => {
+    for (const p of ["/hemmet", "/hemmet/rutiner/1"]) {
+      expect(litPart(p, "listor")).toBe("listor");
+      expect(litPart(p, "uppgifter")).toBe("uppgifter");
+    }
+  });
   it("ignores the remembered part everywhere else", () => {
     expect(litPart("/", "listor")).toBe("uppgifter");
     expect(litPart("/listor", "uppgifter")).toBe("listor");
-    expect(litPart("/hemmet", "listor")).toBeNull();
+    expect(litPart("/login", "listor")).toBeNull();
   });
 });

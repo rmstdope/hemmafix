@@ -1,7 +1,7 @@
 import { filterSelect } from "./support/board";
 import type { Page } from "@playwright/test";
 import { logIn, seedChore, seedRooms } from "./support/family";
-import { chooseFromMenu, menuItem } from "./support/menu";
+import { chooseFromMenu, menuButton, menuItem } from "./support/menu";
 import { expect, test } from "./support/test";
 
 const parts = (page: Page) => page.getByRole("navigation", { name: "Delar" });
@@ -50,7 +50,7 @@ test("the bar is at the bottom on a phone and in the top strip on a desktop", as
   expect(overflow).toBe(false);
 });
 
-test("Gjort keeps the bar, Hemmet and login have none, and ← from Hemmet comes back", async ({ page, context }) => {
+test("Gjort keeps the bar, Hemmet has the strip only on a desktop, and ← from Hemmet comes back", async ({ page, context }) => {
   await logIn(context, "anna", "adult");
   await page.goto("/");
   await chooseFromMenu(page, "Gjort");
@@ -61,7 +61,8 @@ test("Gjort keeps the bar, Hemmet and login have none, and ← from Hemmet comes
 
   await chooseFromMenu(page, "Hemmet");
   await expect(page.getByRole("heading", { name: "Hemmet" })).toBeVisible();
-  await expect(parts(page)).toHaveCount(0);
+  // The tabs are the desktop strip's; a phone has no bottom bar here.
+  await expect(parts(page)).toHaveCount(isPhone(page) ? 0 : 1);
 
   await page.getByRole("link", { name: "Tillbaka" }).click();
   await expect(page.getByRole("heading", { name: "Uppgifter" })).toBeVisible();
@@ -176,4 +177,36 @@ test("Gjort opened from Listor goes back to Listor and lights it, also after a r
   await expect(page.getByRole("heading", { name: "Uppgifter" })).toBeVisible();
   await chooseFromMenu(page, "Gjort");
   await expect(parts(page).getByRole("link", { name: "Uppgifter" })).toHaveAttribute("aria-current", "page");
+});
+
+test("desktop Hemmet and a routine's page have the strip with the lit tab, the coin pill and the marked menu", async ({ page, context }) => {
+  await logIn(context, "anna", "adult");
+  await page.goto("/hemmet");
+  // Opened by a link with nothing remembered: Uppgifter is lit.
+  if (!isPhone(page)) {
+    await expect(parts(page).getByRole("link", { name: "Uppgifter" })).toHaveAttribute("aria-current", "page");
+    await expect(page.getByRole("button", { name: /mynt/ })).toBeVisible();
+    await expect(menuButton(page)).toBeVisible();
+  } else {
+    await expect(menuButton(page)).toHaveCount(0);
+    await expect(page.getByRole("button", { name: /mynt/ })).toHaveCount(0);
+  }
+
+  await page.goto("/listor");
+  await chooseFromMenu(page, "Hemmet");
+  await expect(page.getByRole("heading", { name: "Hemmet" })).toBeVisible();
+  if (isPhone(page)) return;
+  await expect(parts(page).getByRole("link", { name: "Listor" })).toHaveAttribute("aria-current", "page");
+  // The Hemmet item is marked, pressing it only closes the menu, and ← still goes to Listor.
+  const hemmet = await menuItem(page, "Hemmet");
+  await expect(hemmet).toHaveAttribute("aria-current", "page");
+  await hemmet.click();
+  await expect(page.getByRole("menuitem", { name: "Hemmet" })).toHaveCount(0);
+  await expect(page.getByRole("heading", { name: "Hemmet" })).toBeVisible();
+
+  await page.goto("/hemmet/rutiner/6f1c3b0e-5f8a-4c7e-9d2a-1b3c4d5e6f70");
+  await expect(parts(page).getByRole("link", { name: "Listor" })).toHaveAttribute("aria-current", "page");
+  await expect(await menuItem(page, "Hemmet")).toHaveAttribute("aria-current", "page");
+  await page.keyboard.press("Escape");
+  await expect(page.getByRole("button", { name: /mynt/ })).toBeVisible();
 });
