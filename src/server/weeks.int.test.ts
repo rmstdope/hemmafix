@@ -3,7 +3,7 @@ import { beforeEach, describe, expect, it } from "vitest";
 import { db } from "@/db";
 import { choreInstance, household, weekRecapSeen } from "@/db/schema";
 import { createFamily } from "../../test/integration/factories";
-import { createChore, listOpenInstances } from "./chores";
+import { completeInstance, createChore, listOpenInstances, uncompleteInstance } from "./chores";
 import { closeWeekRecap, getPendingRecap, getWeekCard, weekCounts } from "./weeks";
 
 let f: Awaited<ReturnType<typeof createFamily>>;
@@ -44,6 +44,22 @@ describe("weekCounts", () => {
     await done(f.adult, "2026-11-24T10:00:00Z", null);
     await done(f.adult, "2026-11-24T10:00:00Z", 0); // worth nothing, still a task
     expect(await weekCounts(f.adult, MONDAY)).toEqual({ tasks: 1, coins: 0, badges: 0 });
+  });
+});
+
+describe("weekCounts, through the real tick and undo", () => {
+  const open = async (title: string, by = f.adult) => {
+    await createChore(f.adult, { title, roomId: f.kitchen.id, kind: "once" });
+    return (await listOpenInstances(by, {})).find((i) => i.title === title)!.id;
+  };
+
+  it("counts a tick today and takes it back off when it is undone", async () => {
+    const id = await open("Diska");
+    await completeInstance(f.adult, id);
+    const thisWeek = await getWeekCard(f.adult);
+    expect(thisWeek.now.tasks).toBe(1);
+    await uncompleteInstance(f.adult, id);
+    expect((await getWeekCard(f.adult)).now).toEqual({ tasks: 0, coins: 0, badges: 0 });
   });
 });
 

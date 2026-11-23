@@ -252,11 +252,11 @@ export async function setHighFive(instanceId: string, on: boolean) {
 }
 
 /** The doer closes the notes about their cheered ticks; their other devices follow. */
+export async function closeHighFiveNotes(instanceIds: string[]) {
+  return act((m) => highFives.closeHighFiveNotes(m, instanceIds));
+}
+
 /** The person is through the "Din vecka" sheet; it stays closed on their other devices too. */
 export async function closeWeekRecap() {
   return act((m) => weeks.closeWeekRecap(m), { notify: false, refreshPage: false });
-}
-
-export async function closeHighFiveNotes(instanceIds: string[]) {
-  return act((m) => highFives.closeHighFiveNotes(m, instanceIds));
 }

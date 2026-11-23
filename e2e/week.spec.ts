@@ -2,7 +2,8 @@ import type { Page } from "@playwright/test";
 import { addDays, todayIso } from "../src/lib/dates";
 import { weekStart } from "../src/lib/weeks";
 import * as schema from "../src/db/schema";
-import { db, logIn, seedDone, seedRooms } from "./support/family";
+import { E2E_BASE_URL } from "./support/env";
+import { db, logIn, seedChore, seedDone, seedRooms } from "./support/family";
 import { expect, test } from "./support/test";
 
 const hydrated = (page: Page) => expect(page.locator('[data-hydrated="true"]')).toBeAttached();
@@ -57,8 +58,10 @@ test("the Monday sheet shows last week once, and does not come back", async ({ p
   await expect(sheet.getByRole("columnheader", { name: "Veckan före" })).toBeVisible();
   await expect(sheet.getByText("Ny vecka – nu kör vi!")).toBeVisible();
   await expect(sheet.getByRole("button", { name: "Fortsätt" })).toBeFocused();
+  const saved = page.waitForResponse((r) => r.request().method() === "POST");
   await sheet.getByRole("button", { name: "Fortsätt" }).click();
   await expect(sheet).toHaveCount(0);
+  await saved;
   await page.reload();
   await page.getByRole("heading", { name: "Uppgifter" }).waitFor();
   await expect(sheet).toHaveCount(0);
@@ -70,9 +73,37 @@ test("Esc also closes the Monday sheet for good", async ({ page, context }) => {
   await page.goto("/");
   const sheet = page.getByRole("dialog", { name: "Din vecka" });
   await expect(sheet).toBeVisible();
+  const saved = page.waitForResponse((r) => r.request().method() === "POST");
   await page.keyboard.press("Escape");
   await expect(sheet).toHaveCount(0);
+  await saved;
   await page.goto("/jag");
   await hydrated(page);
   await expect(page.getByRole("dialog", { name: "Din vecka" })).toHaveCount(0);
+});
+
+test("a child gets the Monday sheet too", async ({ page, context }) => {
+  const bo = await logIn(context, "bo", "child");
+  await seenLastWeek(bo.id);
+  await page.goto("/");
+  await expect(page.getByRole("dialog", { name: "Din vecka" })).toBeVisible();
+});
+
+test("the card follows a tick made on another device, with no reload", async ({ page, context }) => {
+  await logIn(context, "anna", "adult");
+  const rooms = await seedRooms("Kök");
+  await seedChore({ title: "Diska", roomId: rooms["Kök"]!.id, recurrence: null });
+  await page.goto("/jag");
+  await hydrated(page);
+  await expect(card(page).getByRole("row", { name: /^Uppgifter 0 0$/ })).toBeVisible();
+
+  const other = await context.browser()!.newContext({ baseURL: E2E_BASE_URL, locale: "sv-SE" });
+  await other.addCookies(await context.cookies());
+  const phone = await other.newPage();
+  await phone.goto("/");
+  await phone.getByRole("button", { name: "Diska: markera som klar" }).click();
+  await expect(phone.getByRole("button", { name: "Diska: markera som klar" })).toHaveCount(0);
+
+  await expect(card(page).getByRole("row", { name: /^Uppgifter 1 0$/ })).toBeVisible();
+  await other.close();
 });
