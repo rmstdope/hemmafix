@@ -8,10 +8,12 @@ import {
   assignInstance,
   completeInstance,
   deleteChore,
+  setHighFive,
   uncompleteInstance,
   type ActionState,
 } from "@/app/actions";
 import { Button } from "@/components/ui/button";
+import { joinNames } from "@/lib/high-fives";
 import { DEFAULT_COINS } from "@/lib/coins";
 import { formatDue } from "@/lib/dates";
 import { roomLabel } from "@/lib/floors";
@@ -34,6 +36,7 @@ export function ChoreItem({
   showFloors,
   floors,
   rooms,
+  highFive,
 }: {
   instance: InstanceView;
   members: Member[];
@@ -51,6 +54,8 @@ export function ChoreItem({
   /** The home's floors and rooms, for editing the task (adults). */
   floors: { id: string; name: string }[];
   rooms: { id: string; name: string; floorId: string }[];
+  /** On a done row: whether the person may cheer it, whether they did, and who cheered their own. */
+  highFive?: { canGive: boolean; givenByMe: boolean; names: string[] };
 }) {
   const startShower = useCoinShower();
   const [pending, startTransition] = useTransition();
@@ -58,6 +63,8 @@ export function ChoreItem({
   const [hidden, setHidden] = useOptimistic(false);
   const [expanded, setExpanded] = useState(false);
   const [editing, setEditing] = useState(false);
+  const [showWho, setShowWho] = useState(false);
+  const [cheered, setCheered] = useOptimistic(highFive?.givenByMe ?? false);
   const completed = t.completedAt !== null;
   const due = completed || !showDue ? null : formatDue(t.dueDate, today);
   const firstName = (id: string | null) =>
@@ -141,6 +148,30 @@ export function ChoreItem({
           </p>
         </div>
 
+        {completed && highFive && t.completedById === currentUserId && highFive.names.length > 0 && (
+          <Button
+            variant="ghost"
+            className="h-10 shrink-0 px-2"
+            aria-expanded={showWho}
+            onClick={() => setShowWho((v) => !v)}
+          >
+            👏 {highFive.names.length}
+          </Button>
+        )}
+
+        {completed && highFive?.canGive && t.completedById !== currentUserId && (
+          <Button
+            variant={cheered ? "secondary" : "ghost"}
+            size="icon-lg"
+            className="size-11 shrink-0"
+            aria-label={cheered ? "Ta tillbaka high five" : "Ge high five"}
+            aria-pressed={cheered}
+            onClick={() => run(() => setHighFive(t.id, !cheered), () => setCheered(!cheered))}
+          >
+            <span aria-hidden>👏</span>
+          </Button>
+        )}
+
         {t.coins !== null && <CoinBadge coins={t.coins} faded={completed} />}
 
         {!completed && !canManage && assigneeId && (
@@ -178,6 +209,10 @@ export function ChoreItem({
           </>
         )}
       </div>
+
+      {showWho && highFive && highFive.names.length > 0 && (
+        <p className="border-t px-3 py-2 text-sm text-muted-foreground">{joinNames(highFive.names)}</p>
+      )}
 
       {expanded && canManage && !completed && editing && (
         <div className="border-t px-3 py-3">
