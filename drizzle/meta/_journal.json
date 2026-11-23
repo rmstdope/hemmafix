@@ -71,6 +71,13 @@
       "when": 1795398079381,
       "tag": "0009_lists",
       "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1795443346517,
+      "tag": "0010_coins",
+      "breakpoints": true
     }
   ]
 }

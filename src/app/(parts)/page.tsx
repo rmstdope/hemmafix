@@ -57,7 +57,7 @@ async function Board({ searchParams }: { searchParams: PageProps<"/">["searchPar
     <>
       <LiveUpdates />
       <header className="mb-4 flex items-center justify-between gap-2">
-        <div>
+        <div className="min-w-0 [&>p]:truncate">
           <h1 className="text-xl font-semibold">Uppgifter</h1>
           <p className="text-sm text-muted-foreground">{home?.name}</p>
         </div>

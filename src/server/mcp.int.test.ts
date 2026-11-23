@@ -3,7 +3,7 @@ import { and, eq, isNull } from "drizzle-orm";
 import { db, pg } from "@/db";
 import { chore, choreInstance, floor, household, membership, room, user } from "@/db/schema";
 import { todayIso } from "@/lib/dates";
-import { TASKS_CHANNEL } from "./chores";
+import { getCoinTotal, TASKS_CHANNEL } from "./chores";
 
 process.env.ALLOWED_EMAILS = "anna@example.com, bo@example.com, eve@example.com";
 process.env.BETTER_AUTH_SECRET = "integration-secret-not-for-production-0123456789";
@@ -274,6 +274,17 @@ describe("the task tools", () => {
     expect(said(await taskCall("anna", "angra_avbockning", { instanceId }))).toBe("Diska är inte längre avbockad.");
     const open = await openOf(choreId);
     expect(open.map((i) => i.id)).toEqual([instanceId]);
+  });
+
+  it("earns coins for a tick and takes them back with the undo", async () => {
+    const roomId = await seedKitchen();
+    const { instanceId } = await createDiska(roomId);
+    const anna = { userId: "anna", householdId: homeId, role: "adult" as const, name: "Anna", image: null };
+    expect(await getCoinTotal(anna)).toBe(0);
+    await taskCall("anna", "bocka_av_syssla", { instanceId });
+    expect(await getCoinTotal(anna)).toBe(10);
+    await taskCall("anna", "angra_avbockning", { instanceId });
+    expect(await getCoinTotal(anna)).toBe(0);
   });
 
   it("ticking off twice says so", async () => {
