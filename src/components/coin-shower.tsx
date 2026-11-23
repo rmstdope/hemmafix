@@ -16,6 +16,7 @@ import { FLIGHT_MS, flightPoint, flightScale, STAGGER_MS, type Point } from "@/l
 import { initialTally, isFinished, SHOWER_COINS, tallyReducer } from "@/lib/coin-tally";
 import { coinsLabel, formatCoins } from "@/lib/coins";
 import { openChest } from "@/app/actions";
+import { withStreakBonus } from "@/lib/streak";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { ChestCard } from "./chest-card";
@@ -26,10 +27,12 @@ import { playClink, unlockSound } from "./coin-sound";
 export type Shower = { saved: () => void; failed: () => void };
 
 type Api = {
-  start: (origin: DOMRect, coins: number) => Shower;
+  /** `streakBonus` is for a task's own coins only: a chest's are never raised. */
+  start: (origin: DOMRect, coins: number, streakBonus?: boolean) => Shower;
   /** The pills on the page, to bump and to land on. */
   registerPill: (pill: RefObject<HTMLElement | null>) => () => void;
   reportTotal: (total: number) => void;
+  reportStreakDay: (day: number) => void;
   shown: number | null;
   glow: boolean;
 };
@@ -45,6 +48,7 @@ const Context = createContext<Api>({
   start: () => idle,
   registerPill: () => () => {},
   reportTotal: () => {},
+  reportStreakDay: () => {},
   shown: null,
   glow: false,
 });
@@ -60,6 +64,12 @@ export function useShownCoins(total: number, pill: RefObject<HTMLElement | null>
   useEffect(() => reportTotal(total), [reportTotal, total]);
   useEffect(() => registerPill(pill), [registerPill, pill]);
   return { coins: shown ?? total, glow };
+}
+
+/** Tells the shower which streak day a tick made now falls on, so its coins include the extra. */
+export function useReportStreakDay(day: number) {
+  const { reportStreakDay } = useContext(Context);
+  useEffect(() => reportStreakDay(day), [reportStreakDay, day]);
 }
 
 const visible = (el: HTMLElement) => el.getClientRects().length > 0;
@@ -89,6 +99,7 @@ export function CoinShowerProvider({ children }: { children: ReactNode }) {
   const baseline = useRef(0);
   const overriding = useRef(false);
   const serverNow = useRef(0);
+  const streakDay = useRef(1);
 
   const later = useCallback((fn: () => void, ms: number) => {
     const timer = setTimeout(() => {
@@ -120,13 +131,18 @@ export function CoinShowerProvider({ children }: { children: ReactNode }) {
     setServer(total);
   }, []);
 
+  const reportStreakDay = useCallback((day: number) => {
+    streakDay.current = day;
+  }, []);
+
   const registerPill = useCallback((pill: RefObject<HTMLElement | null>) => {
     pills.current.add(pill);
     return () => void pills.current.delete(pill);
   }, []);
 
   const start = useCallback(
-    (origin: DOMRect, coins: number): Shower => {
+    (origin: DOMRect, ownCoins: number, streakBonus = true): Shower => {
+      const coins = streakBonus ? withStreakBonus(ownCoins, streakDay.current) : ownCoins;
       if (coins <= 0) return idle;
       unlockSound();
       const id = nextId.current++;
@@ -228,7 +244,7 @@ export function CoinShowerProvider({ children }: { children: ReactNode }) {
         list?.setAttribute("tabindex", "-1");
         list?.focus({ preventScroll: true });
       }, 0);
-      const shower = start(origin, chest.coins);
+      const shower = start(origin, chest.coins, false);
       openChest(chest.id).then(
         (result) => {
           if (result.error) {
@@ -243,8 +259,8 @@ export function CoinShowerProvider({ children }: { children: ReactNode }) {
   );
 
   const api = useMemo<Api>(
-    () => ({ start, registerPill, reportTotal, shown: tally.shown, glow }),
-    [start, registerPill, reportTotal, tally.shown, glow],
+    () => ({ start, registerPill, reportTotal, reportStreakDay, shown: tally.shown, glow }),
+    [start, registerPill, reportTotal, reportStreakDay, tally.shown, glow],
   );
   const total = tally.shown ?? server;
 

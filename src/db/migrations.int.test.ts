@@ -388,16 +388,40 @@ describe("0014: week recap", () => {
   });
 });
 
-describe("0015: looks", () => {
+describe("0015: the streak day", () => {
+  beforeEach(reset);
+
+  it("only adds a nullable column, so the previous release keeps working and old ticks count for no day", async () => {
+    await migrateUpTo(sql, "0014_awesome_frank_castle");
+    const [home] = await sql`insert into household (name) values ('Hemma') returning id`;
+    await sql`insert into "user" (id, name, email, email_verified) values ('a', 'Anna', 'a@example.com', true)`;
+    await sql`insert into floor (household_id, name, position) values (${home!.id}, '1', 1)`;
+    const [r] = await sql`insert into room (household_id, floor_id, name)
+      select ${home!.id}, id, 'Kök' from floor returning id`;
+    const [c] = await sql`insert into chore (household_id, room_id, title) values (${home!.id}, ${r!.id}, 'Diska') returning id`;
+    await sql`insert into chore_instance (chore_id, household_id, completed_at, completed_by_id, coins)
+      values (${c!.id}, ${home!.id}, now(), 'a', 10)`;
+
+    await migrateUpTo(sql, "0015_streak_day");
+
+    expect(await sql`select ticked_on from chore_instance`).toEqual([{ ticked_on: null }]);
+    // The previous release's tick, which does not know the column, still works.
+    await sql`insert into chore_instance (chore_id, household_id) values (${c!.id}, ${home!.id})`;
+    await sql`update chore_instance set completed_at = now(), completed_by_id = 'a', coins = 10 where completed_at is null`;
+    expect(await sql`select count(*)::int as n from chore_instance where ticked_on is null`).toEqual([{ n: 2 }]);
+  });
+});
+
+describe("0016: looks", () => {
   beforeEach(reset);
 
   it("only adds a table and nullable columns, so the previous release keeps working; one purchase per person and look", async () => {
-    await migrateUpTo(sql, "0014_awesome_frank_castle");
+    await migrateUpTo(sql, "0015_streak_day");
     const [home] = await sql`insert into household (name) values ('Hemma') returning id`;
     await sql`insert into "user" (id, name, email, email_verified) values ('a', 'Anna', 'a@example.com', true)`;
     await sql`insert into membership (user_id, household_id, role) values ('a', ${home!.id}, 'adult')`;
 
-    await migrateUpTo(sql, "0015_looks");
+    await migrateUpTo(sql, "0016_looks");
 
     // The previous release, which does not know the columns, still reads and writes memberships.
     await sql`update membership set role = 'child' where user_id = 'a'`;

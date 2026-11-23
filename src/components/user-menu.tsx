@@ -11,11 +11,12 @@ import { coinsLabel, formatCoins } from "@/lib/coins";
 import { isHemmet, litPart } from "@/lib/parts";
 import { cn } from "@/lib/utils";
 import { coinPillClass, CoinDot } from "./coin-pill";
-import { useShownCoins } from "./coin-shower";
+import { useReportStreakDay, useShownCoins } from "./coin-shower";
 import { setSoundOn, useSoundOn } from "./sound-setting";
 import { unlockSound } from "./coin-sound";
 import { MemberAvatar } from "./member-avatar";
 import { rememberPart, useRememberedPart } from "./part-links";
+import { StreakPill } from "./streak-pill";
 
 const itemClass =
   "flex min-h-11 w-full cursor-default items-center gap-3 rounded-lg px-3 text-sm outline-none select-none data-[highlighted]:bg-muted data-[disabled]:opacity-50";
@@ -33,6 +34,8 @@ export function UserMenu({
   role,
   canManageHome,
   coins: serverCoins,
+  streak,
+  tickStreakDay,
 }: {
   name: string;
   image: string | null;
@@ -40,9 +43,14 @@ export function UserMenu({
   role: "adult" | "child";
   canManageHome: boolean;
   coins: number;
+  /** Days in a row with a tick-off. */
+  streak: number;
+  /** The streak day a tick made now would fall on, for the shower's total. */
+  tickStreakDay: number;
 }) {
   const pill = useRef<HTMLButtonElement>(null);
   const { coins, glow } = useShownCoins(serverCoins, pill);
+  useReportStreakDay(tickStreakDay);
   const router = useRouter();
   const pathname = usePathname();
   const remembered = useRememberedPart();
@@ -65,6 +73,7 @@ export function UserMenu({
 
   return (
     <div className="flex shrink-0 items-center gap-2">
+      <StreakPill run={streak} />
       <Popover.Root {...panelState("coins")}>
         <Popover.Trigger
           ref={pill}

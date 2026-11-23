@@ -63,7 +63,13 @@ export function JagParts({ framsteg, butik }: { framsteg: ReactNode; butik: Reac
           );
         })}
       </div>
-      {current === "framsteg" ? framsteg : current === "butik" ? butik : <div className="min-h-20" />}
+      {current === "butik" ? (
+        butik
+      ) : (
+        // Also before hydration, when the stored part is not known yet: Framsteg is the default, so
+        // nothing jumps in on the usual load.
+        framsteg
+      )}
     </div>
   );
 }

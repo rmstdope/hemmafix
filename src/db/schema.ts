@@ -462,6 +462,11 @@ export const choreInstance = pgTable(
      * for open instances and for ticks made before coins existed, which earn nothing.
      */
     coins: integer("coins"),
+    /**
+     * The Europe/Stockholm day of the tick, for the streak: set when ticked, cleared by undo.
+     * Null for open instances and for every tick made before streaks existed, which count for no day.
+     */
+    tickedOn: date("ticked_on", { mode: "string" }),
     ...timestamps,
   },
   (t) => [

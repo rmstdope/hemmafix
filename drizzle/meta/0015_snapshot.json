@@ -1,5 +1,5 @@
 {
-  "id": "2fddd159-e043-4cb9-b532-9a917e900163",
+  "id": "418e8986-564c-4607-8fc9-b4b6e3ee8462",
   "prevId": "e1d20ceb-76db-4a31-ad81-55d1d05788a6",
   "version": "7",
   "dialect": "postgresql",
@@ -466,6 +466,12 @@
         "coins": {
           "name": "coins",
           "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "ticked_on": {
+          "name": "ticked_on",
+          "type": "date",
           "primaryKey": false,
           "notNull": false
         },
@@ -1162,109 +1168,6 @@
       "checkConstraints": {},
       "isRLSEnabled": false
     },
-    "public.look_purchase": {
-      "name": "look_purchase",
-      "schema": "",
-      "columns": {
-        "id": {
-          "name": "id",
-          "type": "uuid",
-          "primaryKey": true,
-          "notNull": true,
-          "default": "gen_random_uuid()"
-        },
-        "household_id": {
-          "name": "household_id",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "user_id": {
-          "name": "user_id",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "kind": {
-          "name": "kind",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "key": {
-          "name": "key",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "price": {
-          "name": "price",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "created_at": {
-          "name": "created_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "now()"
-        }
-      },
-      "indexes": {},
-      "foreignKeys": {
-        "look_purchase_household_id_household_id_fk": {
-          "name": "look_purchase_household_id_household_id_fk",
-          "tableFrom": "look_purchase",
-          "tableTo": "household",
-          "columnsFrom": [
-            "household_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "cascade",
-          "onUpdate": "no action"
-        },
-        "look_purchase_user_id_user_id_fk": {
-          "name": "look_purchase_user_id_user_id_fk",
-          "tableFrom": "look_purchase",
-          "tableTo": "user",
-          "columnsFrom": [
-            "user_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "cascade",
-          "onUpdate": "no action"
-        }
-      },
-      "compositePrimaryKeys": {},
-      "uniqueConstraints": {
-        "look_purchase_user_look_unique": {
-          "name": "look_purchase_user_look_unique",
-          "nullsNotDistinct": false,
-          "columns": [
-            "user_id",
-            "kind",
-            "key"
-          ]
-        }
-      },
-      "policies": {},
-      "checkConstraints": {
-        "look_purchase_kind_check": {
-          "name": "look_purchase_kind_check",
-          "value": "\"look_purchase\".\"kind\" in ('frame', 'theme', 'coin')"
-        },
-        "look_purchase_price_check": {
-          "name": "look_purchase_price_check",
-          "value": "\"look_purchase\".\"price\" >= 0"
-        }
-      },
-      "isRLSEnabled": false
-    },
     "public.membership": {
       "name": "membership",
       "schema": "",
@@ -1291,24 +1194,6 @@
         },
         "list_order": {
           "name": "list_order",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "frame": {
-          "name": "frame",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "theme": {
-          "name": "theme",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "coin_look": {
-          "name": "coin_look",
           "type": "text",
           "primaryKey": false,
           "notNull": false
