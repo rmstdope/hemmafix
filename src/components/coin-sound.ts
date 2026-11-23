@@ -1,3 +1,5 @@
+import { readSoundOn } from "./sound-setting";
+
 let context: AudioContext | undefined;
 
 function ready() {
@@ -8,6 +10,7 @@ function ready() {
 
 /** Call inside the tap itself: iOS only lets sound start from a gesture, and the clinks come later. */
 export function unlockSound() {
+  if (!readSoundOn()) return;
   try {
     ready();
   } catch {
@@ -15,8 +18,17 @@ export function unlockSound() {
   }
 }
 
-/** One short, soft coin clink. Follows the device's volume and silent mode; fails silently. */
+/**
+ * One short, soft coin clink with a tap of vibration where the phone can. Follows the device's
+ * volume and silent mode and the device's own switch; fails silently.
+ */
 export function playClink() {
+  if (!readSoundOn()) return;
+  try {
+    navigator.vibrate?.(15);
+  } catch {
+    // Not every browser lets a page vibrate.
+  }
   try {
     const context = ready();
     const now = context.currentTime;
