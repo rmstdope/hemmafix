@@ -5,7 +5,7 @@ import { household, membership, rewardPurchase } from "@/db/schema";
 import { UserError } from "@/lib/errors";
 import { ForbiddenError } from "@/lib/permissions";
 import { createFamily, createUser } from "../../test/integration/factories";
-import { completeInstance, createChore, getCoinTotal, listOpenInstances } from "./chores";
+import { completeInstance, createChore, getCoinTotal, getLifetimeCoins, listOpenInstances } from "./chores";
 import {
   addReward,
   buyReward,
@@ -80,6 +80,8 @@ describe("buying", () => {
     const r = await glass(50);
     await buyReward(f.child, r.id);
     expect(await getCoinTotal(f.child)).toBe(30);
+    // What level comes from is what was earned, so spending leaves it alone.
+    expect(await getLifetimeCoins(f.child)).toBe(80);
     await expect(buyReward(f.child, r.id)).rejects.toThrow("Du har inte tillräckligt med mynt.");
     const cheap = await glass(30);
     await buyReward(f.child, cheap.id);
