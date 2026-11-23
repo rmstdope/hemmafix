@@ -1,12 +1,13 @@
 import { can } from "@/lib/permissions";
-import { getCoinTotal } from "@/server/chores";
+import { tickDay } from "@/lib/streak";
+import { getCoinTotal, getStreak } from "@/server/chores";
 import { requireMember } from "@/server/dal";
 import { UserMenu } from "./user-menu";
 
 /** The top-right corner of a part: the member's picture, which opens the menu. */
 export async function PageCorner() {
   const member = await requireMember();
-  const coins = await getCoinTotal(member);
+  const [coins, streak] = await Promise.all([getCoinTotal(member), getStreak(member)]);
   return (
     <UserMenu
       name={member.name}
@@ -14,6 +15,8 @@ export async function PageCorner() {
       role={member.role}
       canManageHome={can(member.role, "household:rename")}
       coins={coins}
+      streak={streak.run}
+      tickStreakDay={tickDay(streak)}
     />
   );
 }

@@ -18,6 +18,7 @@ import {
   editChore,
   getCoinTotal,
   getLifetimeCoins,
+  getStreak,
   listCompletedBy,
   listOpenInstances,
   listRecentlyCompleted,
@@ -934,5 +935,149 @@ describe("daily chest", () => {
     await expect(openChest(f.adult, chestId!)).rejects.toThrow(UserError);
     await expect(openChest(f.child, "00000000-0000-4000-8000-000000000000")).rejects.toThrow(UserError);
     await expect(openChest(f.child, "nonsense")).rejects.toThrow();
+  });
+});
+
+describe("streaks", () => {
+  const today = () => todayIso();
+  let n = 0;
+
+  /** A tick by `actor` on `day`, made as if long ago: it counts as a streak day and gave 10. */
+  async function tickedOn(actor: typeof f.child, day: string) {
+    const title = `Gammal ${n++}`;
+    await createChore(f.adult, once(title));
+    const [t] = await openOf(title);
+    await completeInstance(actor, t!.id);
+    await db
+      .update(choreInstance)
+      .set({ tickedOn: day, completedAt: new Date(`${day}T12:00:00Z`), coins: 10 })
+      .where(eq(choreInstance.id, t!.id));
+  }
+  const daysBack = async (actor: typeof f.child, count: number, from = 1) => {
+    for (let i = from; i < from + count; i++) await tickedOn(actor, addDays(today(), -i));
+  };
+  /** Ticks a fresh 10-coin task now and returns what the tick gave. */
+  async function tickNow(actor: typeof f.child, title = `Ny ${n++}`) {
+    await createChore(f.adult, once(title));
+    const [t] = await openOf(title);
+    await completeInstance(actor, t!.id);
+    const [row] = await db.select().from(choreInstance).where(eq(choreInstance.id, t!.id));
+    return { id: t!.id, coins: row!.coins, tickedOn: row!.tickedOn };
+  }
+
+  it("is 0 for someone who has not ticked anything", async () => {
+    expect(await getStreak(f.child)).toEqual({ run: 0, ticked: false });
+  });
+
+  it("makes today a day, with no bonus on the first", async () => {
+    const tick = await tickNow(f.child);
+    expect(tick).toMatchObject({ coins: 10, tickedOn: today() });
+    expect(await getStreak(f.child)).toEqual({ run: 1, ticked: true });
+  });
+
+  it("gives nothing extra on day 3", async () => {
+    await daysBack(f.child, 2);
+    expect((await tickNow(f.child)).coins).toBe(10);
+  });
+
+  it("gives +10 % on day 4, rounded up", async () => {
+    await daysBack(f.child, 3);
+    expect((await tickNow(f.child)).coins).toBe(11);
+  });
+
+  it("gives +20 % from day 7, rounded up", async () => {
+    await daysBack(f.child, 6);
+    expect((await tickNow(f.child)).coins).toBe(12);
+  });
+
+  it("never raises a chest's coins", async () => {
+    await createChore(f.adult, once("Diska"));
+    const [t] = await open();
+    await daysBack(f.child, 6); // each seeding tick takes today's chest first
+    await db.delete(dailyChest);
+    const done = await completeInstance(f.child, t!.id);
+    expect(done.chestCoins).toBeGreaterThanOrEqual(5);
+    expect(done.chestCoins).toBeLessThanOrEqual(10);
+  });
+
+  it("keeps the same bonus for the next ticks of the same day", async () => {
+    await daysBack(f.child, 3);
+    expect((await tickNow(f.child)).coins).toBe(11);
+    expect((await tickNow(f.child)).coins).toBe(11);
+    expect(await getStreak(f.child)).toEqual({ run: 4, ticked: true });
+  });
+
+  it("lives through a day without a tick yet, so the first tick of the day gets the next day's bonus", async () => {
+    await daysBack(f.child, 3);
+    expect(await getStreak(f.child)).toEqual({ run: 3, ticked: false });
+    expect((await tickNow(f.child)).coins).toBe(11);
+  });
+
+  it("breaks after a full day without a tick", async () => {
+    await daysBack(f.child, 5, 2);
+    expect(await getStreak(f.child)).toEqual({ run: 0, ticked: false });
+    expect((await tickNow(f.child)).coins).toBe(10);
+    expect(await getStreak(f.child)).toEqual({ run: 1, ticked: true });
+  });
+
+  it("does not count ticks from before streaks existed", async () => {
+    const old = await tickNow(f.child);
+    await db.update(choreInstance).set({ tickedOn: null }).where(eq(choreInstance.id, old.id));
+    expect(await getStreak(f.child)).toEqual({ run: 0, ticked: false });
+  });
+
+  it("counts for the person who ticked, not for the rest of the home", async () => {
+    await tickNow(f.child);
+    expect(await getStreak(f.adult)).toEqual({ run: 0, ticked: false });
+  });
+
+  it("counts a task worth 0 coins as a day", async () => {
+    await createChore(f.adult, once("Noll", { coins: "0" }));
+    const [t] = await openOf("Noll");
+    await completeInstance(f.child, t!.id);
+    expect(await getStreak(f.child)).toEqual({ run: 1, ticked: true });
+  });
+
+  it("undoing the only tick of today takes today back, and takes back exactly the coins it gave", async () => {
+    await daysBack(f.child, 3);
+    const before = await getCoinTotal(f.child);
+    const tick = await tickNow(f.child);
+    expect(await getCoinTotal(f.child)).toBe(before + 11);
+
+    await uncompleteInstance(f.child, tick.id);
+
+    expect(await getStreak(f.child)).toEqual({ run: 3, ticked: false });
+    expect(await getCoinTotal(f.child)).toBe(before);
+    expect((await db.select().from(choreInstance).where(eq(choreInstance.id, tick.id)))[0]!.tickedOn).toBeNull();
+  });
+
+  it("takes a child's day and coins from the child, not the adult, when an adult undoes their tick", async () => {
+    await daysBack(f.child, 3);
+    const tick = await tickNow(f.child);
+    await tickNow(f.adult);
+    const before = await getCoinTotal(f.child);
+
+    await uncompleteInstance(f.adult, tick.id);
+
+    expect(await getStreak(f.child)).toEqual({ run: 3, ticked: false });
+    expect(await getCoinTotal(f.child)).toBe(before - 11);
+    expect(await getStreak(f.adult)).toEqual({ run: 1, ticked: true });
+  });
+
+  it("keeps today when one of two ticks is undone", async () => {
+    const a = await tickNow(f.child);
+    await tickNow(f.child);
+    await uncompleteInstance(f.child, a.id);
+    expect(await getStreak(f.child)).toEqual({ run: 1, ticked: true });
+  });
+
+  it("goes by the Europe/Stockholm day around midnight", async () => {
+    vi.useFakeTimers({ toFake: ["Date"] });
+    try {
+      vi.setSystemTime(new Date("2026-01-14T23:30:00Z")); // 00:30 on the 15th in Stockholm
+      expect((await tickNow(f.child)).tickedOn).toBe("2026-01-15");
+    } finally {
+      vi.useRealTimers();
+    }
   });
 });
