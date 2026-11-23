@@ -1,0 +1,122 @@
+<!doctype html><html lang="sv"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>hf-lzb · Märken · round 4</title><style>body{margin:0;background:#f4f4f5;font-family:system-ui,-apple-system,sans-serif;color:#18181b}
+.wrap{display:flex;gap:28px;flex-wrap:wrap;padding:20px;align-items:flex-start}
+h1{font-size:18px;margin:16px 20px 0} .sub{margin:4px 20px;color:#555;font-size:14px;max-width:900px}
+.cap{font-size:13px;color:#555;margin:6px 0 0;max-width:360px}
+.phone{width:360px;height:640px;background:#fff;border:10px solid #222;border-radius:34px;position:relative;overflow:hidden;display:flex;flex-direction:column}
+.narrow{width:300px}
+.desk{width:820px;height:440px;background:#fff;border:1px solid #ccc;border-radius:8px;overflow:hidden;display:flex;flex-direction:column;position:relative}
+.bar{height:6px;background:#ddd} .content{flex:1;overflow:hidden;padding:16px;position:relative}
+.desk .content{width:640px;margin:0 auto;padding:16px 0}
+.hdr{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;position:relative}
+.hdr .t{font-size:20px;font-weight:600}.hdr .h{font-size:13px;color:#71717a}
+.icons{display:flex;gap:4px;align-items:center;color:#71717a;font-size:13px;position:relative}
+.av{width:34px;height:34px;border-radius:50%;background:#a5b4fc;display:flex;align-items:center;justify-content:center;font-size:13px;color:#fff}
+.av.ring{box-shadow:0 0 0 3px #c7d2fe}
+.avbtn{display:flex;align-items:center;gap:3px;padding:3px;border-radius:999px}
+.avbtn.open{background:#f4f4f5}
+.btn{border:1px solid #e4e4e7;border-radius:10px;padding:10px 12px;margin-bottom:12px;color:#3f3f46;font-size:14px}
+.chips{display:flex;gap:6px;margin-bottom:12px}.chip{border:1px solid #e4e4e7;border-radius:999px;padding:4px 10px;font-size:13px}
+.chip.on{background:#18181b;color:#fff}
+.grp{font-size:12px;font-weight:600;color:#71717a;margin:10px 0 6px;text-transform:uppercase;letter-spacing:.03em}
+.row{border:1px solid #e4e4e7;border-radius:12px;padding:10px 12px;margin-bottom:8px;display:flex;gap:10px;align-items:center;font-size:14px}
+.box{width:18px;height:18px;border:2px solid #a1a1aa;border-radius:5px}
+.meta{font-size:12px;color:#71717a}
+.tabs{border-top:1px solid #e4e4e7;display:flex;justify-content:space-around;padding:6px 0 18px;background:#fff}
+.tab{display:flex;flex-direction:column;align-items:center;font-size:12px;color:#71717a;gap:2px;min-width:70px}
+.tab .i{font-size:20px}.tab.on{color:#18181b;font-weight:600}
+.dtabs{display:flex;gap:4px;margin-left:24px}.dtab{padding:6px 12px;border-radius:8px;font-size:14px;color:#71717a}
+.dtab.on{background:#f4f4f5;color:#18181b;font-weight:600}
+.dtop{display:flex;align-items:center;border-bottom:1px solid #e4e4e7;padding:10px 90px;position:relative}
+.dtop .t{font-size:18px;font-weight:600}.dtop .sp{flex:1}
+.empty{border:1px dashed #d4d4d8;border-radius:12px;padding:28px;text-align:center;color:#71717a;font-size:14px;margin-top:30px}
+.menu{position:absolute;right:0;top:44px;width:224px;max-width:calc(100vw - 32px);background:#fff;border:1px solid #e4e4e7;border-radius:12px;box-shadow:0 8px 24px rgba(0,0,0,.14);padding:6px;z-index:5;font-size:15px;color:#18181b}
+.menu .who{padding:8px 10px 10px;border-bottom:1px solid #f0f0f1;margin-bottom:4px}
+.menu .who b{display:block;font-size:14px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.menu .who span{font-size:12px;color:#71717a}
+.mi{display:flex;align-items:center;gap:10px;padding:0 10px;height:44px;border-radius:8px}
+.mi .g{width:18px;color:#71717a;text-align:center}
+.mi.focus{outline:2px solid #6366f1;outline-offset:-2px}
+.mi.cur{background:#f4f4f5;font-weight:600}
+.mi.dis{color:#a1a1aa}
+.sep{height:1px;background:#f0f0f1;margin:4px 0}
+.dim{position:absolute;inset:0;background:transparent}
+.note{background:#fff7d6;border:1px solid #e8d27a;border-radius:8px;padding:8px 10px;font-size:13px;max-width:340px;margin-top:8px}
+
+.coin{width:18px;height:18px;border-radius:50%;background:radial-gradient(circle at 35% 35%,#fde68a,#f59e0b 70%,#b45309);box-shadow:inset 0 0 0 1.5px #d97706;display:inline-block;flex:none}
+.coin.s{width:15px;height:15px}
+.tot{display:flex;align-items:center;gap:5px;font-weight:600;font-size:14px;color:#18181b;font-variant-numeric:tabular-nums;white-space:nowrap}
+.tot.pill{background:#fef3c7;border:1px solid #fcd34d;border-radius:999px;padding:3px 10px 3px 4px}
+.tot.bare{padding:0 4px}
+.tot.word{font-weight:500;color:#3f3f46;padding:0 4px}
+.tot.word b{font-weight:700;color:#18181b}
+.right{display:flex;align-items:center;gap:8px}
+.row.done{opacity:.55}.box.on{background:#16a34a;border-color:#16a34a;color:#fff;font-size:12px;display:flex;align-items:center;justify-content:center}
+.toast{position:absolute;left:16px;right:16px;bottom:16px;background:#18181b;color:#fff;border-radius:10px;padding:10px 12px;font-size:14px;display:flex;justify-content:space-between}
+.toast u{text-decoration:none;color:#a5b4fc;font-weight:600}
+.flash{box-shadow:0 0 0 3px #fde68a}
+h2{font-size:15px;margin:22px 20px 0;color:#3f3f46}
+.pop{position:absolute;right:40px;top:44px;width:230px;background:#fff;border:1px solid #e4e4e7;border-radius:12px;box-shadow:0 8px 24px rgba(0,0,0,.14);padding:12px;font-size:14px;z-index:5}
+.pop b{display:block;margin-bottom:4px}
+.pop span{color:#71717a;font-size:13px}
+
+.card{border:1px solid #e4e4e7;border-radius:14px;padding:12px;margin-bottom:10px;font-size:14px}
+.lvl{display:flex;gap:12px;align-items:center}
+.bigav{width:54px;height:54px;border-radius:50%;background:#a5b4fc;color:#fff;display:flex;align-items:center;justify-content:center;font-size:18px;position:relative;flex:none}
+.lvbadge{position:absolute;right:-4px;bottom:-4px;background:#4f46e5;color:#fff;border:2px solid #fff;border-radius:999px;font-size:10px;font-weight:700;padding:0 5px;line-height:16px}
+.av .lvbadge{right:-6px;bottom:-5px;font-size:9px;line-height:13px;padding:0 4px}
+.av{position:relative}
+.bar2{height:8px;background:#e0e7ff;border-radius:99px;overflow:hidden;margin:6px 0 3px}.bar2 i{display:block;height:100%;background:#6366f1;border-radius:99px}
+.title{font-weight:700;font-size:16px}
+.small{font-size:12px;color:#71717a}
+.streak{display:flex;align-items:center;gap:10px}.fl{font-size:26px}
+.badges{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-top:8px}
+.bd{aspect-ratio:1;border-radius:12px;background:#fef3c7;border:1px solid #fcd34d;display:flex;align-items:center;justify-content:center;font-size:22px}
+.bd.off{background:#f4f4f5;border:1px dashed #d4d4d8;filter:grayscale(1);opacity:.5}
+.shop{display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-top:1px solid #f0f0f1}
+.shop:first-of-type{border-top:0}
+.buy{border:1px solid #fcd34d;background:#fef3c7;border-radius:999px;padding:3px 10px;font-weight:600;font-size:13px;display:flex;gap:4px;align-items:center}
+.sect{font-size:13px;font-weight:700;margin:14px 0 6px}
+.content.scroll{overflow:hidden}
+.seg{display:flex;background:#f4f4f5;border-radius:10px;padding:3px;margin-bottom:12px}.seg div{flex:1;text-align:center;padding:6px;border-radius:8px;font-size:14px;color:#71717a}.seg .on{background:#fff;color:#18181b;font-weight:600;box-shadow:0 1px 2px rgba(0,0,0,.1)}
+.fire{display:flex;align-items:center;gap:3px;font-weight:600;font-size:14px;color:#c2410c;background:#ffedd5;border:1px solid #fdba74;border-radius:999px;padding:3px 9px 3px 6px}
+.tall{height:auto;min-height:640px}
+
+.sheet{position:absolute;left:0;right:0;bottom:0;background:#fff;border-radius:18px 18px 0 0;box-shadow:0 -8px 30px rgba(0,0,0,.2);padding:18px 16px 24px;z-index:6;font-size:14px}
+.scrim{position:absolute;inset:0;background:rgba(0,0,0,.35);z-index:5}
+.pbtn{background:#18181b;color:#fff;border-radius:10px;padding:11px;text-align:center;font-weight:600;margin-top:10px}
+.gbtn{border:1px solid #e4e4e7;border-radius:10px;padding:10px;text-align:center;margin-top:8px}
+.pending{font-size:12px;color:#92400e;background:#fffbeb;border:1px solid #fde68a;border-radius:999px;padding:2px 8px}
+.dot{display:inline-block;min-width:16px;height:16px;border-radius:99px;background:#dc2626;color:#fff;font-size:10px;line-height:16px;text-align:center;position:absolute;margin-left:14px;margin-top:-4px}
+.tab{position:relative}
+.small2{font-size:12px;color:#71717a}
+.ghost{color:#a1a1aa}
+.buy.no{background:#f4f4f5;border-color:#e4e4e7;color:#a1a1aa}
+.fire{display:flex;align-items:center;gap:3px;font-weight:600;font-size:14px;color:#c2410c;background:#ffedd5;border:1px solid #fdba74;border-radius:999px;padding:3px 9px 3px 6px}
+
+.tiles{display:flex;gap:8px;overflow:hidden;margin-bottom:6px}
+.tile{flex:none;width:78px;border:1px solid #e4e4e7;border-radius:12px;padding:8px 4px;text-align:center;font-size:12px}
+.tile .p{margin-top:4px;display:flex;justify-content:center;gap:3px;align-items:center;font-weight:600}
+.tile.own{border-color:#16a34a}.tile.use{box-shadow:0 0 0 2px #16a34a}
+.fr{width:40px;height:40px;border-radius:50%;margin:0 auto;background:#a5b4fc;color:#fff;display:flex;align-items:center;justify-content:center;font-size:13px}
+.f1{box-shadow:0 0 0 3px #f59e0b}.f2{box-shadow:0 0 0 3px #22c55e,0 0 0 6px #bbf7d0}.f3{box-shadow:0 0 0 3px #ec4899,0 0 0 6px #fbcfe8}.f4{box-shadow:0 0 0 3px #0ea5e9}
+.sw{width:40px;height:40px;border-radius:10px;margin:0 auto}
+.cn{width:26px;height:26px;border-radius:50%;margin:7px auto}
+.field{border:1px solid #d4d4d8;border-radius:10px;padding:10px;margin-top:8px;color:#18181b}
+.lab{font-size:12px;color:#52525b;margin-top:10px}
+.seg3 div{font-size:13px}
+.hrow{display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid #f0f0f1;padding:10px 0}
+
+.bd{flex-direction:column;font-size:22px;aspect-ratio:auto;padding:8px 2px}
+.bd small{font-size:10px;color:#52525b;text-align:center;line-height:1.15;margin-top:3px}
+.prog{height:4px;width:80%;background:#e4e4e7;border-radius:9px;margin-top:4px;overflow:hidden}.prog i{display:block;height:100%;background:#a1a1aa}
+.bd.off{opacity:1;filter:none}.bd.off span{filter:grayscale(1);opacity:.4}
+.hi{display:flex;align-items:center;gap:4px;border:1px solid #e4e4e7;border-radius:999px;padding:2px 8px;font-size:13px;margin-left:auto}
+.hi.on{background:#eef2ff;border-color:#a5b4fc;color:#3730a3;font-weight:600}
+.banner{background:#eef2ff;border:1px solid #c7d2fe;border-radius:12px;padding:10px 12px;font-size:14px;margin-bottom:10px;display:flex;gap:8px;align-items:center}
+.up{color:#16a34a;font-weight:600}
+.vs{display:grid;grid-template-columns:1fr auto auto;gap:4px 12px;font-size:14px;margin-top:8px}.vs .h{color:#71717a;font-size:12px}
+</style></head><body>
+<h1>Badges, the week, and high-fives — round 4</h1><p class="sub">Agreed so far: looks are sold under rewards in Butik; a theme is only yours, a frame everyone sees; a look is previewed, bought and used at once; adults set up rewards in Butik. Here: badges (A1 or A2), the weekly recap (R1, or R1 plus R2), high-fives (H1+H2, with or without H3).</p>
+<h2>Badges on Framsteg</h2><div class="wrap"><div><div class="phone"><div class="bar"></div><div class="content"><div class="hdr"><div><div class="t">Jag</div><div class="h">Familjen K</div></div><div class="right"><div class="fire">🔥5</div><div class="tot pill"><span class="coin"></span>320</div><div class="avbtn"><div class="av f1">EK</div></div></div></div><div class="seg"><div class="on">Framsteg</div><div>Butik</div></div><div class="card lvl"><div class="bigav f1">EK</div><div style="flex:1"><div class="title">Nivå 4 · Städproffs</div><div class="bar2"><i style="width:64%"></i></div><div class="small">320 av 500 mynt till nivå 5</div></div></div><div class="card streak"><span class="fl">🔥</span><div><b>5 dagar i rad · +10 % mynt</b><div class="small">Två dagar till så blir det +20 %.</div></div></div><div class="sect">Märken · 3 av 8</div><div class="badges"><div class="bd "><span>🥇</span><small>Första uppgiften</small></div><div class="bd "><span>🔟</span><small>Tio av samma</small></div><div class="bd off"><span>🔥</span><small>7 dagar i rad</small><div class="prog"><i style="width:71%"></i></div></div><div class="bd off"><span>🏠</span><small>Varje rum</small><div class="prog"><i style="width:60%"></i></div></div><div class="bd off"><span>📅</span><small>En vecka utan sena</small><div class="prog"><i style="width:30%"></i></div></div><div class="bd off"><span>💯</span><small>100 uppgifter</small><div class="prog"><i style="width:42%"></i></div></div><div class="bd off"><span>⭐</span><small>Nivå 5</small><div class="prog"><i style="width:64%"></i></div></div><div class="bd "><span>🛍️</span><small>Första köpet</small></div></div></div><div class="tabs"><div class="tab "><span class="i">☑</span>Uppgifter</div><div class="tab "><span class="i">☰</span>Listor</div><div class="tab on"><span class="i">★</span>Jag</div></div></div><p class="cap">A1 · All badges shown; the ones not won yet are grey with a bar showing how close you are.</p></div><div><div class="phone"><div class="bar"></div><div class="content"><div class="hdr"><div><div class="t">Jag</div><div class="h">Familjen K</div></div><div class="right"><div class="fire">🔥5</div><div class="tot pill"><span class="coin"></span>320</div><div class="avbtn"><div class="av f1">EK</div></div></div></div><div class="seg"><div class="on">Framsteg</div><div>Butik</div></div><div class="card lvl"><div class="bigav f1">EK</div><div style="flex:1"><div class="title">Nivå 4 · Städproffs</div><div class="bar2"><i style="width:64%"></i></div><div class="small">320 av 500 mynt till nivå 5</div></div></div><div class="card streak"><span class="fl">🔥</span><div><b>5 dagar i rad · +10 % mynt</b><div class="small">Två dagar till så blir det +20 %.</div></div></div><div class="sect">Märken · 3</div><div class="badges"><div class="bd "><span>🥇</span><small>Första uppgiften</small></div><div class="bd "><span>🔟</span><small>Tio av samma</small></div><div class="bd "><span>🛍️</span><small>Första köpet</small></div></div><div class="small" style="margin-top:6px">Fler märken finns att vinna…</div></div><div class="tabs"><div class="tab "><span class="i">☑</span>Uppgifter</div><div class="tab "><span class="i">☰</span>Listor</div><div class="tab on"><span class="i">★</span>Jag</div></div></div><p class="cap">A2 · Only the won badges; the rest are a surprise.</p></div><div><div class="phone"><div class="bar"></div><div class="content"><div class="hdr"><div><div class="t">Jag</div><div class="h">Familjen K</div></div><div class="right"><div class="fire">🔥5</div><div class="tot pill"><span class="coin"></span>320</div><div class="avbtn"><div class="av f1">EK</div></div></div></div><div class="seg"><div class="on">Framsteg</div><div>Butik</div></div><div class="card lvl"><div class="bigav f1">EK</div><div style="flex:1"><div class="title">Nivå 4 · Städproffs</div><div class="bar2"><i style="width:64%"></i></div><div class="small">320 av 500 mynt till nivå 5</div></div></div><div class="card streak"><span class="fl">🔥</span><div><b>5 dagar i rad · +10 % mynt</b><div class="small">Två dagar till så blir det +20 %.</div></div></div><div class="sect">Märken · 3 av 8</div><div class="badges"><div class="bd "><span>🥇</span><small>Första uppgiften</small></div><div class="bd "><span>🔟</span><small>Tio av samma</small></div><div class="bd off"><span>🔥</span><small>7 dagar i rad</small><div class="prog"><i style="width:71%"></i></div></div><div class="bd off"><span>🏠</span><small>Varje rum</small><div class="prog"><i style="width:60%"></i></div></div><div class="bd off"><span>📅</span><small>En vecka utan sena</small><div class="prog"><i style="width:30%"></i></div></div><div class="bd off"><span>💯</span><small>100 uppgifter</small><div class="prog"><i style="width:42%"></i></div></div><div class="bd off"><span>⭐</span><small>Nivå 5</small><div class="prog"><i style="width:64%"></i></div></div><div class="bd "><span>🛍️</span><small>Första köpet</small></div></div></div><div class="tabs"><div class="tab "><span class="i">☑</span>Uppgifter</div><div class="tab "><span class="i">☰</span>Listor</div><div class="tab on"><span class="i">★</span>Jag</div></div><div class="scrim"></div><div class="sheet"><div style="font-size:40px;text-align:center;filter:grayscale(1);opacity:.5">🏠</div><b style="display:block;text-align:center;font-size:16px">Varje rum</b><div class="small2" style="text-align:center;margin-top:4px">Gör en uppgift i varje rum i hemmet.<br>6 av 10 rum klara.</div><div class="gbtn">Stäng</div></div></div><p class="cap">A · Pressing a badge opens a sheet that says what it is for and how far you are.</p></div></div>
+<h2>The week</h2><div class="wrap"><div><div class="phone"><div class="bar"></div><div class="content"><div class="hdr"><div><div class="t">Jag</div><div class="h">Familjen K</div></div><div class="right"><div class="fire">🔥5</div><div class="tot pill"><span class="coin"></span>320</div><div class="avbtn"><div class="av f1">EK</div></div></div></div><div class="seg"><div class="on">Framsteg</div><div>Butik</div></div><div class="card"><b>Den här veckan</b><div class="vs"><span class="h"></span><span class="h">Nu</span><span class="h">Förra</span><span>Uppgifter</span><b>12</b><span>9</span><span>Mynt</span><b>130</b><span>90</span><span>Märken</span><b>1</b><span>0</span></div><div class="small" style="margin-top:6px"><span class="up">3 fler uppgifter än förra veckan!</span></div></div><div class="card lvl"><div class="bigav f1">EK</div><div style="flex:1"><div class="title">Nivå 4 · Städproffs</div><div class="bar2"><i style="width:64%"></i></div><div class="small">320 av 500 mynt till nivå 5</div></div></div></div><div class="tabs"><div class="tab "><span class="i">☑</span>Uppgifter</div><div class="tab "><span class="i">☰</span>Listor</div><div class="tab on"><span class="i">★</span>Jag</div></div></div><p class="cap">R1 · The week as a card at the top of Framsteg, always there, counting from Monday.</p></div><div><div class="phone"><div class="bar"></div><div class="content"><div class="hdr"><div><div class="t">Uppgifter</div><div class="h">Familjen K</div></div><div class="right"><div class="fire">🔥5</div><div class="tot pill"><span class="coin"></span>320</div><div class="avbtn"><div class="av f1">EK</div></div></div></div><div class="btn">＋ Ny uppgift</div></div><div class="tabs"><div class="tab on"><span class="i">☑</span>Uppgifter</div><div class="tab "><span class="i">☰</span>Listor</div><div class="tab "><span class="i">★</span>Jag</div></div><div class="scrim"></div><div class="sheet"><b style="font-size:17px">Din vecka</b><div class="small2">17–23 november</div><div class="vs"><span class="h"></span><span class="h">Veckan</span><span class="h">Veckan före</span><span>Uppgifter</span><b>12</b><span>9</span><span>Mynt</span><b>130</b><span>90</span><span>Märken</span><b>🔟</b><span>–</span></div><div class="small2" style="margin-top:8px"><span class="up">3 fler uppgifter än veckan före!</span></div><div class="pbtn">Fortsätt</div></div></div><p class="cap">R2 · Plus: on the first visit each Monday a sheet shows last week. After that it lives on Framsteg.</p></div></div>
+<h2>High-fives</h2><div class="wrap"><div><div class="phone"><div class="bar"></div><div class="content"><div class="hdr"><div><div class="t">Uppgifter</div><div class="h">Familjen K</div></div><div class="right"><div class="fire">🔥2</div><div class="tot pill"><span class="coin"></span>140</div><div class="avbtn"><div class="av f1">HK</div></div></div></div><div class="grp">Nu</div><div class="row"><div class="box"></div><div>Vattna blommorna<div class="meta">Vardagsrum · Alla</div></div></div><div class="grp">Klart senaste veckan (2)</div><div class="row done" style="opacity:1"><div class="box" style="border-radius:50%">↺</div><div style="opacity:.55"><s>Tömma diskmaskinen</s><div class="meta">Kök · Klar av Erik</div></div><div class="hi">👏</div></div></div><div class="tabs"><div class="tab on"><span class="i">☑</span>Uppgifter</div><div class="tab "><span class="i">☰</span>Listor</div><div class="tab "><span class="i">★</span>Jag</div></div></div><p class="cap">H1 · Mamma sees Erik's ticked-off task under Klart with a 👏 button. One press gives a high-five; pressing again takes it back.</p></div><div><div class="phone"><div class="bar"></div><div class="content"><div class="hdr"><div><div class="t">Uppgifter</div><div class="h">Familjen K</div></div><div class="right"><div class="fire">🔥5</div><div class="tot pill"><span class="coin"></span>320</div><div class="avbtn"><div class="av f1">EK</div></div></div></div><div class="grp">Nu</div><div class="row"><div class="box"></div><div>Vattna blommorna<div class="meta">Vardagsrum · Alla</div></div></div><div class="grp">Klart senaste veckan (2)</div><div class="row done" style="opacity:1"><div class="box" style="border-radius:50%">↺</div><div style="opacity:.55"><s>Tömma diskmaskinen</s><div class="meta">Kök · Klar av mig</div></div><div class="hi on">👏 2</div></div></div><div class="tabs"><div class="tab on"><span class="i">☑</span>Uppgifter</div><div class="tab "><span class="i">☰</span>Listor</div><div class="tab "><span class="i">★</span>Jag</div></div></div><p class="cap">H2 · Erik sees "👏 2" on his row; pressing it shows who ("Mamma och Pappa").</p></div><div><div class="phone"><div class="bar"></div><div class="content"><div class="hdr"><div><div class="t">Uppgifter</div><div class="h">Familjen K</div></div><div class="right"><div class="fire">🔥5</div><div class="tot pill"><span class="coin"></span>320</div><div class="avbtn"><div class="av f1">EK</div></div></div></div><div class="banner">👏 <div><b>Mamma</b> gav dig en high five för Tömma diskmaskinen</div><span style="margin-left:auto">✕</span></div><div class="grp">Nu</div><div class="row"><div class="box"></div><div>Vattna blommorna<div class="meta">Vardagsrum · Alla</div></div></div><div class="grp">Klart senaste veckan (2)</div><div class="row done" style="opacity:1"><div class="box" style="border-radius:50%">↺</div><div style="opacity:.55"><s>Tömma diskmaskinen</s><div class="meta">Kök · Klar av mig</div></div><div class="hi on">👏 2</div></div></div><div class="tabs"><div class="tab on"><span class="i">☑</span>Uppgifter</div><div class="tab "><span class="i">☰</span>Listor</div><div class="tab "><span class="i">★</span>Jag</div></div></div><p class="cap">H3 · Also a note at the top of Uppgifter the next time Erik looks, until he closes it.</p></div></div></body></html>
