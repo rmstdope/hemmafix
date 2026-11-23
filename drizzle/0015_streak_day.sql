@@ -1,0 +1,1 @@
+ALTER TABLE "chore_instance" ADD COLUMN "ticked_on" date;
