@@ -6,7 +6,10 @@ import { JagParts } from "@/components/jag/jag-parts";
 import { LiveUpdates } from "@/components/live-updates";
 import { PageCorner } from "@/components/page-corner";
 import { StreakCard } from "@/components/jag/streak-card";
+import { Butik } from "@/components/jag/butik";
+import { can } from "@/lib/permissions";
 import { getCoinTotal, getHousehold, getLifetimeCoins, getStreak } from "@/server/chores";
+import { listMyPurchases, listRewards } from "@/server/rewards";
 import { requireMember } from "@/server/dal";
 import { getLooks } from "@/server/looks";
 import { getWeekCard } from "@/server/weeks";
@@ -25,13 +28,15 @@ export default function JagPage() {
 
 async function Jag() {
   const member = await requireMember();
-  const [home, lifetimeCoins, week, streak, coins, looks] = await Promise.all([
+  const [home, lifetimeCoins, week, streak, coins, looks, rewards, purchases] = await Promise.all([
     getHousehold(member.householdId),
     getLifetimeCoins(member),
     getWeekCard(member),
     getStreak(member),
     getCoinTotal(member),
     getLooks(member),
+    listRewards(member),
+    listMyPurchases(member),
   ]);
   return (
     <>
@@ -55,7 +60,20 @@ async function Jag() {
             <StreakCard run={streak.run} />
           </>
         }
-        butik={<Looks name={member.name} image={member.image} coins={coins} owned={looks.owned} chosen={looks.chosen} />}
+        butik={
+          <>
+            <Butik
+              rewards={rewards}
+              purchases={purchases}
+              balance={coins}
+              isAdult={can(member.role, "reward:manage")}
+              now={new Date().toISOString()}
+            />
+            <div className="mt-6">
+              <Looks name={member.name} image={member.image} coins={coins} owned={looks.owned} chosen={looks.chosen} />
+            </div>
+          </>
+        }
       />
     </>
   );

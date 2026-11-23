@@ -3,7 +3,7 @@ import { cache } from "react";
 import { z } from "zod";
 import { aliasedTable, and, asc, desc, eq, gt, gte, isNotNull, isNull, ne, sql, type SQL } from "drizzle-orm";
 import { db, pg } from "@/db";
-import { chore, choreInstance, dailyChest, floor, highFive, household, lookPurchase, membership, room, user } from "@/db/schema";
+import { chore, choreInstance, dailyChest, floor, highFive, household, lookPurchase, membership, rewardPurchase, room, user } from "@/db/schema";
 import { addDays, HOME_TIME_ZONE, todayIso } from "@/lib/dates";
 import { UserError } from "@/lib/errors";
 import { assertCan, can, type Role } from "@/lib/permissions";
@@ -394,18 +394,29 @@ export async function uncompleteInstance(actor: Actor, id: string) {
 type Reader = Pick<typeof db, "select">;
 
 /**
- * The actor's coins in hand: what they earned (`sumEarned`) less what they spent on looks.
+ * The actor's coins in hand: what they earned (`sumEarned`) less what they spent on looks and on rewards.
  * Derived, so a purchase is a row and nothing is stored twice.
  */
 export async function balanceOf(householdId: string, userId: string, ex: Reader = db): Promise<number> {
-  const [earned, [spent]] = await Promise.all([
+  const [earned, [spent], [rewards]] = await Promise.all([
     sumEarned(householdId, userId, ex),
     ex
       .select({ total: sql<number>`coalesce(sum(${lookPurchase.price}), 0)::int` })
       .from(lookPurchase)
       .where(and(eq(lookPurchase.householdId, householdId), eq(lookPurchase.userId, userId))),
+    // A reward costs coins while it waits or was given; a declined or cancelled one gave them back.
+    ex
+      .select({ total: sql<number>`coalesce(sum(${rewardPurchase.price}), 0)::int` })
+      .from(rewardPurchase)
+      .where(
+        and(
+          eq(rewardPurchase.householdId, householdId),
+          eq(rewardPurchase.buyerId, userId),
+          sql`${rewardPurchase.status} in ('waiting', 'given')`,
+        ),
+      ),
   ]);
-  return earned - (spent?.total ?? 0);
+  return earned - (spent?.total ?? 0) - (rewards?.total ?? 0);
 }
 
 /**

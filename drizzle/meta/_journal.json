@@ -120,6 +120,13 @@
       "when": 1795466991965,
       "tag": "0016_looks",
       "breakpoints": true
+    },
+    {
+      "idx": 17,
+      "version": "7",
+      "when": 1795468368846,
+      "tag": "0017_rewards",
+      "breakpoints": true
     }
   ]
 }

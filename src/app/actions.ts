@@ -15,6 +15,7 @@ import * as lists from "@/server/lists";
 import * as highFives from "@/server/high-fives";
 import * as looks from "@/server/looks";
 import * as weeks from "@/server/weeks";
+import * as rewards from "@/server/rewards";
 import type { ItemView, ListOrder } from "@/lib/lists";
 
 export type ActionState = {
@@ -270,4 +271,36 @@ export async function buyLook(kind: string, key: string) {
 /** Switches to a look the person owns (or the free default of its kind). */
 export async function chooseLook(kind: string, key: string) {
   return act((m) => looks.chooseLook(m, kind, key));
+}
+
+// ---------------------------------------------------------------------------
+// Rewards: adults manage them, anyone buys, the buyer cancels, an adult gives
+// ---------------------------------------------------------------------------
+
+export async function addReward(input: { name: string; price: string }) {
+  return act((m) => rewards.addReward(m, input));
+}
+
+export async function updateReward(id: string, input: { name: string; price: string }) {
+  return act((m) => rewards.updateReward(m, id, input));
+}
+
+export async function deleteReward(id: string) {
+  return act((m) => rewards.deleteReward(m, id));
+}
+
+export async function buyReward(id: string) {
+  return act((m) => rewards.buyReward(m, id));
+}
+
+export async function cancelPurchase(id: string) {
+  return act((m) => rewards.cancelPurchase(m, id));
+}
+
+export async function giveReward(id: string) {
+  return act((m) => rewards.giveReward(m, id));
+}
+
+export async function declineReward(id: string) {
+  return act((m) => rewards.declineReward(m, id));
 }

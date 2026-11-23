@@ -17,6 +17,8 @@ const RULES: Record<Action, "V" | "V+B"> = {
   "task:view": "V+B",
   "history:view-own": "V+B",
   "history:view-anyone": "V",
+  "reward:manage": "V",
+  "reward:give": "V",
   "app:connect": "V",
 };
 
