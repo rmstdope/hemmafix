@@ -1,6 +1,6 @@
 "use client";
 
-import { List, ListChecks } from "lucide-react";
+import { List, ListChecks, Star } from "lucide-react";
 import Link from "next/link";
 import { usePathname, useSearchParams } from "next/navigation";
 import { useState } from "react";
@@ -8,7 +8,7 @@ import { PARTS, litPart } from "@/lib/parts";
 import { cn } from "@/lib/utils";
 import { useRememberedPart } from "./part-links";
 
-const ICONS = { uppgifter: ListChecks, listor: List };
+const ICONS = { uppgifter: ListChecks, listor: List, jag: Star };
 
 /**
  * The tabs between the parts of Hemmafix. Rendered twice by the layout (top strip on desktop,
