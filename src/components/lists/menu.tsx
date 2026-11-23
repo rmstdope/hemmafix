@@ -15,6 +15,7 @@ export function Menu({
   radio = false,
   triggerRef,
   label,
+  heading,
   triggerClassName,
   children,
 }: {
@@ -23,6 +24,8 @@ export function Menu({
   triggerRef: RefObject<HTMLButtonElement | null>;
   /** The button's name for screen readers. */
   label: string;
+  /** A line of text at the top of the menu; it is not a choice. */
+  heading?: string;
   triggerClassName?: string;
   children: ReactNode;
 }) {
@@ -79,6 +82,7 @@ export function Menu({
           onKeyDown={onKeyDown}
           className="absolute right-0 top-full z-50 mt-1 min-w-44 rounded-xl border bg-popover p-1 text-popover-foreground shadow-lg"
         >
+          {heading && <p role="presentation" className="px-3 pt-2 pb-1 text-xs font-medium text-muted-foreground">{heading}</p>}
           {items.map((item, i) => (
             <button
               key={item.label}

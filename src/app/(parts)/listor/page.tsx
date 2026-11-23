@@ -10,7 +10,7 @@ export const metadata = { title: "Listor – Hemmafix" };
 
 export default function ListorPage() {
   return (
-    <main className="mx-auto w-full max-w-2xl flex-1 px-4 pt-4 pb-4">
+    <main className="mx-auto flex w-full max-w-2xl flex-1 flex-col px-4 pt-4 pb-4">
       <Suspense fallback={<Skeleton />}>
         <Listor />
       </Suspense>
@@ -28,16 +28,11 @@ async function Listor() {
   return (
     <>
       <LiveUpdates />
-      <header className="mb-4 flex items-center justify-between gap-2">
-        <div className="min-w-0 [&>p]:truncate">
-          <h1 className="text-xl font-semibold">Listor</h1>
-          <p className="text-sm text-muted-foreground">{home?.name}</p>
-        </div>
+      <ListsOverview lists={lists} order={order} subtitle={home?.name}>
         <div className="sm:hidden">
           <PageCorner />
         </div>
-      </header>
-      <ListsOverview lists={lists} order={order} />
+      </ListsOverview>
     </>
   );
 }
@@ -45,7 +40,6 @@ async function Listor() {
 function Skeleton() {
   return (
     <div className="animate-pulse space-y-3" aria-busy="true" aria-label="Laddar">
-      <div className="h-12 rounded-xl bg-muted" />
       <div className="h-14 rounded-xl bg-muted" />
       <div className="h-14 rounded-xl bg-muted" />
       <div className="h-14 rounded-xl bg-muted" />
