@@ -285,11 +285,18 @@ export async function deleteFloor(actor: Actor, id: string) {
 // Members
 // ---------------------------------------------------------------------------
 
-export type MemberWithRole = { id: string; name: string; image: string | null; role: Role };
+export type MemberWithRole = { id: string; name: string; image: string | null; role: Role; frame: string };
 
 export async function listMembersWithRoles(householdId: string): Promise<MemberWithRole[]> {
   return db
-    .select({ id: user.id, name: user.name, image: user.image, role: membership.role })
+    .select({
+      id: user.id,
+      name: user.name,
+      image: user.image,
+      role: membership.role,
+      // The frame is the one look the whole family sees (src/lib/looks.ts).
+      frame: sql<string>`coalesce(${membership.frame}, 'none')`,
+    })
     .from(membership)
     .innerJoin(user, eq(user.id, membership.userId))
     .where(eq(membership.householdId, householdId))

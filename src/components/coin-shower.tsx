@@ -162,7 +162,7 @@ export function CoinShowerProvider({ children }: { children: ReactNode }) {
           const coin = document.createElement("div");
           coin.setAttribute("data-flying-coin", "");
           coin.className =
-            "fixed top-0 left-0 size-4 rounded-full bg-[radial-gradient(circle_at_35%_35%,#fde68a,#f59e0b_70%,#b45309)] shadow-[inset_0_0_0_1.5px_#d97706,0_1px_3px_rgba(0,0,0,.2)]";
+            "coin-dot fixed top-0 left-0 flex size-4 items-center justify-center text-sm leading-none";
           layer.current?.append(coin);
           const bend = (Math.random() - 0.5) * 30;
           const began = performance.now();

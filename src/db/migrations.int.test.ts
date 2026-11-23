@@ -385,6 +385,8 @@ describe("0014: week recap", () => {
     await sql`update chore_instance set completed_at = now(), completed_by_id = 'a'`;
     await sql`update chore_instance set completed_at = null, completed_by_id = null`;
     expect(await sql`select count(*)::int as n from chore_instance where completed_at is null`).toEqual([{ n: 1 }]);
+  });
+});
 
 describe("0015: looks", () => {
   beforeEach(reset);

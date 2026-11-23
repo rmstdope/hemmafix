@@ -3,7 +3,8 @@ import { db } from "@/db";
 import { household } from "@/db/schema";
 import { UserError } from "@/lib/errors";
 import { createFamily } from "../../test/integration/factories";
-import { completeInstance, createChore, getCoinTotal, getLifetimeCoins, listFamily, listOpenInstances } from "./chores";
+import { completeInstance, createChore, getCoinTotal, getLifetimeCoins, listOpenInstances } from "./chores";
+import { listMembersWithRoles } from "./household";
 import { buyLook, chooseLook, getLooks } from "./looks";
 
 let f: Awaited<ReturnType<typeof createFamily>>;
@@ -101,10 +102,10 @@ describe("chooseLook", () => {
 });
 
 describe("the frame, which the family sees", () => {
-  it("shows on a member in the family list", async () => {
+  it("shows on a member in the home's member list", async () => {
     await earn(150);
     await buyLook(f.child, "frame", "guld");
-    const family = await listFamily(f.homeId);
+    const family = await listMembersWithRoles(f.homeId);
     expect(family.find((m) => m.name === "Bo")?.frame).toBe("guld");
     expect(family.find((m) => m.name === "Anna")?.frame).toBe("none");
   });

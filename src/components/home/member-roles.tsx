@@ -6,7 +6,7 @@ import { setMemberRole } from "@/app/actions";
 import { MemberAvatar } from "@/components/member-avatar";
 import { ROLE_LABELS, ROLES, type Role } from "@/lib/permissions";
 
-type Member = { id: string; name: string; image: string | null; role: Role };
+type Member = { id: string; name: string; image: string | null; role: Role; frame: string };
 
 export function MemberRoles({ members, currentUserId }: { members: Member[]; currentUserId: string }) {
   const [pending, startTransition] = useTransition();
@@ -22,7 +22,7 @@ export function MemberRoles({ members, currentUserId }: { members: Member[]; cur
     <ul className="divide-y rounded-xl border bg-card" aria-label="Familjen">
       {members.map((m) => (
         <li key={m.id} className="flex items-center gap-3 px-3 py-2">
-          <MemberAvatar name={m.name} image={m.image} size="sm" />
+          <MemberAvatar name={m.name} image={m.image} size="sm" frame={m.frame} />
           <span className="min-w-0 flex-1 truncate">
             {m.name}
             {m.id === currentUserId && <span className="text-muted-foreground"> (jag)</span>}

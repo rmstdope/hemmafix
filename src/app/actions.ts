@@ -13,6 +13,7 @@ import * as connections from "@/server/connections";
 import * as routines from "@/server/routines";
 import * as lists from "@/server/lists";
 import * as highFives from "@/server/high-fives";
+import * as looks from "@/server/looks";
 import * as weeks from "@/server/weeks";
 import type { ItemView, ListOrder } from "@/lib/lists";
 
@@ -259,4 +260,14 @@ export async function closeHighFiveNotes(instanceIds: string[]) {
 /** The person is through the "Din vecka" sheet; it stays closed on their other devices too. */
 export async function closeWeekRecap() {
   return act((m) => weeks.closeWeekRecap(m), { notify: false, refreshPage: false });
+}
+
+/** Buys a look with coins and starts using it. */
+export async function buyLook(kind: string, key: string) {
+  return act((m) => looks.buyLook(m, kind, key));
+}
+
+/** Switches to a look the person owns (or the free default of its kind). */
+export async function chooseLook(kind: string, key: string) {
+  return act((m) => looks.chooseLook(m, kind, key));
 }

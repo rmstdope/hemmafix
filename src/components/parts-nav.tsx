@@ -45,7 +45,7 @@ export function PartsNav({ variant }: { variant: "top" | "bottom" }) {
               if (pathname === part.href) window.scrollTo({ top: 0 });
             }}
             className={cn(
-              lit ? "font-semibold text-foreground" : "text-muted-foreground",
+              lit ? "font-semibold text-primary" : "text-muted-foreground",
               variant === "bottom"
                 ? "flex flex-1 flex-col items-center justify-center gap-0.5 text-xs"
                 : cn("rounded-lg px-3 py-1.5 text-sm", lit && "bg-muted"),

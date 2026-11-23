@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { buyLookLabel, chooseLookInput, defaultLook, findLook, LOOKS, LOOK_KINDS, previewText } from "./looks";
+import { buyLookLabel, coinsLeft, chooseLookInput, defaultLook, findLook, LOOKS, LOOK_KINDS, previewText } from "./looks";
 
 const of = (kind: "frame" | "theme" | "coin") => LOOKS.filter((l) => l.kind === kind).map((l) => [l.name, l.price]);
 
@@ -26,6 +26,7 @@ describe("texts", () => {
     expect(previewText("theme")).toBe("Så här ser Hemmafix ut för dig.");
     expect(previewText("coin")).toBe("Så här ser dina mynt ut.");
   });
+  it("says what is missing", () => expect(coinsLeft(150, 70)).toBe("80 mynt kvar"));
   it("labels the buy button", () => expect(buyLookLabel(150)).toBe("Köp för 150 mynt"));
 });
 

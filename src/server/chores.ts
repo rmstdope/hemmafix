@@ -29,7 +29,7 @@ export async function notifyHouseholdChanged(householdId: string) {
   await pg.notify(TASKS_CHANNEL, householdId);
 }
 
-export type Member = { id: string; name: string; image: string | null; frame: string };
+export type Member = { id: string; name: string; image: string | null };
 
 export async function getHousehold(householdId: string) {
   const [h] = await db.select().from(household).where(eq(household.id, householdId)).limit(1);
@@ -38,7 +38,7 @@ export async function getHousehold(householdId: string) {
 
 export async function listMembers(householdId: string): Promise<Member[]> {
   return db
-    .select({ id: user.id, name: user.name, image: user.image, frame: sql<string>`coalesce(${membership.frame}, 'none')` })
+    .select({ id: user.id, name: user.name, image: user.image })
     .from(membership)
     .innerJoin(user, eq(user.id, membership.userId))
     .where(eq(membership.householdId, householdId))
@@ -50,13 +50,7 @@ export type FamilyMember = Member & { role: Role };
 /** Everyone in the home with their role, alphabetically. */
 export async function listFamily(householdId: string): Promise<FamilyMember[]> {
   return db
-    .select({
-      id: user.id,
-      name: user.name,
-      image: user.image,
-      frame: sql<string>`coalesce(${membership.frame}, 'none')`,
-      role: membership.role,
-    })
+    .select({ id: user.id, name: user.name, image: user.image, role: membership.role })
     .from(membership)
     .innerJoin(user, eq(user.id, membership.userId))
     .where(eq(membership.householdId, householdId))

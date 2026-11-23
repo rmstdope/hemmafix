@@ -25,7 +25,7 @@ const read = (): JagPart => {
 };
 
 /** Jag's switch between Framsteg and Butik, remembered on this device, and the part it shows. */
-export function JagParts({ framsteg }: { framsteg: ReactNode }) {
+export function JagParts({ framsteg, butik }: { framsteg: ReactNode; butik: ReactNode }) {
   const stored = useSyncExternalStore(subscribe, read, () => "framsteg" as const);
   // Without storage the choice still holds until the page is left.
   const [fallback, setFallback] = useState<JagPart | null>(null);
@@ -55,7 +55,7 @@ export function JagParts({ framsteg }: { framsteg: ReactNode }) {
               onClick={() => choose(p.key)}
               className={cn(
                 "min-h-11 min-w-0 flex-1 rounded-lg px-2 text-sm whitespace-nowrap outline-none focus-visible:ring-3 focus-visible:ring-ring/50",
-                on ? "bg-background font-semibold text-foreground shadow-sm" : "text-muted-foreground",
+                on ? "bg-background font-semibold text-primary shadow-sm" : "text-muted-foreground",
               )}
             >
               {p.label}
@@ -63,13 +63,7 @@ export function JagParts({ framsteg }: { framsteg: ReactNode }) {
           );
         })}
       </div>
-      {current === "framsteg" ? (
-        framsteg
-      ) : (
-        <p className="min-h-20 rounded-xl border border-dashed p-6 text-center text-muted-foreground">
-          {current === "butik" ? "Butiken kommer hit." : ""}
-        </p>
-      )}
+      {current === "framsteg" ? framsteg : current === "butik" ? butik : <div className="min-h-20" />}
     </div>
   );
 }

@@ -41,3 +41,6 @@ export const buyLookLabel = (price: number) => `Köp för ${price} mynt`;
 export const chooseLookInput = z
   .object({ kind: z.enum(LOOK_KINDS), key: z.string() })
   .refine((v) => findLook(v.kind, v.key) !== undefined, { message: "Utseendet finns inte." });
+
+/** What a person lacks for a look, as the tile and the sheet say it ("80 mynt kvar"). */
+export const coinsLeft = (price: number, balance: number) => `${price - balance} mynt kvar`;
