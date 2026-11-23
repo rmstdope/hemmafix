@@ -3,6 +3,7 @@ import { AddChoreSheet } from "@/components/add-chore-sheet";
 import { BoardTabs } from "@/components/board-tabs";
 import { FilterChips, FilterHeader } from "@/components/board-filters";
 import { ChoreItem } from "@/components/chore-item";
+import { GoldRows } from "@/components/gold-rows";
 import { HighFiveNotes } from "@/components/high-five-notes";
 import { LiveUpdates } from "@/components/live-updates";
 import { PageCorner } from "@/components/page-corner";
@@ -14,6 +15,7 @@ import { requireMember } from "@/server/dal";
 import { canUndo, getHousehold, listMembers, listOpenInstances, listRecentlyCompleted } from "@/server/chores";
 import { listFloors, listRooms } from "@/server/household";
 import { listHighFiveNotes, listHighFives } from "@/server/high-fives";
+import { listGoldRows } from "@/server/rewards";
 import { listRoutinesWithTasks } from "@/server/routines";
 
 export const metadata = { title: "Uppgifter – Hemmafix" };
@@ -37,7 +39,7 @@ async function Board({ searchParams }: { searchParams: PageProps<"/">["searchPar
   const today = todayIso();
   const isAdult = can(member.role, "task:create");
 
-  const [home, members, floors, rooms, completed, routines, notes] = await Promise.all([
+  const [home, members, floors, rooms, completed, routines, notes, goldRows] = await Promise.all([
     getHousehold(member.householdId),
     listMembers(member.householdId),
     listFloors(member.householdId),
@@ -45,6 +47,7 @@ async function Board({ searchParams }: { searchParams: PageProps<"/">["searchPar
     listRecentlyCompleted(member),
     isAdult ? listRoutinesWithTasks(member) : [],
     listHighFiveNotes(member),
+    listGoldRows(member),
   ]);
   const highFives = await listHighFives(
     member,
@@ -109,6 +112,7 @@ async function Board({ searchParams }: { searchParams: PageProps<"/">["searchPar
   const panels: Record<TabKey, ReactNode> = {
     nu: (
       <>
+        <GoldRows rows={goldRows} now={new Date().toISOString()} />
         {list("nu", split.nu, (d) => d !== null && d < today)}
         {completed.length > 0 && (
           <details className="mt-8">
