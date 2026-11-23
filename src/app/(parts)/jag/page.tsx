@@ -5,6 +5,7 @@ import { WeekCard } from "@/components/jag/week-card";
 import { JagParts } from "@/components/jag/jag-parts";
 import { LiveUpdates } from "@/components/live-updates";
 import { PageCorner } from "@/components/page-corner";
+import { BadgeGrid } from "@/components/jag/badge-grid";
 import { StreakCard } from "@/components/jag/streak-card";
 import { Butik } from "@/components/jag/butik";
 import { can } from "@/lib/permissions";
@@ -12,6 +13,7 @@ import { getCoinTotal, getHousehold, getLifetimeCoins, getStreak } from "@/serve
 import { listMyPurchases, listRewards } from "@/server/rewards";
 import { requireMember } from "@/server/dal";
 import { getLooks } from "@/server/looks";
+import { getBadges } from "@/server/badges";
 import { getWeekCard } from "@/server/weeks";
 
 export const metadata = { title: "Jag – Hemmafix" };
@@ -28,6 +30,8 @@ export default function JagPage() {
 
 async function Jag() {
   const member = await requireMember();
+  // First, so a badge that just became true is counted in everything read below.
+  const badges = await getBadges(member);
   const [home, lifetimeCoins, week, streak, coins, looks, rewards, purchases] = await Promise.all([
     getHousehold(member.householdId),
     getLifetimeCoins(member),
@@ -58,6 +62,7 @@ async function Jag() {
               <LevelCard name={member.name} image={member.image} lifetimeCoins={lifetimeCoins} frame={looks.chosen.frame} />
             </div>
             <StreakCard run={streak.run} />
+            <BadgeGrid badges={badges} />
           </>
         }
         butik={
