@@ -573,3 +573,29 @@ export type ChoreInstance = typeof choreInstance.$inferSelect;
 export type Room = typeof room.$inferSelect;
 export type Floor = typeof floor.$inferSelect;
 export type MemberRole = (typeof memberRole.enumValues)[number];
+
+/**
+ * A person's chest for one day (Europe/Stockholm), made by their first coin-giving tick-off of
+ * the day. The coins count once it is opened, or once its day has passed, so no chest is lost.
+ * Undoing the tick-off leaves it alone.
+ */
+export const dailyChest = pgTable(
+  "daily_chest",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    householdId: uuid("household_id")
+      .notNull()
+      .references(() => household.id, { onDelete: "cascade" }),
+    userId: text("user_id")
+      .notNull()
+      .references(() => user.id, { onDelete: "cascade" }),
+    day: date("day", { mode: "string" }).notNull(),
+    coins: integer("coins").notNull(),
+    openedAt: timestamp("opened_at", { withTimezone: true }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    unique("daily_chest_user_day_unique").on(t.userId, t.day),
+    check("daily_chest_coins_check", sql`${t.coins} between 5 and 10`),
+  ],
+);

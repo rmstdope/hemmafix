@@ -15,7 +15,10 @@ import {
 import { FLIGHT_MS, flightPoint, flightScale, STAGGER_MS, type Point } from "@/lib/coin-flight";
 import { initialTally, isFinished, SHOWER_COINS, tallyReducer } from "@/lib/coin-tally";
 import { coinsLabel, formatCoins } from "@/lib/coins";
+import { openChest } from "@/app/actions";
 import { cn } from "@/lib/utils";
+import { toast } from "sonner";
+import { ChestCard } from "./chest-card";
 import { CoinDot, coinPillClass } from "./coin-pill";
 import { playClink, unlockSound } from "./coin-sound";
 
@@ -34,6 +37,10 @@ type Api = {
 const idle: Shower = { saved: () => {}, failed: () => {} };
 /** Apart from the rest, so the task list does not re-render with every coin that lands. */
 const StartContext = createContext<Api["start"]>(() => idle);
+/** What a tick-off's chest holds, offered to the provider, which shows it once the shower has landed. */
+export type Chest = { id: string; coins: number };
+const OfferChestContext = createContext<(chest: Chest) => void>(() => {});
+export const useOfferChest = () => useContext(OfferChestContext);
 const Context = createContext<Api>({
   start: () => idle,
   registerPill: () => () => {},
@@ -71,6 +78,7 @@ export function CoinShowerProvider({ children }: { children: ReactNode }) {
   const [server, setServer] = useState(0);
   const [glow, setGlow] = useState(false);
   const [floating, setFloating] = useState(false);
+  const [chest, setChest] = useState<Chest | null>(null);
   const [announcement, setAnnouncement] = useState({ n: 0, text: "" });
   const pills = useRef(new Set<RefObject<HTMLElement | null>>());
   const floatRef = useRef<HTMLDivElement>(null);
@@ -208,6 +216,26 @@ export function CoinShowerProvider({ children }: { children: ReactNode }) {
     return () => clearTimeout(timer);
   }, [floating, landing]);
 
+  // The chest waits for the last coin of the shower; it lives here because the ticked row is gone by then.
+  const chestReady = chest !== null && !landing;
+  const finishChest = useCallback(
+    (origin: DOMRect) => {
+      if (!chest) return;
+      setChest(null);
+      const shower = start(origin, chest.coins);
+      openChest(chest.id).then(
+        (result) => {
+          if (result.error) {
+            shower.failed();
+            toast.error(result.error);
+          } else shower.saved();
+        },
+        () => shower.failed(),
+      );
+    },
+    [chest, start],
+  );
+
   const api = useMemo<Api>(
     () => ({ start, registerPill, reportTotal, shown: tally.shown, glow }),
     [start, registerPill, reportTotal, tally.shown, glow],
@@ -217,7 +245,9 @@ export function CoinShowerProvider({ children }: { children: ReactNode }) {
   return (
     <Context.Provider value={api}>
       <StartContext.Provider value={start}>
+      <OfferChestContext.Provider value={setChest}>
       {children}
+      {chestReady && <ChestCard key={chest.id} coins={chest.coins} onFinish={finishChest} />}
       <div ref={layer} aria-hidden className="pointer-events-none fixed inset-0 z-[60] overflow-hidden" />
       <div
         ref={floatRef}
@@ -236,6 +266,7 @@ export function CoinShowerProvider({ children }: { children: ReactNode }) {
       <div role="status" aria-live="polite" className="sr-only">
         <span key={announcement.n}>{announcement.text}</span>
       </div>
+      </OfferChestContext.Provider>
       </StartContext.Provider>
     </Context.Provider>
   );

@@ -1,7 +1,7 @@
 import { eq, sql } from "drizzle-orm";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { db } from "@/db";
-import { chore, choreInstance, household, membership } from "@/db/schema";
+import { chore, choreInstance, dailyChest, household, membership } from "@/db/schema";
 import { addDays, todayIso } from "@/lib/dates";
 import { UserError } from "@/lib/errors";
 import { DEFAULT_COINS } from "@/lib/coins";
@@ -20,6 +20,7 @@ import {
   listCompletedBy,
   listOpenInstances,
   listRecentlyCompleted,
+  openChest,
   uncompleteInstance,
 } from "./chores";
 import { addRoom, deleteRoom, listRooms } from "./household";
@@ -802,5 +803,101 @@ describe("what a task gives", () => {
     await createChore(f.adult, once("Diska"));
     await expect(editWith("100", f.child)).rejects.toThrow(ForbiddenError);
     expect((await open())[0]!.coins).toBe(10);
+  });
+});
+
+describe("daily chest", () => {
+  const total = getCoinTotal;
+  const chestsOf = (userId: string) => db.select().from(dailyChest).where(eq(dailyChest.userId, userId));
+
+  it("is offered by the first coin-giving tick of the day, and not by the second", async () => {
+    await createChore(f.adult, once("Diska"));
+    await createChore(f.adult, once("Damma"));
+    const [a, b] = await open();
+    const first = await completeInstance(f.child, a!.id);
+    const second = await completeInstance(f.child, b!.id);
+    expect(first.chestId).toEqual(expect.any(String));
+    expect(first.chestCoins).toBeGreaterThanOrEqual(5);
+    expect(first.chestCoins).toBeLessThanOrEqual(10);
+    expect(second).toEqual({ chestId: null, chestCoins: null });
+    expect(await chestsOf(f.child.userId)).toHaveLength(1);
+  });
+
+  it("is not offered by a task worth 0 coins, which leaves the day's chest for the next tick", async () => {
+    await createChore(f.adult, once("Gratis", { coins: "0" }));
+    await createChore(f.adult, once("Diska"));
+    const [free, diska] = await open();
+    expect((await completeInstance(f.child, free!.id)).chestId).toBeNull();
+    expect((await completeInstance(f.child, diska!.id)).chestId).toEqual(expect.any(String));
+  });
+
+  it("stays when the tick is undone, and ticking again the same day gives no second chest", async () => {
+    await createChore(f.adult, once("Diska"));
+    const [t] = await open();
+    await completeInstance(f.child, t!.id);
+    await uncompleteInstance(f.child, t!.id);
+    expect(await chestsOf(f.child.userId)).toHaveLength(1);
+    expect((await completeInstance(f.child, t!.id)).chestId).toBeNull();
+  });
+
+  it("is each person's own", async () => {
+    await createChore(f.adult, once("Diska"));
+    await createChore(f.adult, once("Damma"));
+    const [a, b] = await open();
+    expect((await completeInstance(f.child, a!.id)).chestId).not.toBeNull();
+    expect((await completeInstance(f.adult, b!.id)).chestId).not.toBeNull();
+  });
+
+  it("gives 5 to 10 coins once opened, and nothing before", async () => {
+    await createChore(f.adult, once("Diska"));
+    const [t] = await open();
+    const { chestId, chestCoins } = await completeInstance(f.child, t!.id);
+    expect(await total(f.child)).toBe(DEFAULT_COINS);
+
+    const coins = await openChest(f.child, chestId!);
+    expect(coins).toBe(chestCoins);
+    expect(await total(f.child)).toBe(DEFAULT_COINS + coins);
+    expect(await total(f.adult)).toBe(0);
+  });
+
+  it("is credited once however often it is opened, and stays after the tick is undone", async () => {
+    await createChore(f.adult, once("Diska"));
+    const [t] = await open();
+    const { chestId } = await completeInstance(f.child, t!.id);
+    const coins = await openChest(f.child, chestId!);
+    expect(await openChest(f.child, chestId!)).toBe(coins);
+    await uncompleteInstance(f.child, t!.id);
+    expect(await total(f.child)).toBe(coins);
+  });
+
+  it("is credited without being opened once its day has passed", async () => {
+    await db.insert(dailyChest).values({
+      householdId: f.adult.householdId,
+      userId: f.child.userId,
+      day: addDays(todayIso(), -1),
+      coins: 8,
+    });
+    expect(await total(f.child)).toBe(8);
+  });
+
+  it("is offered again the next day", async () => {
+    await db.insert(dailyChest).values({
+      householdId: f.adult.householdId,
+      userId: f.child.userId,
+      day: addDays(todayIso(), -1),
+      coins: 8,
+    });
+    await createChore(f.adult, once("Diska"));
+    const [t] = await open();
+    expect((await completeInstance(f.child, t!.id)).chestId).not.toBeNull();
+  });
+
+  it("cannot be opened by someone else, or when it does not exist", async () => {
+    await createChore(f.adult, once("Diska"));
+    const [t] = await open();
+    const { chestId } = await completeInstance(f.child, t!.id);
+    await expect(openChest(f.adult, chestId!)).rejects.toThrow(UserError);
+    await expect(openChest(f.child, "00000000-0000-4000-8000-000000000000")).rejects.toThrow(UserError);
+    await expect(openChest(f.child, "nonsense")).rejects.toThrow();
   });
 });

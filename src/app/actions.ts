@@ -15,7 +15,15 @@ import * as lists from "@/server/lists";
 import * as highFives from "@/server/high-fives";
 import type { ItemView, ListOrder } from "@/lib/lists";
 
-export type ActionState = { ok: boolean; error?: string; id?: string; count?: number };
+export type ActionState = {
+  ok: boolean;
+  error?: string;
+  id?: string;
+  count?: number;
+  /** The day's chest a tick-off offered, and what is in it (completeInstance only). */
+  chestId?: string;
+  chestCoins?: number;
+};
 
 const LOGGED_OUT = "Du är utloggad – ladda om sidan och logga in igen.";
 
@@ -30,8 +38,14 @@ async function act(
 ): Promise<ActionState> {
   const member = await getCurrentMember();
   if (!member) return { ok: false, error: LOGGED_OUT };
+  let extra: Partial<ActionState> = {};
   try {
-    await fn(member);
+    const out = await fn(member);
+    // Only what a tick-off reports about its chest goes back; other results stay on the server.
+    if (out && typeof out === "object") {
+      const { chestId, chestCoins } = out as Partial<ActionState>;
+      if (chestId && chestCoins !== undefined) extra = { chestId, chestCoins };
+    }
   } catch (e) {
     if (e instanceof UserError) return { ok: false, error: e.message };
     if (e instanceof z.ZodError) return { ok: false, error: e.issues[0]?.message ?? "Ogiltiga uppgifter" };
@@ -39,7 +53,7 @@ async function act(
   }
   if (notify) await chores.notifyHouseholdChanged(member.householdId);
   if (refreshPage) refresh();
-  return { ok: true };
+  return { ok: true, ...extra };
 }
 
 // ---------------------------------------------------------------------------
@@ -208,7 +222,13 @@ export async function editChore(
 }
 
 export async function completeInstance(id: string) {
-  return act((m) => chores.completeInstance(m, id));
+  return act(async (m) => {
+    return chores.completeInstance(m, id);
+  });
+}
+
+export async function openChest(id: string) {
+  return act((m) => chores.openChest(m, id));
 }
 
 export async function uncompleteInstance(id: string) {
