@@ -232,7 +232,7 @@ export async function setHighFive(instanceId: string, on: boolean) {
   return act((m) => highFives.setHighFive(m, instanceId, on));
 }
 
-/** The doer closes the notes about their cheered ticks; nobody else needs to hear of it. */
+/** The doer closes the notes about their cheered ticks; their other devices follow. */
 export async function closeHighFiveNotes(instanceIds: string[]) {
-  return act((m) => highFives.closeHighFiveNotes(m, instanceIds), { notify: false });
+  return act((m) => highFives.closeHighFiveNotes(m, instanceIds));
 }

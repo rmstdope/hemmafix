@@ -80,6 +80,7 @@ export async function listHighFiveNotes(actor: Actor): Promise<HighFiveNote[]> {
         eq(choreInstance.completedById, actor.userId),
         eq(choreInstance.householdId, actor.householdId),
         isNotNull(choreInstance.completedAt),
+        isNull(chore.archivedAt),
         isNull(highFive.closedAt),
       ),
     )

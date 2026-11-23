@@ -126,7 +126,7 @@ async function Board({ searchParams }: { searchParams: PageProps<"/">["searchPar
                   canManage={false}
                   canUndo={canUndo(member, t)}
                   highFive={{
-                    canGive: isAdult,
+                    canGive: can(member.role, "history:view-anyone"),
                     givenByMe: highFives.get(t.id)?.givenByMe ?? false,
                     names: highFives.get(t.id)?.names ?? [],
                   }}

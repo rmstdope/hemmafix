@@ -1,10 +1,11 @@
 import { beforeEach, describe, expect, it } from "vitest";
+import { eq } from "drizzle-orm";
 import { db } from "@/db";
-import { household, membership } from "@/db/schema";
+import { choreInstance, household, membership } from "@/db/schema";
 import { UserError } from "@/lib/errors";
 import { ForbiddenError } from "@/lib/permissions";
 import { createFamily, createUser } from "../../test/integration/factories";
-import { completeInstance, createChore, listOpenInstances, uncompleteInstance } from "./chores";
+import { completeInstance, createChore, deleteChore, listOpenInstances, uncompleteInstance } from "./chores";
 import { closeHighFiveNotes, listHighFiveNotes, listHighFives, setHighFive } from "./high-fives";
 
 let f: Awaited<ReturnType<typeof createFamily>>;
@@ -42,6 +43,7 @@ describe("setHighFive", () => {
     await createChore(f.adult, { title: "Öppen", roomId: f.kitchen.id, kind: "once" });
     const [open] = (await listOpenInstances(f.adult, {})).filter((i) => i.title === "Öppen");
     await expect(setHighFive(f.child, id, true)).rejects.toThrow(ForbiddenError);
+    await expect(setHighFive(f.adult, open!.id, true)).rejects.toThrow(UserError);
     await completeInstance(f.adult, open!.id);
     await expect(setHighFive(f.adult, open!.id, true)).rejects.toThrow(UserError);
     await expect(setHighFive(f.neighbour, id, true)).rejects.toThrow(UserError);
@@ -61,6 +63,14 @@ describe("listHighFives", () => {
 });
 
 describe("notes", () => {
+  it("is not shown for a task that has since been deleted", async () => {
+    const id = await boTicks();
+    await setHighFive(f.adult, id, true);
+    const [{ choreId }] = await db.select({ choreId: choreInstance.choreId }).from(choreInstance).where(eq(choreInstance.id, id));
+    await deleteChore(f.adult, choreId);
+    expect(await listHighFiveNotes(f.child)).toEqual([]);
+  });
+
   it("one per cheered tick; gone when taken back; stays closed; a new high five brings a new note", async () => {
     const id = await boTicks();
     expect(await listHighFiveNotes(f.child)).toEqual([]);

@@ -14,6 +14,7 @@ test("an adult cheers a child's tick; the child sees the count, who, and a note 
   await seedDone({ title: "Tömma diskmaskinen", roomId: rooms["Kök"]!.id, completedById: bo.id });
 
   await boPage.goto("/");
+  await boPage.getByText(/Klart senaste veckan/).click();
   await expect(boPage.getByRole("button", { name: /^👏/ })).toHaveCount(0);
 
   await page.goto("/");
@@ -24,7 +25,6 @@ test("an adult cheers a child's tick; the child sees the count, who, and a note 
 
   // Live on the child's open page: the note and the count, with no reload.
   await expect(boPage.getByText("Anna gav dig en high five för Tömma diskmaskinen")).toBeVisible();
-  await boPage.getByText(/Klart senaste veckan/).click();
   await boPage.getByRole("button", { name: "👏 1" }).click();
   await expect(boPage.getByText("Anna", { exact: true })).toBeVisible();
   // The child cannot cheer anything: no cheer button, and none on their own row.

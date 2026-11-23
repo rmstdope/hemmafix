@@ -1,6 +1,7 @@
 "use client";
 
 import { X } from "lucide-react";
+import { toast } from "sonner";
 import { useOptimistic, useTransition } from "react";
 import { closeHighFiveNotes } from "@/app/actions";
 import { Button } from "@/components/ui/button";
@@ -29,7 +30,8 @@ export function HighFiveNotes({ notes }: { notes: HighFiveNote[] }) {
             onClick={() =>
               startTransition(async () => {
                 hide(n.instanceId);
-                await closeHighFiveNotes([n.instanceId]);
+                const result = await closeHighFiveNotes([n.instanceId]);
+                if (result.error) toast.error(result.error);
               })
             }
           >
