@@ -1,5 +1,6 @@
 "use client";
 
+import { useRouter } from "next/navigation";
 import { useRef, useState, useTransition, type RefObject } from "react";
 import { toast } from "sonner";
 import { addReward, buyReward, cancelPurchase, deleteReward, updateReward } from "@/app/actions";
@@ -121,6 +122,7 @@ export function Butik({
 
 function PurchaseRow({ purchase: p, now }: { purchase: PurchaseView; now: Date }) {
   const [pending, startTransition] = useTransition();
+  const router = useRouter();
   return (
     <li className={cn("flex items-center gap-3 rounded-xl border bg-card px-3 py-2", pending && "opacity-60")}>
       <div className="min-w-0 flex-1">
@@ -144,7 +146,10 @@ function PurchaseRow({ purchase: p, now }: { purchase: PurchaseView; now: Date }
             onClick={() =>
               startTransition(async () => {
                 const result = await cancelPurchase(p.id);
-                if (result.error) toast.error(result.error);
+                if (result.error) {
+                  toast.error(result.error);
+                  router.refresh();
+                }
               })
             }
           >
@@ -174,26 +179,29 @@ function BuySheet({
   const buy = useRef<HTMLButtonElement>(null);
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
+  const router = useRouter();
+  const short = balance < reward.price;
   return (
     <Sheet title={`Köpa ${reward.name}?`} onClose={onClose} returnFocusTo={returnFocusTo} focusRef={buy}>
-      <p className="mb-4">{buyText(reward.price, balance)}</p>
-      {error && (
+      {!short && <p className="mb-4">{buyText(reward.price, balance)}</p>}
+      {(error ?? (short ? NOT_ENOUGH : null)) && (
         <p role="alert" className="mb-3 text-sm text-destructive">
-          {error}
+          {error ?? NOT_ENOUGH}
         </p>
       )}
       <div className="flex flex-col gap-2">
         <Button
           ref={buy}
           className="min-h-11"
-          disabled={pending}
+          disabled={pending || short}
           onClick={() =>
             startTransition(async () => {
               const result = await buyReward(reward.id);
               if (result.ok) return onClose();
               if (result.error === NOT_ENOUGH) return setError(NOT_ENOUGH);
-              // The reward is gone: say so and close, the list already refreshes.
+              // The reward is gone: say so, close, and refresh since an error skips the action's refresh.
               toast.error(result.error ?? "Något gick fel");
+              router.refresh();
               onClose();
             })
           }
@@ -222,6 +230,7 @@ function RewardSheet({
   const [price, setPrice] = useState(reward ? String(reward.price) : "");
   const [errors, setErrors] = useState<{ name?: string; price?: string }>({});
   const [pending, startTransition] = useTransition();
+  const router = useRouter();
 
   const finish = (result: { ok: boolean; error?: string }) => {
     if (result.ok) return onClose();
@@ -229,7 +238,10 @@ function RewardSheet({
     else if (result.error === PRICE_ERROR) setErrors({ price: PRICE_ERROR });
     else {
       toast.error(result.error ?? "Något gick fel");
-      if (result.error === "Belöningen finns inte längre.") onClose();
+      if (result.error === "Belöningen finns inte längre.") {
+        router.refresh();
+        onClose();
+      }
     }
   };
 

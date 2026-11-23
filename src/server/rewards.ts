@@ -1,5 +1,5 @@
 import "server-only";
-import { and, asc, desc, eq, gt, sql } from "drizzle-orm";
+import { and, asc, desc, eq, gt, or, sql } from "drizzle-orm";
 import { z } from "zod";
 import { db } from "@/db";
 import { reward, rewardPurchase, user } from "@/db/schema";
@@ -113,7 +113,7 @@ export type PurchaseView = {
 
 const DAYS_SHOWN = 30;
 
-/** The actor's own purchases from the last 30 days, newest first. */
+/** The actor's own purchases from the last 30 days (and any still waiting), newest first. */
 export async function listMyPurchases(actor: Actor): Promise<PurchaseView[]> {
   const rows = await db
     .select({
@@ -129,7 +129,11 @@ export async function listMyPurchases(actor: Actor): Promise<PurchaseView[]> {
       and(
         eq(rewardPurchase.householdId, actor.householdId),
         eq(rewardPurchase.buyerId, actor.userId),
-        gt(rewardPurchase.createdAt, sql`now() - interval '${sql.raw(String(DAYS_SHOWN))} days'`),
+        // A purchase still waiting stays, so its buyer can always take it back.
+        or(
+          eq(rewardPurchase.status, "waiting"),
+          gt(rewardPurchase.createdAt, sql`now() - interval '${sql.raw(String(DAYS_SHOWN))} days'`),
+        ),
       ),
     )
     .orderBy(desc(rewardPurchase.createdAt), desc(rewardPurchase.id));

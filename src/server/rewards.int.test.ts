@@ -194,8 +194,14 @@ describe("giving and declining", () => {
     const ps = await listMyPurchases(f.child);
     expect(ps).toHaveLength(2);
     expect(ps[0]!.createdAt.getTime()).toBeGreaterThanOrEqual(ps[1]!.createdAt.getTime());
+    await giveReward(f.adult, ps[1]!.id);
     await db.update(rewardPurchase).set({ createdAt: sql`now() - interval '31 days'` }).where(eq(rewardPurchase.id, ps[1]!.id));
     expect(await listMyPurchases(f.child)).toHaveLength(1);
+    // A purchase still waiting stays, however old, so it can be taken back.
+    await db.update(rewardPurchase).set({ createdAt: sql`now() - interval '40 days'` }).where(eq(rewardPurchase.id, ps[0]!.id));
+    expect(await listMyPurchases(f.child)).toHaveLength(1);
+    await giveReward(f.adult, ps[0]!.id);
+    expect(await listMyPurchases(f.child)).toHaveLength(0);
   });
 
   it("throws UserError (not a crash) for a made-up id", async () => {

@@ -72,7 +72,7 @@ describe("giveRecipients", () => {
   it("gives the only adult's own purchase to that adult", () => {
     expect(giveRecipients("a", [anna, bo])).toEqual(["a"]);
   });
-  it("gives a purchase by someone who is no longer a member to no one", () => {
+  it("gives a purchase to no one when the home has no adult", () => {
     expect(giveRecipients("x", [bo])).toEqual([]);
   });
 });

@@ -1,6 +1,7 @@
 "use client";
 
 import { Check } from "lucide-react";
+import { useRouter } from "next/navigation";
 import { useOptimistic, useRef, useState, useTransition } from "react";
 import { toast } from "sonner";
 import { declineReward, giveReward } from "@/app/actions";
@@ -28,6 +29,7 @@ export function GoldRows({ rows, now }: { rows: GoldRow[]; now: string }) {
 
 function GoldItem({ row, now }: { row: GoldRow; now: Date }) {
   const [pending, startTransition] = useTransition();
+  const router = useRouter();
   const [hidden, hide] = useOptimistic(false);
   const [declining, setDeclining] = useState(false);
   const opener = useRef<HTMLButtonElement>(null);
@@ -38,7 +40,10 @@ function GoldItem({ row, now }: { row: GoldRow; now: Date }) {
     startTransition(async () => {
       hide(true);
       const result = await fn();
-      if (result.error) toast.error(result.error);
+      if (result.error) {
+        toast.error(result.error);
+        router.refresh();
+      }
       after?.();
     });
 
