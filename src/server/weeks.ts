@@ -1,7 +1,7 @@
 import "server-only";
 import { and, count, eq, gte, isNotNull, lt, sql } from "drizzle-orm";
 import { db } from "@/db";
-import { choreInstance, weekRecapSeen } from "@/db/schema";
+import { badgeAward, choreInstance, weekRecapSeen } from "@/db/schema";
 import { addDays, HOME_TIME_ZONE, todayIso } from "@/lib/dates";
 import { formatWeekRange, weekStart, type WeekCounts } from "@/lib/weeks";
 import type { Actor } from "./household";
@@ -11,9 +11,19 @@ const startOfDay = (iso: string) => sql`(${iso}::date)::timestamp at time zone $
 /**
  * What the actor ticked off in the week starting on `start` (a Monday): their own ticks that
  * earned coins (ticks from before coins existed have none), counted by when they were done.
- * Badges do not exist yet, so none are counted.
+ * Badges are those won in the week.
  */
 export async function weekCounts(actor: Actor, start: string): Promise<WeekCounts> {
+  const [badges] = await db
+    .select({ n: count() })
+    .from(badgeAward)
+    .where(
+      and(
+        eq(badgeAward.userId, actor.userId),
+        gte(badgeAward.wonAt, startOfDay(start)),
+        lt(badgeAward.wonAt, startOfDay(addDays(start, 7))),
+      ),
+    );
   const [row] = await db
     .select({ tasks: count(), coins: sql<number>`coalesce(sum(${choreInstance.coins}), 0)::int` })
     .from(choreInstance)
@@ -26,7 +36,7 @@ export async function weekCounts(actor: Actor, start: string): Promise<WeekCount
         lt(choreInstance.completedAt, startOfDay(addDays(start, 7))),
       ),
     );
-  return { tasks: row?.tasks ?? 0, coins: row?.coins ?? 0, badges: 0 };
+  return { tasks: row?.tasks ?? 0, coins: row?.coins ?? 0, badges: badges?.n ?? 0 };
 }
 
 /** This week and last week, for the card on Framsteg. */

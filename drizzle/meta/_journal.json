@@ -127,6 +127,13 @@
       "when": 1795468368846,
       "tag": "0017_rewards",
       "breakpoints": true
+    },
+    {
+      "idx": 18,
+      "version": "7",
+      "when": 1795469373707,
+      "tag": "0018_badges",
+      "breakpoints": true
     }
   ]
 }

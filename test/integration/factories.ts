@@ -1,6 +1,7 @@
 import { randomUUID } from "node:crypto";
 import { db } from "@/db";
-import { floor, household, membership, room, user } from "@/db/schema";
+import { badgeAward, floor, household, membership, room, user } from "@/db/schema";
+import { BADGE_KEYS } from "@/lib/badges";
 import type { Role } from "@/lib/permissions";
 
 /** Inserts a verified user, as Better Auth would after a Google login. */
@@ -16,8 +17,10 @@ export async function createUser(name: string) {
 /**
  * A home with an adult (Anna), a child (Bo) and a kitchen and bathroom, plus a neighbouring
  * home with its own adult (Eve) and room, for checking that nothing crosses between homes.
+ * Everyone starts with every badge already won, worth no coins, so ticks and purchases in other
+ * tests do not win badges and move balances; a badge test asks for `badges: "none"`.
  */
-export async function createFamily() {
+export async function createFamily({ badges = "won" }: { badges?: "won" | "none" } = {}) {
   const [home, other] = await db.insert(household).values([{ name: "Hemma" }, { name: "Grannar" }]).returning();
   const [ground, neighbourFloor] = await db
     .insert(floor)
@@ -40,6 +43,15 @@ export async function createFamily() {
       { householdId: other!.id, floorId: neighbourFloor!.id, name: "Garage" },
     ])
     .returning();
+  if (badges === "won") {
+    await db.insert(badgeAward).values(
+      [
+        [anna, home!],
+        [bo, home!],
+        [eve, other!],
+      ].flatMap(([u, h]) => BADGE_KEYS.map((key) => ({ householdId: h!.id, userId: u!.id, key, coins: 0, wonAt: new Date("2000-01-01T00:00:00Z") }))),
+    );
+  }
   const actor = (u: { id: string }, householdId: string, role: Role) => ({
     userId: u.id,
     householdId,

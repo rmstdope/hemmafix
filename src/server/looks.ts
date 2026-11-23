@@ -7,6 +7,7 @@ import { UserError } from "@/lib/errors";
 import { chooseLookInput, defaultLook, findLook, LOOK_KINDS, type LookKind } from "@/lib/looks";
 import { balanceOf } from "./chores";
 import type { Actor } from "./household";
+import { awardBadges } from "./badges";
 
 const COLUMN = { frame: "frame", theme: "theme", coin: "coinLook" } as const;
 
@@ -67,6 +68,7 @@ export async function buyLook(actor: Actor, kind: string, key: string) {
       .insert(lookPurchase)
       .values({ householdId: actor.householdId, userId: actor.userId, kind: look.kind, key: look.key, price: look.price });
     await selectLook(tx, actor, look.kind, look.key);
+    await awardBadges(tx, actor);
   });
 }
 

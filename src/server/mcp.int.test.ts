@@ -1,7 +1,8 @@
 import { beforeAll, beforeEach, describe, expect, it } from "vitest";
 import { and, eq, isNull } from "drizzle-orm";
 import { db, pg } from "@/db";
-import { chore, choreInstance, floor, household, membership, room, user } from "@/db/schema";
+import { badgeAward, chore, choreInstance, floor, household, membership, room, user } from "@/db/schema";
+import { BADGE_KEYS } from "@/lib/badges";
 import { todayIso } from "@/lib/dates";
 import { getCoinTotal, TASKS_CHANNEL } from "./chores";
 
@@ -301,6 +302,8 @@ describe("the task tools", () => {
     const roomId = await seedKitchen();
     const { instanceId } = await createDiska(roomId);
     const anna = { userId: "anna", householdId: homeId, role: "adult" as const, name: "Anna", image: null };
+    // The coins of a tick alone: Anna has won every badge already, so this tick wins none.
+    await db.insert(badgeAward).values(BADGE_KEYS.map((key) => ({ householdId: homeId, userId: "anna", key, coins: 0 })));
     expect(await getCoinTotal(anna)).toBe(0);
     await taskCall("anna", "bocka_av_syssla", { instanceId });
     expect(await getCoinTotal(anna)).toBe(10);

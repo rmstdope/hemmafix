@@ -8,6 +8,7 @@ import { ForbiddenError, assertCan } from "@/lib/permissions";
 import { giveRecipients, rewardInput, type RewardInput } from "@/lib/rewards";
 import { balanceOf, listFamily } from "./chores";
 import type { Actor } from "./household";
+import { awardBadges } from "./badges";
 
 const GONE_REWARD = "Belöningen finns inte längre.";
 const GONE_PURCHASE = "Köpet finns inte längre.";
@@ -82,6 +83,7 @@ export async function buyReward(actor: Actor, id: string) {
     await tx
       .insert(rewardPurchase)
       .values({ householdId: actor.householdId, buyerId: actor.userId, name: r.name, price: r.price });
+    await awardBadges(tx, actor);
   });
 }
 
