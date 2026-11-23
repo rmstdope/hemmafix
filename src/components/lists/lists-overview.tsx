@@ -1,28 +1,38 @@
 "use client";
 
-import { ChevronRight } from "lucide-react";
+import { ArrowDownUp, ChevronRight } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useOptimistic, useRef, useState, useTransition } from "react";
+import { useOptimistic, useRef, useState, useTransition, type ReactNode } from "react";
 import { createList, setListOrder } from "@/app/actions";
 import { attempt } from "@/components/attempt";
 import {
   countLabel,
   LIST_ORDERS,
-  orderButtonLabel,
   orderMenuLabel,
   sortLists,
   type ListOrder,
 } from "@/lib/lists";
 import { expectFocusIn } from "./focus-new";
 import { Menu } from "./menu";
-import { NameDialog } from "./name-dialog";
+import { FloatingAdd } from "@/components/sheet";
+import { NewListSheet } from "./new-list-sheet";
 import { useHydrated } from "./use-hydrated";
 
 type Row = { id: string; name: string; createdAt: Date; updatedAt: Date; openCount: number; totalCount: number };
 
-/** Listor: the home's lists in this person's order, Ny lista and the sort button. */
-export function ListsOverview({ lists, order }: { lists: Row[]; order: ListOrder }) {
+/** Listor: the page header with the sort button, the home's lists in this person's order, and the round + for Ny lista. */
+export function ListsOverview({
+  lists,
+  order,
+  subtitle,
+  children,
+}: {
+  lists: Row[];
+  order: ListOrder;
+  subtitle?: string;
+  children?: ReactNode;
+}) {
   const router = useRouter();
   const [, startTransition] = useTransition();
   const [shown, showOrder] = useOptimistic(order);
@@ -38,31 +48,31 @@ export function ListsOverview({ lists, order }: { lists: Row[]; order: ListOrder
     });
 
   return (
-    <div data-hydrated={hydrated}>
-      <div className="mb-3 flex gap-2">
-        <button
-          ref={newButton}
-          type="button"
-          onClick={() => setMaking(true)}
-          className="h-11 min-w-0 flex-1 rounded-xl border font-semibold"
-        >
-          ＋ Ny lista
-        </button>
-        <Menu
-          radio
-          triggerRef={sortButton}
-          label={`Sortera listor: ${orderMenuLabel(shown)}`}
-          triggerClassName="h-11 shrink-0 rounded-xl border px-3 text-sm font-semibold whitespace-nowrap"
-          items={LIST_ORDERS.map((o) => ({ label: orderMenuLabel(o), checked: o === shown, onSelect: () => choose(o) }))}
-        >
-          {orderButtonLabel(shown)}
-        </Menu>
-      </div>
+    <div data-hydrated={hydrated} className="flex flex-1 flex-col">
+      <header className="mb-3 flex items-center justify-between gap-2">
+        <div className="min-w-0 [&>p]:truncate">
+          <h1 className="text-xl font-semibold">Listor</h1>
+          {subtitle ? <p className="text-sm text-muted-foreground">{subtitle}</p> : null}
+        </div>
+        <div className="flex items-center gap-1">
+          <Menu
+            radio
+            triggerRef={sortButton}
+            label={`Sortera listor: ${orderMenuLabel(shown)}`}
+            heading="Sortera listor"
+            triggerClassName="flex size-11 items-center justify-center rounded-lg border text-muted-foreground outline-none focus-visible:ring-3 focus-visible:ring-ring/50 aria-expanded:border-foreground aria-expanded:bg-foreground aria-expanded:text-background"
+            items={LIST_ORDERS.map((o) => ({ label: orderMenuLabel(o), checked: o === shown, onSelect: () => choose(o) }))}
+          >
+            <ArrowDownUp className="size-5" aria-hidden />
+          </Menu>
+          {children}
+        </div>
+      </header>
 
       {lists.length === 0 ? (
         <div className="rounded-xl border border-dashed p-6 text-center text-muted-foreground">
           <p>Inga listor ännu.</p>
-          <p className="mt-3">Gör en lista för inköp, packning eller annat ni vill bocka av tillsammans.</p>
+          <p className="mt-3">Tryck på + för att göra en lista för inköp, packning eller annat ni vill bocka av tillsammans.</p>
         </div>
       ) : (
         <ul className="space-y-2" aria-label="Listor">
@@ -78,10 +88,10 @@ export function ListsOverview({ lists, order }: { lists: Row[]; order: ListOrder
         </ul>
       )}
 
+      <FloatingAdd label="Ny lista" buttonRef={newButton} onClick={() => setMaking(true)} />
+
       {making && (
-        <NameDialog
-          title="Ny lista"
-          submitLabel="Skapa"
+        <NewListSheet
           opener={newButton}
           onClose={() => setMaking(false)}
           onSubmit={async (name) => {

@@ -10,7 +10,7 @@ const field = (page: Page) => page.getByRole("textbox", { name: "Lägg till…" 
 const open = (page: Page) => page.getByRole("list", { name: "Saker kvar" }).getByRole("listitem");
 const klart = (page: Page) => page.getByRole("list", { name: "Klart" }).getByRole("listitem");
 const toggle = (page: Page, n: number) => page.getByRole("button", { name: `Klart (${n})` });
-const newList = (page: Page) => page.getByRole("button", { name: "＋ Ny lista" });
+const newList = (page: Page) => page.getByRole("button", { name: "Ny lista", exact: true });
 const sortButton = (page: Page, order: string) => page.getByRole("button", { name: `Sortera listor: ${order}` });
 const noOverflow = async (page: Page) =>
   expect(await page.evaluate(() => document.documentElement.scrollWidth > document.documentElement.clientWidth)).toBe(false);
@@ -41,9 +41,12 @@ test("an adult sees no lists at first, makes one and lands in it ready to add", 
   await expect(page.getByText("Familjen E2E")).toBeVisible();
   await expect(page.getByText("Inga listor ännu.")).toBeVisible();
   await expect(
-    page.getByText("Gör en lista för inköp, packning eller annat ni vill bocka av tillsammans."),
+    page.getByText("Tryck på + för att göra en lista för inköp, packning eller annat ni vill bocka av tillsammans."),
   ).toBeVisible();
-  await expect(sortButton(page, "Alfabetiskt")).toHaveText("⇅ A–Ö");
+  // The button row is gone: the sort button is icon-only, in the header, and the + is round.
+  await expect(sortButton(page, "Alfabetiskt")).toHaveText("");
+  await expect(page.getByRole("banner").or(page.locator("header")).first().getByRole("button", { name: /^Sortera listor/ })).toBeVisible();
+  await expect(page.getByText("＋ Ny lista")).toHaveCount(0);
 
   // Avbryt, Esc and an empty name create nothing.
   await newList(page).click();
@@ -53,7 +56,8 @@ test("an adult sees no lists at first, makes one and lands in it ready to add", 
   await dialog.getByRole("button", { name: "Skapa" }).click();
   await expect(dialog).toBeVisible();
   await dialog.getByRole("textbox", { name: "Namn" }).fill("Spöke");
-  await dialog.getByRole("button", { name: "Avbryt" }).click();
+  await expect(dialog.getByRole("button", { name: "Avbryt" })).toHaveCount(0);
+  await dialog.getByRole("button", { name: "Stäng" }).click();
   await expect(dialog).toBeHidden();
   await expect(newList(page)).toBeFocused();
   await newList(page).click();
@@ -74,6 +78,48 @@ test("an adult sees no lists at first, makes one and lands in it ready to add", 
   await page.getByRole("textbox", { name: "Namn" }).fill("Inköp");
   await page.getByRole("button", { name: "Skapa" }).click();
   await expect(page.getByRole("heading", { name: "Inköp", level: 1 })).toBeVisible();
+});
+
+test("the + opens Ny lista in a sheet or window that discards what was typed, for a child too", async ({ page, context }) => {
+  await logIn(context, "bo", "child");
+  await go(page, "/listor");
+  const dialog = page.getByRole("dialog", { name: "Ny lista" });
+  await expect(newList(page)).toBeVisible();
+  await newList(page).click();
+  await expect(dialog.getByRole("heading", { name: "Ny lista" })).toBeVisible();
+  await dialog.getByRole("textbox", { name: "Namn" }).fill("Spöke");
+  await page.mouse.click(2, 2); // outside the sheet
+  await expect(dialog).toBeHidden();
+  await expect(newList(page)).toBeFocused();
+  await newList(page).click();
+  await expect(dialog.getByRole("textbox", { name: "Namn" })).toHaveValue("");
+  await page.keyboard.press("Escape");
+  await expect(dialog).toBeHidden();
+  await expect(page.getByText("Inga listor ännu.")).toBeVisible();
+});
+
+test("the + floats at the lower right and never hides the last list", async ({ page, context }) => {
+  await logIn(context, "anna", "adult");
+  for (let i = 1; i <= 14; i++) await seedList(`Lista ${String(i).padStart(2, "0")}`, []);
+  await go(page, "/listor");
+  const plus = newList(page);
+  const box = await plus.boundingBox();
+  const viewport = page.viewportSize();
+  expect(box).not.toBeNull();
+  expect(viewport).not.toBeNull();
+  // In the lower right half of the screen, and inside the viewport.
+  expect(box!.x + box!.width / 2).toBeGreaterThan(viewport!.width / 2);
+  expect(box!.y + box!.height).toBeLessThanOrEqual(viewport!.height);
+  expect(box!.y).toBeGreaterThan(viewport!.height / 2);
+  // On a phone it is above the bottom bar.
+  const bar = await parts(page).boundingBox();
+  if (bar && bar.y > viewport!.height / 2) expect(box!.y + box!.height).toBeLessThanOrEqual(bar.y);
+  // Scrolled to the end, the last row is clear of the +.
+  await rows(page).last().scrollIntoViewIfNeeded();
+  await page.evaluate(() => window.scrollTo(0, document.documentElement.scrollHeight));
+  const last = await rows(page).last().boundingBox();
+  const after = await plus.boundingBox();
+  expect(last!.y + last!.height).toBeLessThanOrEqual(after!.y + 1);
 });
 
 test("items are added first, ticked into Klart, unticked and cleared with Ångra", async ({ page, context }) => {
@@ -232,8 +278,9 @@ test("the order of the lists is each person's own and is kept", async ({ page, c
   await sortButton(page, "Alfabetiskt").click();
   await expect(page.getByRole("menuitemradio", { name: "Alfabetiskt" })).toBeChecked();
   await expect(page.getByRole("menuitemradio", { name: "Alfabetiskt" })).toBeFocused();
+  await expect(page.getByRole("menu", { name: /Sortera listor/ }).getByText("Sortera listor", { exact: true })).toBeVisible();
   await page.getByRole("menuitemradio", { name: "Senast ändrad" }).click();
-  await expect(sortButton(page, "Senast ändrad")).toHaveText("⇅ Ändrad");
+  await expect(page.getByRole("menu")).toHaveCount(0);
   await expect(rows(page)).toHaveText([/^Zebra/, /^Anka/, /^Ägg/]);
   await expect(sortButton(page, "Senast ändrad")).toBeFocused();
 
@@ -250,7 +297,6 @@ test("the order of the lists is each person's own and is kept", async ({ page, c
 
   await sortButton(page, "Senast ändrad").click();
   await page.getByRole("menuitemradio", { name: "Senast skapad" }).click();
-  await expect(sortButton(page, "Senast skapad")).toHaveText("⇅ Skapad");
   await expect(rows(page)).toHaveText([/^Anka/, /^Ägg/, /^Zebra/]);
 
   // Bo has not chosen anything: alphabetical, whatever Anna did.

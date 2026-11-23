@@ -4,7 +4,6 @@ import {
   clearedNotice,
   countLabel,
   LIST_ORDERS,
-  orderButtonLabel,
   orderMenuLabel,
   sortLists,
   type ItemView,
@@ -47,9 +46,8 @@ describe("words", () => {
     expect(countLabel(0, 3)).toBe("Allt klart");
     expect(countLabel(0, 0)).toBe("Tom");
   });
-  it("names the order on the button and in the menu", () => {
+  it("names the orders in the menu", () => {
     expect(LIST_ORDERS).toEqual(["alfabetiskt", "andrad", "skapad"]);
-    expect(LIST_ORDERS.map(orderButtonLabel)).toEqual(["⇅ A–Ö", "⇅ Ändrad", "⇅ Skapad"]);
     expect(LIST_ORDERS.map(orderMenuLabel)).toEqual(["Alfabetiskt", "Senast ändrad", "Senast skapad"]);
   });
   it("says how many were cleared", () => {

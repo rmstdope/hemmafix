@@ -6,8 +6,6 @@ export type ListOrder = z.infer<typeof listOrder>;
 /** The orders of the Listor overview, in menu order; the first is where everyone starts. */
 export const LIST_ORDERS = ["alfabetiskt", "andrad", "skapad"] as const satisfies readonly ListOrder[];
 
-export const orderButtonLabel = (order: ListOrder) =>
-  ({ alfabetiskt: "⇅ A–Ö", andrad: "⇅ Ändrad", skapad: "⇅ Skapad" })[order];
 export const orderMenuLabel = (order: ListOrder) =>
   ({ alfabetiskt: "Alfabetiskt", andrad: "Senast ändrad", skapad: "Senast skapad" })[order];
 
