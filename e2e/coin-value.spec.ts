@@ -1,7 +1,7 @@
 import type { Page } from "@playwright/test";
 import { todayIso } from "../src/lib/dates";
 import { E2E_BASE_URL } from "./support/env";
-import { logIn, seedChore, seedRooms } from "./support/family";
+import { logIn, logInWithChestTaken, seedChore, seedRooms } from "./support/family";
 import { expect, test } from "./support/test";
 
 const item = (page: Page, title: string) =>
@@ -95,7 +95,7 @@ test("a ready-made task is added at 10, and a child sees the badge but no contro
 });
 
 test("a tick earns the set amount, a changed amount counts from the next tick, and ↺ takes back what that tick gave", async ({ page, context }) => {
-  await logIn(context, "anna", "adult");
+  await logInWithChestTaken(context, "anna", "adult");
   const rooms = await seedRooms("Kök");
   await seedChore({ title: "Dammsuga", roomId: rooms["Kök"]!.id, coins: 20, recurrence: { unit: "day", interval: 1 } });
   await page.goto("/");

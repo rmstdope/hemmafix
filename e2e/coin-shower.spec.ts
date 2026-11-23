@@ -1,6 +1,6 @@
 import type { Page } from "@playwright/test";
 import { choreInstance } from "../src/db/schema";
-import { db, logIn, seedChore, seedRooms } from "./support/family";
+import { db, logIn, logInWithChestTaken, seedChore, seedRooms } from "./support/family";
 import { expect, test } from "./support/test";
 
 const pill = (page: Page) => page.getByRole("button", { name: /mynt$/ });
@@ -39,8 +39,8 @@ const seen = (page: Page) =>
     return { coinsFlown: w.coinsFlown, numbers: w.numbers, clinks: w.clinks };
   });
 
-async function setUp(page: Page, context: Parameters<typeof logIn>[0], titles = ["Diska"]) {
-  const person = await logIn(context, "bo", "child");
+async function setUp(page: Page, context: Parameters<typeof logIn>[0], titles = ["Diska"], chestTaken = false) {
+  const person = await (chestTaken ? logInWithChestTaken : logIn)(context, "bo", "child");
   const rooms = await seedRooms("Kök");
   for (const title of titles) await seedChore({ title, roomId: rooms["Kök"]!.id, recurrence: null });
   await watch(page);
@@ -63,7 +63,7 @@ test("ticking a task off sends five coins, the number climbs coin by coin, with 
 });
 
 test("undoing a tick-off is quiet: no coins, no sound, no announcement", async ({ page, context }) => {
-  await setUp(page, context);
+  await setUp(page, context, ["Diska"], true);
   await tick(page, "Diska");
   await expect(pill(page)).toHaveText("10", { timeout: 5_000 });
   await page.waitForTimeout(2_000);

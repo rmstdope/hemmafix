@@ -331,3 +331,34 @@ describe("0012: high fives", () => {
     expect(await sql`select count(*)::int as n from chore_instance where completed_at is null`).toEqual([{ n: 1 }]);
   });
 });
+
+describe("0013: daily chest", () => {
+  beforeEach(reset);
+
+  it("only adds a table, so the previous release keeps working; one chest per person and day, 5 to 10 coins", async () => {
+    await migrateUpTo(sql, "0012_wooden_gorgon");
+    const [home] = await sql`insert into household (name) values ('Hemma') returning id`;
+    await sql`insert into "user" (id, name, email, email_verified) values ('a', 'Anna', 'a@example.com', true)`;
+    await sql`insert into floor (household_id, name, position) values (${home!.id}, '1', 1)`;
+    const [r] = await sql`insert into room (household_id, floor_id, name)
+      select ${home!.id}, id, 'Kök' from floor returning id`;
+    const [c] = await sql`insert into chore (household_id, room_id, title) values (${home!.id}, ${r!.id}, 'Diska') returning id`;
+
+    await migrateUpTo(sql, "0013_daily_chest");
+
+    // The previous release, which does not know the table, still ticks.
+    await sql`insert into chore_instance (chore_id, household_id) values (${c!.id}, ${home!.id})`;
+    await sql`update chore_instance set completed_at = now(), completed_by_id = 'a', coins = 10`;
+
+    await sql`insert into daily_chest (household_id, user_id, day, coins) values (${home!.id}, 'a', '2026-11-23', 7)`;
+    await expect(
+      sql`insert into daily_chest (household_id, user_id, day, coins) values (${home!.id}, 'a', '2026-11-23', 8)`,
+    ).rejects.toThrow();
+    await expect(
+      sql`insert into daily_chest (household_id, user_id, day, coins) values (${home!.id}, 'a', '2026-11-24', 4)`,
+    ).rejects.toThrow();
+    await expect(
+      sql`insert into daily_chest (household_id, user_id, day, coins) values (${home!.id}, 'a', '2026-11-24', 11)`,
+    ).rejects.toThrow();
+  });
+});

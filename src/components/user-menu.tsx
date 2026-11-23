@@ -2,7 +2,7 @@
 
 import { Menu } from "@base-ui/react/menu";
 import { Popover } from "@base-ui/react/popover";
-import { History, LogOut, Settings } from "lucide-react";
+import { History, LogOut, Settings, Volume2 } from "lucide-react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useRef, useState, useTransition } from "react";
@@ -12,6 +12,8 @@ import { isHemmet, litPart } from "@/lib/parts";
 import { cn } from "@/lib/utils";
 import { coinPillClass, CoinDot } from "./coin-pill";
 import { useShownCoins } from "./coin-shower";
+import { setSoundOn, useSoundOn } from "./sound-setting";
+import { unlockSound } from "./coin-sound";
 import { MemberAvatar } from "./member-avatar";
 import { rememberPart, useRememberedPart } from "./part-links";
 
@@ -42,6 +44,7 @@ export function UserMenu({
   const router = useRouter();
   const pathname = usePathname();
   const remembered = useRememberedPart();
+  const soundOn = useSoundOn();
   const [pending, startTransition] = useTransition();
   // Next keeps a page it left alive, so a menu left open would still be open on the way back.
   const [panel, setPanel] = useState<Panel>(null);
@@ -123,6 +126,27 @@ export function UserMenu({
                   Hemmet
                 </Menu.LinkItem>
               )}
+              <Menu.CheckboxItem
+                checked={soundOn}
+                closeOnClick={false}
+                onCheckedChange={(on) => {
+                  setSoundOn(on);
+                  if (on) unlockSound();
+                }}
+                className={itemClass}
+              >
+                <Volume2 className="size-5" aria-hidden />
+                Ljud och vibration
+                <span
+                  aria-hidden
+                  className={cn(
+                    "relative ml-auto h-6 w-10 shrink-0 rounded-full transition-colors",
+                    soundOn ? "bg-green-600" : "bg-zinc-300 dark:bg-zinc-600",
+                  )}
+                >
+                  <span className={cn("absolute top-[3px] size-[18px] rounded-full bg-white transition-[left]", soundOn ? "left-[19px]" : "left-[3px]")} />
+                </span>
+              </Menu.CheckboxItem>
               <Menu.Separator className="my-1 h-px bg-border" />
               <Menu.Item
                 closeOnClick={false}
