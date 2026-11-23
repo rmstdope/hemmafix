@@ -13,6 +13,7 @@ import * as connections from "@/server/connections";
 import * as routines from "@/server/routines";
 import * as lists from "@/server/lists";
 import * as highFives from "@/server/high-fives";
+import * as weeks from "@/server/weeks";
 import type { ItemView, ListOrder } from "@/lib/lists";
 
 export type ActionState = {
@@ -251,6 +252,11 @@ export async function setHighFive(instanceId: string, on: boolean) {
 }
 
 /** The doer closes the notes about their cheered ticks; their other devices follow. */
+/** The person is through the "Din vecka" sheet; it stays closed on their other devices too. */
+export async function closeWeekRecap() {
+  return act((m) => weeks.closeWeekRecap(m), { notify: false, refreshPage: false });
+}
+
 export async function closeHighFiveNotes(instanceIds: string[]) {
   return act((m) => highFives.closeHighFiveNotes(m, instanceIds));
 }

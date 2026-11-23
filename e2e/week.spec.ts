@@ -1,0 +1,78 @@
+import type { Page } from "@playwright/test";
+import { addDays, todayIso } from "../src/lib/dates";
+import { weekStart } from "../src/lib/weeks";
+import * as schema from "../src/db/schema";
+import { db, logIn, seedDone, seedRooms } from "./support/family";
+import { expect, test } from "./support/test";
+
+const hydrated = (page: Page) => expect(page.locator('[data-hydrated="true"]')).toBeAttached();
+const dayAgo = (days: number) => new Date(Date.now() - days * 86_400_000);
+const card = (page: Page) => page.getByRole("region", { name: "Den här veckan" });
+
+/** A person whose first open was in an earlier week, so the Monday sheet is due. */
+const seenLastWeek = (userId: string) =>
+  db.insert(schema.weekRecapSeen).values({ userId, weekStart: addDays(weekStart(todayIso()), -7) });
+
+test("a new member sees a week of zeros that says to get going", async ({ page, context }) => {
+  await logIn(context, "anna", "adult");
+  await page.goto("/jag");
+  await hydrated(page);
+  const week = card(page);
+  await expect(week.getByRole("columnheader", { name: "Nu" })).toBeVisible();
+  await expect(week.getByRole("columnheader", { name: "Förra" })).toBeVisible();
+  for (const row of ["Uppgifter", "Mynt", "Märken"]) {
+    await expect(week.getByRole("row", { name: new RegExp(`^${row} 0 0$`) })).toBeVisible();
+  }
+  await expect(week.getByText("Ny vecka – nu kör vi!")).toBeVisible();
+  // The very first open never brings the Monday sheet.
+  await expect(page.getByRole("dialog", { name: "Din vecka" })).toHaveCount(0);
+});
+
+test("the week card sets this week against last, for a child too", async ({ page, context }) => {
+  const bo = await logIn(context, "bo", "child");
+  const rooms = await seedRooms("Kök");
+  const roomId = rooms["Kök"]!.id;
+  for (const t of ["A", "B", "C", "D"]) await seedDone({ title: t, roomId, completedById: bo.id, coins: 10 });
+  for (const t of ["E", "F", "G"]) await seedDone({ title: t, roomId, completedById: bo.id, coins: 5, completedAt: dayAgo(7) });
+  await page.goto("/jag");
+  await hydrated(page);
+  await expect(card(page).getByRole("row", { name: /^Uppgifter 4 3$/ })).toBeVisible();
+  await expect(card(page).getByRole("row", { name: /^Mynt 40 15$/ })).toBeVisible();
+  await expect(card(page).getByText("1 fler uppgift än förra veckan!")).toBeVisible();
+  // The card is the first thing under the switch.
+  const switchBox = await page.getByRole("group", { name: "Visa" }).boundingBox();
+  const cardBox = await card(page).boundingBox();
+  expect(cardBox!.y).toBeGreaterThan(switchBox!.y);
+  expect(cardBox!.width).toBeLessThanOrEqual(page.viewportSize()!.width);
+});
+
+test("the Monday sheet shows last week once, and does not come back", async ({ page, context }) => {
+  const anna = await logIn(context, "anna", "adult");
+  await seenLastWeek(anna.id);
+  await page.goto("/");
+  const sheet = page.getByRole("dialog", { name: "Din vecka" });
+  await expect(sheet).toBeVisible();
+  await expect(sheet.getByText(/^\d{1,2}.*\d{1,2} \p{L}+$/u)).toBeVisible();
+  await expect(sheet.getByRole("columnheader", { name: "Veckan", exact: true })).toBeVisible();
+  await expect(sheet.getByRole("columnheader", { name: "Veckan före" })).toBeVisible();
+  await expect(sheet.getByText("Ny vecka – nu kör vi!")).toBeVisible();
+  await expect(sheet.getByRole("button", { name: "Fortsätt" })).toBeFocused();
+  await sheet.getByRole("button", { name: "Fortsätt" }).click();
+  await expect(sheet).toHaveCount(0);
+  await page.reload();
+  await page.getByRole("heading", { name: "Uppgifter" }).waitFor();
+  await expect(sheet).toHaveCount(0);
+});
+
+test("Esc also closes the Monday sheet for good", async ({ page, context }) => {
+  const anna = await logIn(context, "anna", "adult");
+  await seenLastWeek(anna.id);
+  await page.goto("/");
+  const sheet = page.getByRole("dialog", { name: "Din vecka" });
+  await expect(sheet).toBeVisible();
+  await page.keyboard.press("Escape");
+  await expect(sheet).toHaveCount(0);
+  await page.goto("/jag");
+  await hydrated(page);
+  await expect(page.getByRole("dialog", { name: "Din vecka" })).toHaveCount(0);
+});
