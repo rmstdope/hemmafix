@@ -12,6 +12,7 @@ import * as chores from "@/server/chores";
 import * as connections from "@/server/connections";
 import * as routines from "@/server/routines";
 import * as lists from "@/server/lists";
+import * as highFives from "@/server/high-fives";
 import type { ItemView, ListOrder } from "@/lib/lists";
 
 export type ActionState = { ok: boolean; error?: string; id?: string; count?: number };
@@ -224,4 +225,14 @@ export async function assignChore(id: string, assigneeId: string | null) {
 
 export async function deleteChore(id: string) {
   return act((m) => chores.deleteChore(m, id));
+}
+
+/** Gives (`on`) or takes back the person's high five for someone else's tick. */
+export async function setHighFive(instanceId: string, on: boolean) {
+  return act((m) => highFives.setHighFive(m, instanceId, on));
+}
+
+/** The doer closes the notes about their cheered ticks; their other devices follow. */
+export async function closeHighFiveNotes(instanceIds: string[]) {
+  return act((m) => highFives.closeHighFiveNotes(m, instanceIds));
 }
