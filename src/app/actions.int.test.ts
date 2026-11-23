@@ -13,6 +13,7 @@ vi.mock("next/cache", () => ({ refresh: () => {} }));
 
 const actions = await import("./actions");
 const chores = await import("@/server/chores");
+const lists = await import("@/server/lists");
 
 let f: Awaited<ReturnType<typeof createFamily>>;
 
@@ -230,6 +231,26 @@ describe("when logged out", () => {
     expect((await actions.addRoom({ ok: false }, form({ name: "Hall" }))).ok).toBe(false);
     expect((await actions.completeInstance(t.instanceId)).ok).toBe(false);
     expect((await openInstance(t.choreId))!.completedAt).toBeNull();
+  });
+
+  it("refuses every list action", async () => {
+    const { id } = await lists.createList(f.adult, "Inköp");
+    const item = "00000000-0000-4000-8000-000000000001";
+    as(null);
+    const results = [
+      await actions.createList("Ny"),
+      await actions.renameList(id, "Ny"),
+      await actions.deleteList(id),
+      await actions.addListItem(id, item, "x"),
+      await actions.editListItem(id, item, "x"),
+      await actions.setListItemDone(id, item, true),
+      await actions.removeListItem(id, item),
+      await actions.clearListDone(id, []),
+      await actions.restoreListItems(id, []),
+      await actions.setListOrder("skapad"),
+    ];
+    expect(results.every((r) => !r.ok)).toBe(true);
+    expect((await lists.getList(f.adult, id))!.name).toBe("Inköp");
   });
 });
 

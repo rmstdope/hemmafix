@@ -8,6 +8,7 @@ describe("partOf", () => {
   });
   it("knows Listor", () => {
     expect(partOf("/listor")).toBe("listor");
+    expect(partOf("/listor/6f1c3b0e-5f8a-4c7e-9d2a-1b3c4d5e6f70")).toBe("listor");
   });
   it("has no part for Hemmet, login or anything else", () => {
     for (const p of ["/hemmet", "/hemmet/rutiner/1", "/login", "/consent"]) expect(partOf(p)).toBeNull();

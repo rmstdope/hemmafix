@@ -6,6 +6,7 @@ const RULES: Record<Action, "V" | "V+B"> = {
   "household:rename": "V",
   "room:manage": "V",
   "routine:manage": "V",
+  "list:edit": "V+B",
   "member:set-role": "V",
   "task:create": "V",
   "task:edit": "V",

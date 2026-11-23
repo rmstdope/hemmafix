@@ -28,6 +28,8 @@ export type Action =
   | "household:rename"
   | "room:manage"
   | "routine:manage"
+  /** Everything on the household's shared lists: lists and their items. */
+  | "list:edit"
   | "member:set-role"
   | "task:create"
   | "task:edit"

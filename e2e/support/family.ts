@@ -237,3 +237,26 @@ export async function seedConnection(opts: {
   }
   return family;
 }
+
+/**
+ * Adds a list straight into the database. `items` are given oldest first, so the last one is
+ * first on the page; `done` items sit in Klart. Timestamps default to now.
+ */
+export async function seedList(
+  name: string,
+  items: (string | { text: string; done?: boolean })[] = [],
+  at?: { createdAt?: Date; updatedAt?: Date },
+) {
+  const householdId = await homeId();
+  const [created] = await db
+    .insert(schema.list)
+    .values({ householdId, name, ...at })
+    .returning();
+  for (const [i, item] of items.entries()) {
+    const { text, done } = typeof item === "string" ? { text: item, done: false } : { done: false, ...item };
+    await db
+      .insert(schema.listItem)
+      .values({ listId: created!.id, text, rank: i + 1, doneAt: done ? new Date() : null });
+  }
+  return created!;
+}

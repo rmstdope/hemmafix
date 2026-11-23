@@ -155,3 +155,14 @@ export const routineName = z.string().trim().min(1, "Skriv rutinens namn").max(4
 export const routineTaskTitle = choreTitle;
 export const routineId = z.uuid();
 export const routineTaskId = z.uuid();
+
+const LIST_TEXT_MAX = "Max 200 tecken";
+export const listName = z.string().trim().min(1, "Skriv listans namn").max(200, LIST_TEXT_MAX);
+export const listItemText = z.string().trim().min(1, "Skriv vad som ska på listan").max(200, LIST_TEXT_MAX);
+export const listId = z.uuid();
+export const listItemId = z.uuid();
+export const listOrder = z.enum(["alfabetiskt", "andrad", "skapad"]);
+/** What Ångra puts back after × or Rensa: the items as they were, in their old places. */
+export const restoredItems = z
+  .array(z.object({ id: listItemId, text: listItemText, rank: z.number().int().min(0).max(1_000_000_000), doneAt: z.date().nullable() }))
+  .max(1000);

@@ -11,6 +11,8 @@ import * as home from "@/server/household";
 import * as chores from "@/server/chores";
 import * as connections from "@/server/connections";
 import * as routines from "@/server/routines";
+import * as lists from "@/server/lists";
+import type { ItemView, ListOrder } from "@/lib/lists";
 
 export type ActionState = { ok: boolean; error?: string; id?: string; count?: number };
 
@@ -21,7 +23,10 @@ const LOGGED_OUT = "Du är utloggad – ladda om sidan och logga in igen.";
  * this one. Mistakes the person can fix (invalid input, not allowed, already exists) come
  * back as `{ ok: false, error }`; anything else is a bug and is thrown.
  */
-async function act(fn: (member: CurrentMember) => Promise<unknown>): Promise<ActionState> {
+async function act(
+  fn: (member: CurrentMember) => Promise<unknown>,
+  { notify = true, refreshPage = true }: { notify?: boolean; refreshPage?: boolean } = {},
+): Promise<ActionState> {
   const member = await getCurrentMember();
   if (!member) return { ok: false, error: LOGGED_OUT };
   try {
@@ -31,8 +36,8 @@ async function act(fn: (member: CurrentMember) => Promise<unknown>): Promise<Act
     if (e instanceof z.ZodError) return { ok: false, error: e.issues[0]?.message ?? "Ogiltiga uppgifter" };
     throw e;
   }
-  await chores.notifyHouseholdChanged(member.householdId);
-  refresh();
+  if (notify) await chores.notifyHouseholdChanged(member.householdId);
+  if (refreshPage) refresh();
   return { ok: true };
 }
 
@@ -130,6 +135,58 @@ export async function addRoutine(_prev: ActionState, formData: FormData): Promis
     }
   });
   return result.ok ? { ok: true, count } : result;
+}
+
+// ---------------------------------------------------------------------------
+// Lists: shared by the whole home, every member may do all of it (src/server/lists.ts)
+// ---------------------------------------------------------------------------
+
+/** Resolves with the new list's id, so the page can open it. */
+export async function createList(name: string): Promise<ActionState> {
+  let id: string | undefined;
+  const result = await act(async (m) => {
+    id = (await lists.createList(m, name)).id;
+  });
+  return result.ok ? { ok: true, id } : result;
+}
+
+export async function renameList(id: string, name: string) {
+  return act((m) => lists.renameList(m, id, name));
+}
+
+/** No refresh: the page goes back to Listor itself, and refreshing first would flash "gone". */
+export async function deleteList(id: string) {
+  return act((m) => lists.deleteList(m, id), { refreshPage: false });
+}
+
+export async function addListItem(listId: string, itemId: string, text: string) {
+  return act((m) => lists.addItem(m, listId, itemId, text));
+}
+
+export async function editListItem(listId: string, itemId: string, text: string) {
+  return act((m) => lists.editItem(m, listId, itemId, text));
+}
+
+export async function setListItemDone(listId: string, itemId: string, done: boolean) {
+  return act((m) => lists.setItemDone(m, listId, itemId, done));
+}
+
+export async function removeListItem(listId: string, itemId: string) {
+  return act((m) => lists.removeItem(m, listId, itemId));
+}
+
+export async function clearListDone(listId: string, itemIds: string[]) {
+  return act((m) => lists.clearDone(m, listId, itemIds));
+}
+
+/** Ångra after × or Rensa: puts the items back where they were. */
+export async function restoreListItems(listId: string, items: ItemView[]) {
+  return act((m) => lists.restoreItems(m, listId, items));
+}
+
+/** The person's own order for Listor: nobody else's changes, so nobody is told. */
+export async function setListOrder(order: ListOrder) {
+  return act((m) => lists.setListOrder(m, order), { notify: false });
 }
 
 // ---------------------------------------------------------------------------
