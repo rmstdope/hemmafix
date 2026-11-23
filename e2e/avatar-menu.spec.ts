@@ -65,7 +65,7 @@ test("on Gjort the menu is there and Gjort is the current page", async ({ page, 
   await expect(await menuItem(page, "Gjort")).toHaveAttribute("aria-current", "page");
 });
 
-test("the menu stays inside a 320px screen and cuts a long name", async ({ page, context }) => {
+test("the menu stays inside a 320px screen", async ({ page, context }) => {
   await logIn(context, "anna", "adult");
   await page.setViewportSize({ width: 320, height: 640 });
   await page.goto("/");
@@ -73,4 +73,18 @@ test("the menu stays inside a 320px screen and cuts a long name", async ({ page,
   const box = (await page.getByRole("menu").boundingBox())!;
   expect(box.x).toBeGreaterThanOrEqual(0);
   expect(box.x + box.width).toBeLessThanOrEqual(320);
+});
+
+test("choosing Gjort while on Gjort closes the menu, and Hemmet from Gjort still goes back to Listor", async ({ page, context }) => {
+  await logIn(context, "anna", "adult");
+  if ((page.viewportSize()?.width ?? 0) < 640) return; // Phone Gjort has no picture.
+  await page.goto("/listor");
+  await chooseFromMenu(page, "Gjort");
+  await expect(page.getByRole("heading", { name: "Gjort" })).toBeVisible();
+  await chooseFromMenu(page, "Gjort");
+  await expect(page.getByRole("menu")).toHaveCount(0);
+  await chooseFromMenu(page, "Hemmet");
+  await expect(page.getByRole("heading", { name: "Hemmet" })).toBeVisible();
+  await page.getByRole("link", { name: "Tillbaka" }).click();
+  await expect(page.getByRole("heading", { name: "Listor" })).toBeVisible();
 });

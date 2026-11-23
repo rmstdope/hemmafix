@@ -6,7 +6,7 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 import { authClient } from "@/lib/auth-client";
-import { partOf } from "@/lib/parts";
+import { litPart } from "@/lib/parts";
 import { cn } from "@/lib/utils";
 import { MemberAvatar } from "./member-avatar";
 import { rememberPart, useRememberedPart } from "./part-links";
@@ -38,7 +38,7 @@ export function UserMenu({
     setOpen(false);
   }
   // Gjort and Hemmet remember the part they were opened from; Gjort itself keeps what it has.
-  const opening = () => rememberPart(partOf(pathname) ?? remembered);
+  const opening = () => rememberPart(litPart(pathname, remembered) ?? remembered);
 
   return (
     <Menu.Root open={open} onOpenChange={setOpen}>
@@ -57,6 +57,7 @@ export function UserMenu({
             </div>
             <Menu.LinkItem
               render={<Link href="/gjort" />}
+              closeOnClick
               onClick={pathname === "/gjort" ? undefined : opening}
               aria-current={pathname === "/gjort" ? "page" : undefined}
               className={cn(itemClass, pathname === "/gjort" && "bg-muted font-medium")}
@@ -65,7 +66,7 @@ export function UserMenu({
               Gjort
             </Menu.LinkItem>
             {canManageHome && (
-              <Menu.LinkItem render={<Link href="/hemmet" />} onClick={opening} className={itemClass}>
+              <Menu.LinkItem render={<Link href="/hemmet" />} closeOnClick onClick={opening} className={itemClass}>
                 <Settings className="size-5" aria-hidden />
                 Hemmet
               </Menu.LinkItem>
