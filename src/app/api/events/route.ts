@@ -1,58 +1,50 @@
 import { pg } from "@/db";
 import { getCurrentMember } from "@/server/dal";
 import { TASKS_CHANNEL } from "@/server/chores";
+import { onShutdown } from "@/server/shutdown";
 
-type Closer = () => void;
-const globalForStreams = globalThis as unknown as { sseClosers?: Set<Closer> };
-
-/**
- * Open event streams never end on their own, so a graceful shutdown would wait
- * for them until the container is killed. On SIGTERM, close them all; browsers
- * reconnect to the next instance (see `retry` below). Next's own handler closes
- * the server alongside this one.
- */
-function openStreams(): Set<Closer> {
-  if (!globalForStreams.sseClosers) {
-    const closers = new Set<Closer>();
-    globalForStreams.sseClosers = closers;
-    process.once("SIGTERM", () => {
-      for (const close of closers) close();
-    });
-  }
-  return globalForStreams.sseClosers;
-}
+type Closer = (reason?: Error) => void;
 
 /**
  * Server-Sent Events: pushes "changed" to every browser in the household when
  * a task changes. Postgres LISTEN/NOTIFY fans out across server instances.
+ *
+ * Open streams never end on their own, so on shutdown they are ended with an
+ * abort, which makes Next drop the connection: a stream that merely closed
+ * would leave its connection open for keep-alive, and the browser would
+ * reconnect on it to a server that never finishes closing. A stream asked for
+ * after shutdown began is ended the same way at once. Browsers reconnect to
+ * the next instance (see `retry` below).
  */
 export async function GET(request: Request) {
   const member = await getCurrentMember();
   if (!member) return new Response("Unauthorized", { status: 401 });
 
   const encoder = new TextEncoder();
-  const streams = openStreams();
   let closed = false;
   let unlisten: (() => Promise<void>) | undefined;
   let heartbeat: ReturnType<typeof setInterval> | undefined;
   let controllerRef: ReadableStreamDefaultController<Uint8Array> | undefined;
+  let stopWatching: (() => void) | undefined;
 
-  const close: Closer = () => {
+  const close: Closer = (reason) => {
     if (closed) return;
     closed = true;
-    streams.delete(close);
+    stopWatching?.();
     clearInterval(heartbeat);
     void unlisten?.().catch(() => {});
     try {
-      controllerRef?.close();
+      if (reason) controllerRef?.error(reason);
+      else controllerRef?.close();
     } catch {}
   };
 
   const stream = new ReadableStream<Uint8Array>({
     async start(controller) {
       controllerRef = controller;
-      streams.add(close);
-      request.signal.addEventListener("abort", close);
+      stopWatching = onShutdown(close);
+      if (closed) return;
+      request.signal.addEventListener("abort", () => close());
 
       const send = (chunk: string) => {
         if (closed) return;
@@ -78,7 +70,7 @@ export async function GET(request: Request) {
       heartbeat = setInterval(() => send(": ping\n\n"), 25_000);
       send("retry: 5000\n\n");
     },
-    cancel: close,
+    cancel: () => close(),
   });
 
   return new Response(stream, {
