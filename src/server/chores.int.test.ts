@@ -26,6 +26,7 @@ import {
   uncompleteInstance,
 } from "./chores";
 import { addRoom, deleteRoom, listRooms } from "./household";
+import { buyLook, getLooks } from "./looks";
 
 let f: Awaited<ReturnType<typeof createFamily>>;
 
@@ -174,6 +175,76 @@ describe("completeInstance", () => {
     const [theirs] = await listOpenInstances(f.neighbour, {});
     await expect(completeInstance(f.adult, theirs!.id)).rejects.toThrow("finns inte längre");
     expect(await listOpenInstances(f.neighbour, {})).toHaveLength(1);
+  });
+});
+
+describe("uncompleteInstance when the coins are spent", () => {
+  /** Bo ticks a task worth `coins`; returns its instance id. */
+  const tickAs = async (who: typeof f.child, title: string, coins: number) => {
+    await createChore(f.adult, { ...once(title), coins: String(coins) });
+    const [t] = await openOf(title);
+    await completeInstance(who, t!.id, { offerChest: false });
+    return t!.id;
+  };
+
+  it("undoes at once, with no question, while the balance stays at 0 or above", async () => {
+    const id = await tickAs(f.child, "Damma", 100);
+    expect(await uncompleteInstance(f.child, id)).toBeUndefined();
+    expect(await getCoinTotal(f.child)).toBe(0);
+  });
+
+  it("undoes at once when it ends at exactly 0", async () => {
+    await tickAs(f.child, "A", 100);
+    const id = await tickAs(f.child, "B", 100);
+    await buyLook(f.child, "coin", "silver");
+    expect(await getCoinTotal(f.child)).toBe(100);
+    expect(await uncompleteInstance(f.child, id)).toBeUndefined();
+    expect(await getCoinTotal(f.child)).toBe(0);
+  });
+
+  it("asks instead of undoing when the coins are spent, and writes nothing", async () => {
+    const id = await tickAs(f.child, "Damma", 100);
+    await buyLook(f.child, "coin", "silver");
+    expect(await getCoinTotal(f.child)).toBe(0);
+
+    expect(await uncompleteInstance(f.child, id)).toEqual({ confirm: { own: true, name: "Bo", balance: -100 } });
+    expect(await getCoinTotal(f.child)).toBe(0);
+    expect((await listRecentlyCompleted(f.adult)).map((i) => i.id)).toContain(id);
+  });
+
+  it("undoes into debt once confirmed, and the look stays owned", async () => {
+    const id = await tickAs(f.child, "Damma", 100);
+    await buyLook(f.child, "coin", "silver");
+
+    expect(await uncompleteInstance(f.child, id, { confirmDebt: true })).toEqual({ debt: { balance: -100, name: "Bo", own: true } });
+    expect(await getCoinTotal(f.child)).toBe(-100);
+    expect((await getLooks(f.child)).owned).toEqual(["coin:silver"]);
+    expect((await openOf("Damma"))[0]!.completedAt).toBeNull();
+  });
+
+  it("names the person when an adult undoes their tick, from that person's balance", async () => {
+    await tickAs(f.child, "Liten", 30);
+    const id = await tickAs(f.child, "Rummet", 100);
+    await buyLook(f.child, "coin", "silver");
+    expect(await getCoinTotal(f.child)).toBe(30);
+
+    expect(await uncompleteInstance(f.adult, id)).toEqual({ confirm: { own: false, name: "Bo", balance: -70 } });
+  });
+
+  it("asks again, with the new end number, while already below zero", async () => {
+    const a = await tickAs(f.child, "A", 100);
+    const b = await tickAs(f.child, "B", 50);
+    await buyLook(f.child, "coin", "silver");
+    await uncompleteInstance(f.child, b, { confirmDebt: true });
+    expect(await getCoinTotal(f.child)).toBe(0);
+    expect(await uncompleteInstance(f.child, a)).toEqual({ confirm: { own: true, name: "Bo", balance: -100 } });
+  });
+
+  it("never refuses a confirmed undo, even when the balance has recovered", async () => {
+    const id = await tickAs(f.child, "Damma", 100);
+    await tickAs(f.child, "Mer", 100);
+    expect(await uncompleteInstance(f.child, id, { confirmDebt: true })).toBeUndefined();
+    expect(await getCoinTotal(f.child)).toBe(100);
   });
 });
 

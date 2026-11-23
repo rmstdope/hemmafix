@@ -3,7 +3,7 @@
 import { eq } from "drizzle-orm";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { db } from "@/db";
-import { chore, choreInstance, household, oauthClient, oauthRefreshToken, room } from "@/db/schema";
+import { chore, choreInstance, household, lookPurchase, oauthClient, oauthRefreshToken, room } from "@/db/schema";
 import type { CurrentMember } from "@/server/dal";
 import { createFamily } from "../../test/integration/factories";
 
@@ -87,6 +87,22 @@ describe("as a child", () => {
     await actions.completeInstance(annas.instanceId);
     as(f.child);
     expect(await actions.uncompleteInstance(annas.instanceId)).toEqual(FORBIDDEN);
+  });
+
+  it("is asked before an undo that takes spent coins, and the undo goes ahead once confirmed", async () => {
+    const mine = await weeklyTask("Diska");
+    await actions.completeInstance(mine.instanceId);
+    const [own] = await db.select().from(choreInstance).where(eq(choreInstance.id, mine.instanceId));
+    await db
+      .insert(lookPurchase)
+      .values({ householdId: f.homeId, userId: f.child.userId, kind: "coin", key: "silver", price: own!.coins ?? 0 });
+
+    const asked = await actions.uncompleteInstance(mine.instanceId);
+    expect(asked).toEqual({ ok: true, confirm: { own: true, name: "Bo", balance: -(own!.coins ?? 0) } });
+    expect((await db.select().from(choreInstance).where(eq(choreInstance.id, mine.instanceId)))[0]!.completedAt).not.toBeNull();
+
+    expect(await actions.uncompleteInstance(mine.instanceId, true)).toEqual(OK);
+    expect((await db.select().from(choreInstance).where(eq(choreInstance.id, mine.instanceId)))[0]!.completedAt).toBeNull();
   });
 });
 

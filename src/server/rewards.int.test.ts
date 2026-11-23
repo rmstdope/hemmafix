@@ -5,7 +5,7 @@ import { household, membership, rewardPurchase } from "@/db/schema";
 import { UserError } from "@/lib/errors";
 import { ForbiddenError } from "@/lib/permissions";
 import { createFamily, createUser } from "../../test/integration/factories";
-import { completeInstance, createChore, getCoinTotal, getLifetimeCoins, listOpenInstances } from "./chores";
+import { completeInstance, createChore, getCoinTotal, getLifetimeCoins, listOpenInstances, uncompleteInstance } from "./chores";
 import {
   addReward,
   buyReward,
@@ -114,6 +114,28 @@ describe("buying", () => {
     await deleteReward(f.adult, r.id);
     expect(await listMyPurchases(f.child)).toMatchObject([{ name: "Glass", price: 50, status: "waiting" }]);
     expect(await getCoinTotal(f.child)).toBe(30);
+  });
+});
+
+describe("below zero", () => {
+  /** Bo earns 100, buys Glass (50) and a 50-coin one, then an adult undoes the tick: Bo is at −100. */
+  async function intoDebt() {
+    await createChore(f.adult, { title: "Rummet", roomId: f.kitchen.id, kind: "once", coins: 100 });
+    const [t] = (await listOpenInstances(f.adult, {})).filter((i) => i.title === "Rummet");
+    await completeInstance(f.child, t!.id, { offerChest: false });
+    await buyReward(f.child, (await glass()).id);
+    await buyReward(f.child, (await glass()).id);
+    await uncompleteInstance(f.adult, t!.id, { confirmDebt: true });
+  }
+
+  it("refuses every purchase, and cancelling a waiting one pays the minus down", async () => {
+    await intoDebt();
+    expect(await getCoinTotal(f.child)).toBe(-100);
+    await expect(buyReward(f.child, (await glass(1)).id)).rejects.toThrow("Du har inte tillräckligt med mynt.");
+
+    const [p] = await listMyPurchases(f.child);
+    await cancelPurchase(f.child, p!.id);
+    expect(await getCoinTotal(f.child)).toBe(-50);
   });
 });
 

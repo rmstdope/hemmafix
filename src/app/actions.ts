@@ -5,6 +5,7 @@ import { unstable_rethrow } from "next/navigation";
 import { z } from "zod";
 import { UserError } from "@/lib/errors";
 import { SAVE_FAILED } from "@/lib/routine-texts";
+import type { UndoDebt } from "@/lib/debt";
 import type { Role } from "@/lib/permissions";
 import { getCurrentMember, type CurrentMember } from "@/server/dal";
 import * as home from "@/server/household";
@@ -26,6 +27,8 @@ export type ActionState = {
   /** The day's chest a tick-off offered, and what is in it (completeInstance only). */
   chestId?: string;
   chestCoins?: number;
+  /** An undo that would leave the person below zero asks first and writes nothing (uncompleteInstance only). */
+  confirm?: UndoDebt;
 };
 
 const LOGGED_OUT = "Du är utloggad – ladda om sidan och logga in igen.";
@@ -44,6 +47,8 @@ async function act(
   let extra: Partial<ActionState> = {};
   try {
     const out = await fn(member);
+    // Asked, not done: nothing changed, so nobody is told and nothing is refreshed.
+    if (out && typeof out === "object" && "confirm" in out) return { ok: true, confirm: out.confirm as UndoDebt };
     // Only what a tick-off reports about its chest goes back; other results stay on the server.
     if (out && typeof out === "object") {
       const { chestId, chestCoins } = out as Partial<ActionState>;
@@ -232,8 +237,8 @@ export async function openChest(id: string) {
   return act((m) => chores.openChest(m, id));
 }
 
-export async function uncompleteInstance(id: string) {
-  return act((m) => chores.uncompleteInstance(m, id));
+export async function uncompleteInstance(id: string, confirmDebt = false) {
+  return act((m) => chores.uncompleteInstance(m, id, { confirmDebt }));
 }
 
 export async function assignInstance(id: string, assigneeId: string | null) {

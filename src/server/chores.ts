@@ -4,6 +4,7 @@ import { z } from "zod";
 import { aliasedTable, and, asc, desc, eq, gt, gte, isNotNull, isNull, ne, sql, type SQL } from "drizzle-orm";
 import { db } from "@/db";
 import { chore, choreInstance, dailyChest, floor, highFive, household, lookPurchase, membership, rewardPurchase, room, user } from "@/db/schema";
+import type { UndoDebt } from "@/lib/debt";
 import { addDays, HOME_TIME_ZONE, todayIso } from "@/lib/dates";
 import { UserError } from "@/lib/errors";
 import { assertCan, can, type Role } from "@/lib/permissions";
@@ -343,15 +344,20 @@ export async function openChest(actor: Actor, id: string): Promise<number> {
  * Undoes a tick: the instance is open again, and the next instance that the tick created
  * is removed. Only a task's latest tick can be undone; children may undo only their own.
  */
-export async function uncompleteInstance(actor: Actor, id: string) {
+export async function uncompleteInstance(
+  actor: Actor,
+  id: string,
+  { confirmDebt = false }: { confirmDebt?: boolean } = {},
+): Promise<{ confirm: UndoDebt } | { debt: UndoDebt } | undefined> {
   const target = instanceIdInput.parse(id);
 
-  await db.transaction(async (tx) => {
+  return db.transaction(async (tx) => {
     const [row] = await tx
       .select({
         choreId: choreInstance.choreId,
         completedAt: choreInstance.completedAt,
         completedById: choreInstance.completedById,
+        coins: choreInstance.coins,
         archivedAt: chore.archivedAt,
       })
       .from(choreInstance)
@@ -377,6 +383,18 @@ export async function uncompleteInstance(actor: Actor, id: string) {
       .limit(1);
     if (later) throw new UserError("Bara den senaste avbockningen kan ångras");
 
+    // Taking the tick's coins back may leave the person below zero, when they spent them. They are
+    // asked first; once confirmed the undo always goes ahead (nothing bought is taken away).
+    const ticker = row.completedById!;
+    await tx.execute(sql`select pg_advisory_xact_lock(hashtext('hemmafix:coins:' || ${ticker}))`);
+    const after = (await balanceOf(actor.householdId, ticker, tx)) - (row.coins ?? 0);
+    let debt: UndoDebt | undefined;
+    if (after < 0) {
+      const [who] = await tx.select({ name: user.name }).from(user).where(eq(user.id, ticker));
+      debt = { own: ticker === actor.userId, name: (who?.name ?? "").split(" ")[0] ?? "", balance: after };
+      if (!confirmDebt) return { confirm: debt };
+    }
+
     await tx
       .delete(choreInstance)
       .where(and(eq(choreInstance.choreId, row.choreId), isNull(choreInstance.completedAt)));
@@ -386,6 +404,7 @@ export async function uncompleteInstance(actor: Actor, id: string) {
       .update(choreInstance)
       .set({ completedAt: null, completedById: null, doneTitle: null, doneRoomId: null, coins: null, tickedOn: null })
       .where(eq(choreInstance.id, target));
+    return debt && { debt };
   });
 }
 
