@@ -43,6 +43,7 @@ function Skeleton() {
     <div className="animate-pulse space-y-3" aria-busy="true" aria-label="Laddar">
       <div className="h-12 rounded-xl bg-muted" />
       <div className="h-12 rounded-xl bg-muted" />
+      <div className="h-24 rounded-xl bg-muted" />
     </div>
   );
 }

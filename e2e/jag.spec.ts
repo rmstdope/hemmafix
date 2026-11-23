@@ -107,7 +107,7 @@ test("the card shows the level from earned coins, and the bar fills within the l
   await db.update(choreInstance).set({ coins: 320 }).where(eq(choreInstance.choreId, done.id));
   await go(page, "/jag");
   await expect(levelCard(page).getByText("Nivå 3 · Fixare")).toBeVisible();
-  await expect(levelCard(page).getByText("320 av 500 mynt till nivå 4")).toBeVisible();
+  await expect(levelCard(page).getByText("70 av 250 mynt till nivå 4")).toBeVisible();
   await expect(levelCard(page).getByRole("progressbar")).toHaveAttribute("aria-valuenow", "28");
 });
 
@@ -126,7 +126,7 @@ test("an open Jag follows a tick made on another device, live", async ({ page, c
   await expect(otherPage.getByRole("button", { name: "Diska: markera som klar" })).toBeHidden();
 
   await expect(levelCard(page).getByText("Nivå 2 · Hjälpreda")).toBeVisible();
-  await expect(levelCard(page).getByText("100 av 250 mynt till nivå 3")).toBeVisible();
+  await expect(levelCard(page).getByText("0 av 150 mynt till nivå 3")).toBeVisible();
   await other.close();
 });
 

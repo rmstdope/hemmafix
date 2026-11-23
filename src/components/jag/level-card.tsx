@@ -4,9 +4,9 @@ import { MemberAvatar } from "../member-avatar";
 
 /** Framsteg's level card: the member's level and title, how far through it they are, and what is left. */
 export function LevelCard({ name, image, lifetimeCoins }: { name: string; image: string | null; lifetimeCoins: number }) {
-  const { level, title, next, progress } = levelFor(lifetimeCoins);
+  const { level, title, start, next, progress } = levelFor(lifetimeCoins);
   const heading = `Nivå ${level} · ${title}`;
-  const left = `${formatCoins(lifetimeCoins)} av ${formatCoins(next)} mynt till nivå ${level + 1}`;
+  const left = `${formatCoins(Math.max(0, lifetimeCoins) - start)} av ${formatCoins(next - start)} mynt till nivå ${level + 1}`;
   return (
     <section aria-label="Nivå" className="flex items-center gap-3 rounded-xl border p-3">
       <MemberAvatar name={name} image={image} size="lg" />

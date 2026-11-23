@@ -63,11 +63,11 @@ export function JagParts({ framsteg }: { framsteg: ReactNode }) {
           );
         })}
       </div>
-      {current !== "butik" ? (
+      {current === "framsteg" ? (
         framsteg
       ) : (
         <p className="min-h-20 rounded-xl border border-dashed p-6 text-center text-muted-foreground">
-          Butiken kommer hit.
+          {current === "butik" ? "Butiken kommer hit." : ""}
         </p>
       )}
     </div>
