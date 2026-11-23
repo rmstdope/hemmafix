@@ -315,7 +315,9 @@ describe("the task tools", () => {
     const roomId = await seedKitchen();
     const { instanceId } = await createDiska(roomId);
     await taskCall("anna", "bocka_av_syssla", { instanceId });
-    await db.insert(lookPurchase).values({ householdId: homeId, userId: "anna", kind: "coin", key: "silver", price: 10 });
+    // Everything earned so far (badge coins included) is spent, so the undo ends 10 below zero.
+    const anna = { userId: "anna", householdId: homeId, role: "adult" as const, name: "Anna", image: null };
+    await db.insert(lookPurchase).values({ householdId: homeId, userId: "anna", kind: "coin", key: "silver", price: await getCoinTotal(anna) });
     expect(said(await taskCall("anna", "angra_avbockning", { instanceId }))).toBe(
       "Diska är inte avbockad längre. Mynten var redan använda, så du har nu −10 mynt.",
     );
@@ -325,7 +327,8 @@ describe("the task tools", () => {
     const roomId = await seedKitchen();
     const { instanceId } = await createDiska(roomId);
     await completeInstance({ userId: "bo", householdId: homeId, role: "child" }, instanceId);
-    await db.insert(lookPurchase).values({ householdId: homeId, userId: "bo", kind: "coin", key: "silver", price: 10 });
+    const bo = { userId: "bo", householdId: homeId, role: "child" as const, name: "Bo", image: null };
+    await db.insert(lookPurchase).values({ householdId: homeId, userId: "bo", kind: "coin", key: "silver", price: await getCoinTotal(bo) });
     expect(said(await taskCall("anna", "angra_avbockning", { instanceId }))).toBe(
       "Diska är inte avbockad längre. Mynten var redan använda, så Bo har nu −10 mynt.",
     );
