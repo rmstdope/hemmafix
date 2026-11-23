@@ -1,8 +1,9 @@
 import { Suspense } from "react";
+import { LevelCard } from "@/components/jag/level-card";
 import { JagParts } from "@/components/jag/jag-parts";
 import { LiveUpdates } from "@/components/live-updates";
 import { PageCorner } from "@/components/page-corner";
-import { getHousehold } from "@/server/chores";
+import { getHousehold, getLifetimeCoins } from "@/server/chores";
 import { requireMember } from "@/server/dal";
 
 export const metadata = { title: "Jag – Hemmafix" };
@@ -19,7 +20,7 @@ export default function JagPage() {
 
 async function Jag() {
   const member = await requireMember();
-  const home = await getHousehold(member.householdId);
+  const [home, lifetimeCoins] = await Promise.all([getHousehold(member.householdId), getLifetimeCoins(member)]);
   return (
     <>
       <LiveUpdates />
@@ -32,7 +33,7 @@ async function Jag() {
           <PageCorner />
         </div>
       </header>
-      <JagParts />
+      <JagParts framsteg={<LevelCard name={member.name} image={member.image} lifetimeCoins={lifetimeCoins} />} />
     </>
   );
 }
@@ -42,6 +43,7 @@ function Skeleton() {
     <div className="animate-pulse space-y-3" aria-busy="true" aria-label="Laddar">
       <div className="h-12 rounded-xl bg-muted" />
       <div className="h-12 rounded-xl bg-muted" />
+      <div className="h-24 rounded-xl bg-muted" />
     </div>
   );
 }

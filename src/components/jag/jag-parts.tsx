@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useSyncExternalStore } from "react";
+import { useState, useSyncExternalStore, type ReactNode } from "react";
 import { JAG_PARTS, parseJagPart, type JagPart } from "@/lib/parts";
 import { cn } from "@/lib/utils";
 import { useHydrated } from "../lists/use-hydrated";
@@ -25,7 +25,7 @@ const read = (): JagPart => {
 };
 
 /** Jag's switch between Framsteg and Butik, remembered on this device, and the part it shows. */
-export function JagParts() {
+export function JagParts({ framsteg }: { framsteg: ReactNode }) {
   const stored = useSyncExternalStore(subscribe, read, () => "framsteg" as const);
   // Without storage the choice still holds until the page is left.
   const [fallback, setFallback] = useState<JagPart | null>(null);
@@ -63,9 +63,13 @@ export function JagParts() {
           );
         })}
       </div>
-      <p className="min-h-20 rounded-xl border border-dashed p-6 text-center text-muted-foreground">
-        {current === null ? "" : current === "framsteg" ? "Dina framsteg kommer hit." : "Butiken kommer hit."}
-      </p>
+      {current === "framsteg" ? (
+        framsteg
+      ) : (
+        <p className="min-h-20 rounded-xl border border-dashed p-6 text-center text-muted-foreground">
+          {current === "butik" ? "Butiken kommer hit." : ""}
+        </p>
+      )}
     </div>
   );
 }
