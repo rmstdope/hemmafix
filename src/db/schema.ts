@@ -323,6 +323,10 @@ export const membership = pgTable(
     role: memberRole("role").notNull().default("child"),
     /** How this person sorts the Listor overview (src/lib/lists.ts); null means alphabetical. */
     listOrder: text("list_order"),
+    /** The looks this person uses (src/lib/looks.ts); null means the free default of each kind. */
+    frame: text("frame"),
+    theme: text("theme"),
+    coinLook: text("coin_look"),
     ...timestamps,
   },
   (t) => [
@@ -609,5 +613,31 @@ export const dailyChest = pgTable(
   (t) => [
     unique("daily_chest_user_day_unique").on(t.userId, t.day),
     check("daily_chest_coins_check", sql`${t.coins} between 5 and 10`),
+  ],
+);
+
+/**
+ * A look bought with coins (src/lib/looks.ts). The price is kept as paid; the coins are never
+ * given back. One row per person and look, so an owned look is never charged twice.
+ */
+export const lookPurchase = pgTable(
+  "look_purchase",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    householdId: uuid("household_id")
+      .notNull()
+      .references(() => household.id, { onDelete: "cascade" }),
+    userId: text("user_id")
+      .notNull()
+      .references(() => user.id, { onDelete: "cascade" }),
+    kind: text("kind").notNull(),
+    key: text("key").notNull(),
+    price: integer("price").notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    unique("look_purchase_user_look_unique").on(t.userId, t.kind, t.key),
+    check("look_purchase_kind_check", sql`${t.kind} in ('frame', 'theme', 'coin')`),
+    check("look_purchase_price_check", sql`${t.price} >= 0`),
   ],
 );

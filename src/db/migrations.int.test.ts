@@ -385,5 +385,32 @@ describe("0014: week recap", () => {
     await sql`update chore_instance set completed_at = now(), completed_by_id = 'a'`;
     await sql`update chore_instance set completed_at = null, completed_by_id = null`;
     expect(await sql`select count(*)::int as n from chore_instance where completed_at is null`).toEqual([{ n: 1 }]);
+
+describe("0015: looks", () => {
+  beforeEach(reset);
+
+  it("only adds a table and nullable columns, so the previous release keeps working; one purchase per person and look", async () => {
+    await migrateUpTo(sql, "0014_awesome_frank_castle");
+    const [home] = await sql`insert into household (name) values ('Hemma') returning id`;
+    await sql`insert into "user" (id, name, email, email_verified) values ('a', 'Anna', 'a@example.com', true)`;
+    await sql`insert into membership (user_id, household_id, role) values ('a', ${home!.id}, 'adult')`;
+
+    await migrateUpTo(sql, "0015_looks");
+
+    // The previous release, which does not know the columns, still reads and writes memberships.
+    await sql`update membership set role = 'child' where user_id = 'a'`;
+    const [m] = await sql`select frame, theme, coin_look from membership where user_id = 'a'`;
+    expect(m).toEqual({ frame: null, theme: null, coin_look: null });
+
+    await sql`insert into look_purchase (household_id, user_id, kind, key, price) values (${home!.id}, 'a', 'frame', 'guld', 150)`;
+    await expect(
+      sql`insert into look_purchase (household_id, user_id, kind, key, price) values (${home!.id}, 'a', 'frame', 'guld', 150)`,
+    ).rejects.toThrow();
+    await expect(
+      sql`insert into look_purchase (household_id, user_id, kind, key, price) values (${home!.id}, 'a', 'hat', 'x', 10)`,
+    ).rejects.toThrow();
+    await expect(
+      sql`insert into look_purchase (household_id, user_id, kind, key, price) values (${home!.id}, 'a', 'theme', 'lila', -1)`,
+    ).rejects.toThrow();
   });
 });
