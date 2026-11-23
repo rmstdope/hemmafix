@@ -279,6 +279,16 @@ test("the order of the lists is each person's own and is kept", async ({ page, c
   await expect(page.getByRole("menuitemradio", { name: "Alfabetiskt" })).toBeChecked();
   await expect(page.getByRole("menuitemradio", { name: "Alfabetiskt" })).toBeFocused();
   await expect(page.getByRole("menu", { name: /Sortera listor/ }).getByText("Sortera listor", { exact: true })).toBeVisible();
+  // Esc and a press outside close it without changing the order, and Esc gives focus back.
+  await page.keyboard.press("Escape");
+  await expect(page.getByRole("menu")).toHaveCount(0);
+  await expect(sortButton(page, "Alfabetiskt")).toBeFocused();
+  await expect(rows(page)).toHaveText([/^Anka\s*Tom/, /^Zebra\s*1 kvar/, /^Ägg\s*1 kvar/]);
+  await sortButton(page, "Alfabetiskt").click();
+  await page.getByRole("heading", { name: "Listor", level: 1 }).click();
+  await expect(page.getByRole("menu")).toHaveCount(0);
+  await expect(rows(page)).toHaveText([/^Anka\s*Tom/, /^Zebra\s*1 kvar/, /^Ägg\s*1 kvar/]);
+  await sortButton(page, "Alfabetiskt").click();
   await page.getByRole("menuitemradio", { name: "Senast ändrad" }).click();
   await expect(page.getByRole("menu")).toHaveCount(0);
   await expect(rows(page)).toHaveText([/^Zebra/, /^Anka/, /^Ägg/]);
@@ -389,6 +399,19 @@ test("a child does everything an adult does, apart from Hemmet", async ({ page, 
   await expect(page.getByText("Packning är borttagen")).toBeVisible();
 });
 
+test("a Ny lista that fails to save shows the error and keeps the sheet open with the name", async ({ page, context }) => {
+  await logIn(context, "anna", "adult");
+  await go(page, "/listor");
+  await newList(page).click();
+  const dialog = page.getByRole("dialog", { name: "Ny lista" });
+  await page.route("**/listor", (route) => (route.request().method() === "POST" ? route.abort() : route.continue()));
+  await dialog.getByRole("textbox", { name: "Namn" }).fill("Inköp");
+  await dialog.getByRole("button", { name: "Skapa" }).click();
+  await expect(page.getByText("Det gick inte att spara. Försök igen.").first()).toBeVisible();
+  await expect(dialog).toBeVisible();
+  await expect(dialog.getByRole("textbox", { name: "Namn" })).toHaveValue("Inköp");
+});
+
 test("long names wrap, nothing overflows, and Tab goes in reading order", async ({ page, context }) => {
   await logIn(context, "anna", "adult");
   const long = "Glutenfritt bröd till mormor, det som finns i frysdisken längst in i butiken ".repeat(2).trim();
@@ -399,6 +422,16 @@ test("long names wrap, nothing overflows, and Tab goes in reading order", async 
   await noOverflow(page);
   await expect(newList(page)).toBeVisible();
   await expect(sortButton(page, "Alfabetiskt")).toBeVisible();
+  // The header holds the title, ⇅ and the picture on one line.
+  const tops = await Promise.all(
+    [page.getByRole("heading", { name: "Listor", level: 1 }), sortButton(page, "Alfabetiskt"), page.getByRole("button", { name: "Meny" })].map(
+      async (l) => {
+        const b = await l.boundingBox();
+        return b!.y + b!.height / 2;
+      },
+    ),
+  );
+  expect(Math.max(...tops) - Math.min(...tops)).toBeLessThan(12);
   await go(page, `/listor/${inkop.id}`);
   await noOverflow(page);
   await expect(page.getByRole("button", { name: `Ta bort ${long}` })).toBeVisible();

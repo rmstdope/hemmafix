@@ -82,7 +82,7 @@ export function Menu({
           onKeyDown={onKeyDown}
           className="absolute right-0 top-full z-50 mt-1 min-w-44 rounded-xl border bg-popover p-1 text-popover-foreground shadow-lg"
         >
-          {heading && <p className="px-3 pt-2 pb-1 text-xs font-medium text-muted-foreground">{heading}</p>}
+          {heading && <p role="presentation" className="px-3 pt-2 pb-1 text-xs font-medium text-muted-foreground">{heading}</p>}
           {items.map((item, i) => (
             <button
               key={item.label}
