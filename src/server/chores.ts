@@ -2,6 +2,7 @@ import "server-only";
 import { aliasedTable, and, asc, desc, eq, gt, gte, isNotNull, isNull, ne, sql, type SQL } from "drizzle-orm";
 import { db, pg } from "@/db";
 import { chore, choreInstance, floor, household, membership, room, user } from "@/db/schema";
+import { COINS_PER_TASK } from "@/lib/coins";
 import { addDays, HOME_TIME_ZONE, todayIso } from "@/lib/dates";
 import { UserError } from "@/lib/errors";
 import { assertCan, can, type Role } from "@/lib/permissions";
@@ -274,7 +275,11 @@ export async function completeInstance(actor: Actor, id: string) {
     // of a race wait for a clean answer.
     const ticked = await tx
       .update(choreInstance)
-      .set({ completedAt: new Date(), completedById: actor.userId, doneTitle: row.title, doneRoomId: row.roomId })
+      .set({ completedAt: new Date(), completedById: actor.userId,
+        doneTitle: row.title,
+        doneRoomId: row.roomId,
+        coins: COINS_PER_TASK,
+      })
       .where(and(eq(choreInstance.id, target), isNull(choreInstance.completedAt)))
       .returning({ id: choreInstance.id });
     if (ticked.length === 0) throw new UserError("Någon har redan bockat av den");
@@ -334,9 +339,27 @@ export async function uncompleteInstance(actor: Actor, id: string) {
       .where(and(eq(choreInstance.choreId, row.choreId), isNull(choreInstance.completedAt)));
     await tx
       .update(choreInstance)
-      .set({ completedAt: null, completedById: null, doneTitle: null, doneRoomId: null })
+      .set({ completedAt: null, completedById: null, doneTitle: null, doneRoomId: null, coins: null })
       .where(eq(choreInstance.id, target));
   });
+}
+
+/**
+ * The actor's coins: what the ticks they hold are worth. Derived, so Ångra takes coins back by
+ * clearing the tick, and a tick from before coins existed (null) earns nothing.
+ */
+export async function getCoinTotal(actor: Actor): Promise<number> {
+  const [row] = await db
+    .select({ total: sql<number>`coalesce(sum(${choreInstance.coins}), 0)::int` })
+    .from(choreInstance)
+    .where(
+      and(
+        eq(choreInstance.householdId, actor.householdId),
+        eq(choreInstance.completedById, actor.userId),
+        isNotNull(choreInstance.completedAt),
+      ),
+    );
+  return row?.total ?? 0;
 }
 
 // ---------------------------------------------------------------------------

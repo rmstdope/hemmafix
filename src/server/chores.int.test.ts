@@ -4,6 +4,7 @@ import { db } from "@/db";
 import { chore, choreInstance, household, membership } from "@/db/schema";
 import { addDays, todayIso } from "@/lib/dates";
 import { UserError } from "@/lib/errors";
+import { COINS_PER_TASK } from "@/lib/coins";
 import { ForbiddenError } from "@/lib/permissions";
 import { nextDueDate } from "@/lib/recurrence";
 import { createFamily } from "../../test/integration/factories";
@@ -15,6 +16,7 @@ import {
   createChore,
   deleteChore,
   editChore,
+  getCoinTotal,
   listCompletedBy,
   listOpenInstances,
   listRecentlyCompleted,
@@ -636,5 +638,73 @@ describe("editChore", () => {
     await deleteChore(f.adult, id);
     await expect(editFrom(stale, { title: "Diska" })).rejects.toThrow("finns inte längre");
     expect((await db.select().from(chore).where(eq(chore.id, id)))[0]!.title).toBe("Diska");
+  });
+});
+
+describe("coins", () => {
+  const total = (who: { userId: string; householdId: string; role: "adult" | "child" }) => getCoinTotal(who as typeof f.adult);
+
+  it("starts at 0", async () => {
+    expect(await total(f.adult)).toBe(0);
+    expect(await total(f.child)).toBe(0);
+  });
+
+  it("goes to whoever ticked, whoever the task was assigned to, and to adults and children alike", async () => {
+    await createChore(f.adult, once("Diska", { assigneeId: f.child.userId }));
+    await createChore(f.adult, once("Damma", { assigneeId: f.adult.userId }));
+    const [diska, damma] = await open();
+
+    await completeInstance(f.adult, diska!.id);
+    await completeInstance(f.child, damma!.id);
+
+    expect(await total(f.adult)).toBe(COINS_PER_TASK);
+    expect(await total(f.child)).toBe(COINS_PER_TASK);
+    expect(await total(f.neighbour)).toBe(0);
+  });
+
+  it("is earned every time a recurring task is ticked", async () => {
+    await createChore(f.adult, weekly("Dammsuga"));
+    await completeInstance(f.child, (await open())[0]!.id);
+    await completeInstance(f.child, (await open())[0]!.id);
+    expect(await total(f.child)).toBe(2 * COINS_PER_TASK);
+  });
+
+  it("is taken back by Ångra, also from a child when an adult undoes it, and earned again by a new tick", async () => {
+    await createChore(f.adult, once("Diska"));
+    const [t] = await open();
+    await completeInstance(f.child, t!.id);
+
+    await uncompleteInstance(f.adult, t!.id);
+    expect(await total(f.child)).toBe(0);
+    expect(await total(f.adult)).toBe(0);
+
+    await completeInstance(f.child, t!.id);
+    expect(await total(f.child)).toBe(COINS_PER_TASK);
+  });
+
+  it("is not earned by a tick from before coins existed, and undoing one takes nothing and never goes below 0", async () => {
+    await createChore(f.adult, once("Gammal"));
+    await createChore(f.adult, once("Ny"));
+    const [gammal, ny] = await open();
+    await completeInstance(f.child, gammal!.id);
+    await db.update(choreInstance).set({ coins: null }).where(eq(choreInstance.id, gammal!.id));
+    await completeInstance(f.child, ny!.id);
+    expect(await total(f.child)).toBe(COINS_PER_TASK);
+
+    await uncompleteInstance(f.child, gammal!.id);
+    expect(await total(f.child)).toBe(COINS_PER_TASK);
+    await uncompleteInstance(f.child, ny!.id);
+    expect(await total(f.child)).toBe(0);
+  });
+
+  it("ignores a coin value the previous release's undo left on an open instance", async () => {
+    await createChore(f.adult, once("Diska"));
+    const [t] = await open();
+    await completeInstance(f.child, t!.id);
+    await db
+      .update(choreInstance)
+      .set({ completedAt: null, completedById: null })
+      .where(eq(choreInstance.id, t!.id));
+    expect(await total(f.child)).toBe(0);
   });
 });

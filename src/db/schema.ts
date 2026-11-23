@@ -450,6 +450,11 @@ export const choreInstance = pgTable(
      */
     doneTitle: text("done_title"),
     doneRoomId: uuid("done_room_id"),
+    /**
+     * What the tick earned its ticker; a person's total is the sum over what they ticked. Null
+     * for open instances and for ticks made before coins existed, which earn nothing.
+     */
+    coins: integer("coins"),
     ...timestamps,
   },
   (t) => [
