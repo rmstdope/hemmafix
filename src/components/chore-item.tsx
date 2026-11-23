@@ -20,7 +20,7 @@ import { DEFAULT_COINS } from "@/lib/coins";
 import { formatDue } from "@/lib/dates";
 import { roomLabel } from "@/lib/floors";
 import { CoinBadge } from "./coin-badge";
-import { useCoinShower, useOfferChest, type Shower } from "./coin-shower";
+import { useCelebrateNuCleared, useCoinShower, useOfferChest, useOfferCelebrations, type Shower } from "./coin-shower";
 import { EditChoreForm } from "./edit-chore-form";
 import { cn } from "@/lib/utils";
 import type { InstanceView, Member } from "@/server/chores";
@@ -61,6 +61,8 @@ export function ChoreItem({
 }) {
   const startShower = useCoinShower();
   const offerChest = useOfferChest();
+  const offerCelebrations = useOfferCelebrations();
+  const celebrateNuCleared = useCelebrateNuCleared();
   const [pending, startTransition] = useTransition();
   const [assigneeId, setOptimisticAssignee] = useOptimistic(t.assigneeId);
   const [hidden, setHidden] = useOptimistic(false);
@@ -76,8 +78,16 @@ export function ChoreItem({
   const firstName = (id: string | null) =>
     id === currentUserId ? "Jag" : (members.find((m) => m.id === id)?.name.split(" ")[0] ?? "");
 
-  const run = (fn: () => Promise<ActionState>, optimistic?: () => void, success?: string, shower?: Shower) =>
+  const run = (
+    fn: () => Promise<ActionState>,
+    optimistic?: () => void,
+    success?: string,
+    shower?: Shower,
+    row?: HTMLElement | null,
+  ) =>
     startTransition(async () => {
+      // Nu is cleared when this was the last row left in its (unfiltered) Nu list.
+      const nuList = row?.closest<HTMLElement>("[data-clears-nu]");
       optimistic?.();
       let result: ActionState;
       try {
@@ -95,6 +105,8 @@ export function ChoreItem({
       } else {
         shower?.saved();
         if (result.chestId && result.chestCoins !== undefined) offerChest({ id: result.chestId, coins: result.chestCoins });
+        if (result.badges || result.levelUp) offerCelebrations({ badges: result.badges ?? [], levelUp: result.levelUp });
+        if (nuList && [...nuList.children].every((li) => li === row)) celebrateNuCleared();
         if (success) toast.success(success);
       }
     });
@@ -134,6 +146,7 @@ export function ChoreItem({
                 () => setHidden(true),
                 undefined,
                 startShower(e.currentTarget.getBoundingClientRect(), t.coins ?? DEFAULT_COINS),
+                e.currentTarget.closest("li"),
               )
             }
           >

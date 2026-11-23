@@ -8,6 +8,8 @@ import type { UndoDebt } from "@/lib/debt";
 import { addDays, HOME_TIME_ZONE, todayIso } from "@/lib/dates";
 import { UserError } from "@/lib/errors";
 import { assertCan, can, type Role } from "@/lib/permissions";
+import type { BadgeKey } from "@/lib/badges";
+import { levelFor } from "@/lib/levels";
 import { rollChestCoins } from "@/lib/chest";
 import { findTemplate } from "@/lib/chore-templates";
 import { nextDueDate, type Recurrence } from "@/lib/recurrence";
@@ -250,15 +252,23 @@ export async function deleteChore(actor: Actor, id: string) {
  * Ticks off an open instance. For a recurring task the next instance is created at once,
  * due one interval after today, and assigned to whoever does the task every time.
  */
+/** What a tick-off offers to celebrate: the day's chest, badges just won and a level just reached. */
+export type CompleteReport = {
+  chestId: string | null;
+  chestCoins: number | null;
+  badges: BadgeKey[];
+  levelUp: { level: number; title: string } | null;
+};
+
 export async function completeInstance(
   actor: Actor,
   id: string,
   { offerChest = true }: { offerChest?: boolean } = {},
-): Promise<{ chestId: string | null; chestCoins: number | null }> {
+): Promise<CompleteReport> {
   assertCan(actor, "task:complete");
   const target = instanceIdInput.parse(id);
 
-  const chest = await db.transaction(async (tx) => {
+  const { chest, badges, levelUp } = await db.transaction(async (tx) => {
     // Lock the instance and its task: two people ticking at the same moment must not both
     // create a next instance, and a tick and an undo of the same task take turns.
     const [row] = await tx
@@ -284,6 +294,7 @@ export async function completeInstance(
     // of a race wait for a clean answer.
     // The streak day this tick falls on gives the task's own coins an extra, kept in the tick so
     // that undoing it takes back exactly what it gave.
+    const levelBefore = levelFor(await sumEarned(actor.householdId, actor.userId, tx));
     const today = todayIso();
     const days = await tickedDays(tx, actor);
     const coins = withStreakBonus(row.coins, tickDay(streakOf(days, today)));
@@ -311,19 +322,22 @@ export async function completeInstance(
       });
     }
 
-    await awardBadges(tx, actor);
+    const badges = await awardBadges(tx, actor);
+    const levelAfter = levelFor(await sumEarned(actor.householdId, actor.userId, tx));
+    const levelUp =
+      levelAfter.level > levelBefore.level ? { level: levelAfter.level, title: levelAfter.title } : null;
 
     // The first tick of the day that gives coins offers the day's chest; later ticks, and an
     // undone and repeated tick, find it taken. Undo never takes a chest back.
-    if (row.coins <= 0 || !offerChest) return null;
+    if (row.coins <= 0 || !offerChest) return { chest: null, badges, levelUp };
     const [chest] = await tx
       .insert(dailyChest)
       .values({ householdId: actor.householdId, userId: actor.userId, day: todayIso(), coins: rollChestCoins() })
       .onConflictDoNothing()
       .returning({ id: dailyChest.id, coins: dailyChest.coins });
-    return chest ?? null;
+    return { chest: chest ?? null, badges, levelUp };
   });
-  return { chestId: chest?.id ?? null, chestCoins: chest?.coins ?? null };
+  return { chestId: chest?.id ?? null, chestCoins: chest?.coins ?? null, badges, levelUp };
 }
 
 /** Opens the actor's own chest, which credits its coins. Opening again changes nothing. */

@@ -64,7 +64,7 @@ test("a tick shows up in the history, and an undone tick goes away", async ({ pa
 
   await page.goto("/");
   await page.getByRole("button", { name: "Markera som klar" }).click();
-  await expect(page.getByText("Inget att göra just nu")).toBeVisible();
+  await expect(page.getByText("Allt i Nu är klart!")).toBeVisible();
   await chooseFromMenu(page, "Gjort");
   await expect(entries(page)).toHaveText(["Diska"]);
 

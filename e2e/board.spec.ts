@@ -196,7 +196,7 @@ test("an adult deletes a task", async ({ page, context }) => {
   await item(page, "Diska").getByRole("button", { name: "Ta bort uppgiften" }).click();
   await expect(page.getByText('"Diska" togs bort')).toBeVisible();
   await page.reload();
-  await expect(page.getByText("Inget att göra just nu")).toBeVisible();
+  await expect(page.getByText("Allt i Nu är klart!")).toBeVisible();
 });
 
 test("a change on one device shows up on another without reloading", async ({ page, context, browser }) => {
@@ -216,7 +216,7 @@ test("a change on one device shows up on another without reloading", async ({ pa
   };
 
   await boPage.goto("/");
-  await expect(boPage.getByText("Inget att göra just nu")).toBeVisible();
+  await expect(boPage.getByText("Allt i Nu är klart!")).toBeVisible();
   await page.goto("/");
 
   // Bo's page also refreshes once when its event stream opens, which could deliver the first

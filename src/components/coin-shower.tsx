@@ -19,22 +19,35 @@ import { openChest } from "@/app/actions";
 import { withStreakBonus } from "@/lib/streak";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
+import { BADGE_COINS, BADGES } from "@/lib/badges";
+import { badgeAnnouncement, levelAnnouncement } from "@/lib/celebrations";
+import { CelebrationCard } from "./celebration-card";
 import { ChestCard } from "./chest-card";
+import { Confetti } from "./confetti";
+import { MemberAvatar } from "./member-avatar";
 import { CoinDot, pillClassFor } from "./coin-pill";
 import { playClink, unlockSound } from "./coin-sound";
+
+type StartOptions = {
+  /** The total the pill counts up from, when the server's own is ahead of what the person has seen. */
+  from?: number;
+  /** No "Du fick …" announcement: something else already said it. */
+  quiet?: boolean;
+};
 
 /** What a started shower reports back: whether the tick-off was saved. */
 export type Shower = { saved: () => void; failed: () => void };
 
 type Api = {
   /** `streakBonus` is for a task's own coins only: a chest's are never raised. */
-  start: (origin: DOMRect, coins: number, streakBonus?: boolean) => Shower;
+  start: (origin: DOMRect, coins: number, streakBonus?: boolean, opts?: StartOptions) => Shower;
   /** The pills on the page, to bump and to land on. */
   registerPill: (pill: RefObject<HTMLElement | null>) => () => void;
   reportTotal: (total: number) => void;
   reportStreakDay: (day: number) => void;
   shown: number | null;
   glow: boolean;
+  held: number;
 };
 
 const idle: Shower = { saved: () => {}, failed: () => {} };
@@ -44,6 +57,20 @@ const StartContext = createContext<Api["start"]>(() => idle);
 export type Chest = { id: string; coins: number };
 const OfferChestContext = createContext<(chest: Chest) => void>(() => {});
 export const useOfferChest = () => useContext(OfferChestContext);
+
+/** The badges a tick-off won and the level it reached, offered to the provider, which shows a card for each. */
+export type Celebrations = {
+  badges: string[];
+  levelUp?: { level: number; title: string; name: string; image: string | null };
+};
+type Card =
+  | { kind: "badge"; key: string; name: string; emoji: string }
+  | { kind: "level"; level: number; title: string; name: string; image: string | null };
+const OfferCelebrationsContext = createContext<(c: Celebrations) => void>(() => {});
+export const useOfferCelebrations = () => useContext(OfferCelebrationsContext);
+/** Nu was cleared: confetti falls over the screen. */
+const NuClearedContext = createContext<() => void>(() => {});
+export const useCelebrateNuCleared = () => useContext(NuClearedContext);
 const Context = createContext<Api>({
   start: () => idle,
   registerPill: () => () => {},
@@ -51,6 +78,7 @@ const Context = createContext<Api>({
   reportStreakDay: () => {},
   shown: null,
   glow: false,
+  held: 0,
 });
 
 export const useCoinShower = () => useContext(StartContext);
@@ -60,10 +88,11 @@ export const useCoinShower = () => useContext(StartContext);
  * count it up. Also hands the pill to the shower, for coins to land on.
  */
 export function useShownCoins(total: number, pill: RefObject<HTMLElement | null>) {
-  const { shown, glow, reportTotal, registerPill } = useContext(Context);
+  const { shown, glow, held, reportTotal, registerPill } = useContext(Context);
   useEffect(() => reportTotal(total), [reportTotal, total]);
   useEffect(() => registerPill(pill), [registerPill, pill]);
-  return { coins: shown ?? total, glow };
+  // Coins of a badge card still waiting are not in the pill until the card closes.
+  return { coins: shown ?? total - held, glow };
 }
 
 /** Tells the shower which streak day a tick made now falls on, so its coins include the extra. */
@@ -89,6 +118,9 @@ export function CoinShowerProvider({ children }: { children: ReactNode }) {
   const [glow, setGlow] = useState(false);
   const [floating, setFloating] = useState(false);
   const [chest, setChest] = useState<Chest | null>(null);
+  const [cards, setCards] = useState<Card[]>([]);
+  const [held, setHeld] = useState(0);
+  const [confetti, setConfetti] = useState(0);
   const [announcement, setAnnouncement] = useState({ n: 0, text: "" });
   const pills = useRef(new Set<RefObject<HTMLElement | null>>());
   const floatRef = useRef<HTMLDivElement>(null);
@@ -100,6 +132,7 @@ export function CoinShowerProvider({ children }: { children: ReactNode }) {
   const overriding = useRef(false);
   const serverNow = useRef(0);
   const streakDay = useRef(1);
+  const heldRef = useRef(0);
 
   const later = useCallback((fn: () => void, ms: number) => {
     const timer = setTimeout(() => {
@@ -141,7 +174,7 @@ export function CoinShowerProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const start = useCallback(
-    (origin: DOMRect, ownCoins: number, streakBonus = true): Shower => {
+    (origin: DOMRect, ownCoins: number, streakBonus = true, opts: StartOptions = {}): Shower => {
       const coins = streakBonus ? withStreakBonus(ownCoins, streakDay.current) : ownCoins;
       if (coins <= 0) return idle;
       unlockSound();
@@ -149,8 +182,8 @@ export function CoinShowerProvider({ children }: { children: ReactNode }) {
       const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
       if (!overriding.current) baseline.current = serverNow.current;
       overriding.current = true;
-      dispatch({ type: "start", id, total: serverNow.current, coins, instant: reduced });
-      setAnnouncement((a) => ({ n: a.n + 1, text: `Du fick ${coinsLabel(coins)}` }));
+      dispatch({ type: "start", id, total: opts.from ?? serverNow.current - heldRef.current, coins, instant: reduced });
+      if (!opts.quiet) setAnnouncement((a) => ({ n: a.n + 1, text: `Du fick ${coinsLabel(coins)}` }));
       const shower: Shower = {
         saved: () => dispatch({ type: "settle", id, saved: true }),
         failed: () => dispatch({ type: "settle", id, saved: false }),
@@ -258,9 +291,53 @@ export function CoinShowerProvider({ children }: { children: ReactNode }) {
     [chest, start],
   );
 
+  const offerCelebrations = useCallback(({ badges, levelUp }: Celebrations) => {
+    const next: Card[] = [];
+    for (const key of badges) {
+      const badge = BADGES.find((b) => b.key === key);
+      if (badge) next.push({ kind: "badge", key, name: badge.name, emoji: badge.emoji });
+    }
+    if (levelUp) next.push({ kind: "level", ...levelUp });
+    if (next.length === 0) return;
+    // Their coins are already in the server's total; the pill waits for the card to close.
+    const coins = BADGE_COINS * next.filter((c) => c.kind === "badge").length;
+    heldRef.current += coins;
+    setHeld(heldRef.current);
+    setCards((c) => [...c, ...next]);
+  }, []);
+
+  const celebrateNuCleared = useCallback(() => setConfetti((n) => n + 1), []);
+
+  // Cards wait for the coin shower to land and the chest to close; badges first, then the level.
+  const card = cards[0];
+  const cardReady = card !== undefined && !landing && chest === null;
+  const shownCard = cardReady ? card : null;
+
+  const finishCard = useCallback(
+    (origin: DOMRect) => {
+      if (!card) return;
+      setCards((c) => c.slice(1));
+      if (card.kind === "badge") {
+        const rest = heldRef.current - BADGE_COINS;
+        heldRef.current = rest;
+        setHeld(rest);
+        start(origin, BADGE_COINS, false, { from: serverNow.current - rest - BADGE_COINS, quiet: true }).saved();
+      }
+      if (cards.length === 1) {
+        // The card's dialog closes with focus on the page's top, so put it on the list.
+        setTimeout(() => {
+          const list = document.querySelector<HTMLElement>("main");
+          list?.setAttribute("tabindex", "-1");
+          list?.focus({ preventScroll: true });
+        }, 0);
+      }
+    },
+    [card, cards.length, start],
+  );
+
   const api = useMemo<Api>(
-    () => ({ start, registerPill, reportTotal, reportStreakDay, shown: tally.shown, glow }),
-    [start, registerPill, reportTotal, reportStreakDay, tally.shown, glow],
+    () => ({ start, registerPill, reportTotal, reportStreakDay, shown: tally.shown, glow, held }),
+    [start, registerPill, reportTotal, reportStreakDay, tally.shown, glow, held],
   );
   const total = tally.shown ?? server;
 
@@ -268,7 +345,30 @@ export function CoinShowerProvider({ children }: { children: ReactNode }) {
     <Context.Provider value={api}>
       <StartContext.Provider value={start}>
       <OfferChestContext.Provider value={setChest}>
+      <OfferCelebrationsContext.Provider value={offerCelebrations}>
+      <NuClearedContext.Provider value={celebrateNuCleared}>
       {children}
+      {confetti > 0 && <Confetti key={confetti} />}
+      {shownCard?.kind === "badge" && (
+        <CelebrationCard key={shownCard.key} title="Nytt märke!"
+          announcement={badgeAnnouncement(shownCard.name)}
+          picture={shownCard.emoji}
+          onFinish={finishCard}>
+          <p className="font-semibold">{shownCard.name}</p>
+          <p className="text-xl font-bold">+{BADGE_COINS} mynt</p>
+        </CelebrationCard>
+      )}
+      {shownCard?.kind === "level" && (
+        <CelebrationCard
+          key={`level-${shownCard.level}`}
+          title={`Nivå ${shownCard.level}!`}
+          announcement={levelAnnouncement(shownCard.level, shownCard.title)}
+          picture={<MemberAvatar name={shownCard.name} image={shownCard.image} size="lg" />}
+          onFinish={finishCard}
+        >
+          <p className="text-sm text-muted-foreground">Du är nu {shownCard.title}</p>
+        </CelebrationCard>
+      )}
       {chestReady && <ChestCard key={chest.id} coins={chest.coins} onFinish={finishChest} />}
       <div ref={layer} aria-hidden className="pointer-events-none fixed inset-0 z-[60] overflow-hidden" />
       <div
@@ -288,6 +388,8 @@ export function CoinShowerProvider({ children }: { children: ReactNode }) {
       <div role="status" aria-live="polite" className="sr-only">
         <span key={announcement.n}>{announcement.text}</span>
       </div>
+      </NuClearedContext.Provider>
+      </OfferCelebrationsContext.Provider>
       </OfferChestContext.Provider>
       </StartContext.Provider>
     </Context.Provider>

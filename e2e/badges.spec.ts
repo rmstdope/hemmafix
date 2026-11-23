@@ -38,6 +38,8 @@ test("ticking a first task wins Första uppgiften: in colour, with its date and 
   await seedChore({ title: "Diska", roomId: rooms["Kök"]!.id, recurrence: null });
   await page.goto("/");
   await page.getByRole("button", { name: "Diska: markera som klar" }).click();
+  // The badge's card holds its 25 coins until it is closed.
+  await page.getByRole("dialog", { name: "Nytt märke!" }).getByRole("button", { name: "Fortsätt" }).click();
   await expect(coins(page)).toHaveAccessibleName("35 mynt");
 
   await go(page, "/jag");

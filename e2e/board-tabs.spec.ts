@@ -83,7 +83,7 @@ test("each empty tab says its own words; with a filter on they all say Inga uppg
   await logIn(context, "anna", "adult");
   await seedRooms("Kök");
   await page.goto("/");
-  await expect(panel(page).getByText("Inget att göra just nu 🎉")).toBeVisible();
+  await expect(panel(page).getByText("🎉 Allt i Nu är klart!")).toBeVisible();
   await tab(page, /^Imorgon,/).click();
   await expect(panel(page).getByText("Inget att göra den här dagen.")).toBeVisible();
   await tab(page, /^Senare,/).click();

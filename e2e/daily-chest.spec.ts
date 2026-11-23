@@ -87,7 +87,7 @@ test("a task worth 0 coins offers no chest", async ({ page, context }) => {
   await seedChore({ title: "Gratis", roomId: rooms["Kök"]!.id, recurrence: null, coins: 0 });
   await page.goto("/");
   await tick(page, "Gratis");
-  await expect(page.getByText("Inget att göra just nu")).toBeVisible();
+  await expect(page.getByText("Allt i Nu är klart!")).toBeVisible();
   await expect(pill(page)).toHaveText("0");
   await expect(card(page)).toBeHidden();
 });

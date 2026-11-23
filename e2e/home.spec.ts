@@ -102,7 +102,7 @@ test("among the recently done, a child sees only their own ticks", async ({ page
   await page.getByRole("button", { name: "Diska: markera som klar" }).click();
   await childPage.goto("/");
   await childPage.getByRole("button", { name: "Damma: markera som klar" }).click();
-  await expect(childPage.getByText("Inget att göra just nu")).toBeVisible();
+  await expect(childPage.getByText("Allt i Nu är klart!")).toBeVisible();
 
   await childPage.getByText(/Klart senaste veckan/).click();
   const recent = childPage.getByRole("list", { name: "Klart" });
@@ -137,7 +137,7 @@ test("an adult makes a child an adult, which takes effect on the child's device 
   const boPage = await boContext.newPage();
   await logIn(boContext, "bo", "child");
   await boPage.goto("/");
-  await expect(boPage.getByText("Inget att göra just nu")).toBeVisible();
+  await expect(boPage.getByText("Allt i Nu är klart!")).toBeVisible();
   await expect(boPage.getByRole("button", { name: "Ny uppgift" })).toHaveCount(0);
 
   await openHome(page);
