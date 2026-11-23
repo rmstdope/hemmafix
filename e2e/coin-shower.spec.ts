@@ -106,6 +106,8 @@ test("when the tick-off is refused the number drops back and the error shows", a
   await expect(pill(page)).toHaveText("0", { timeout: 5_000 });
   await page.waitForTimeout(1_500);
   await expect(pill(page)).toHaveText("0");
+  // Once refused, no further coin is credited: the number never reaches the full 10.
+  expect((await seen(page)).numbers).not.toContain("10");
 });
 
 test("scrolled down on a phone, a copy of the pill slides in to catch the coins, then leaves", async ({ page, context }, info) => {

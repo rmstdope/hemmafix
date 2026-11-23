@@ -17,7 +17,7 @@ import { initialTally, isFinished, SHOWER_COINS, tallyReducer } from "@/lib/coin
 import { coinsLabel, formatCoins } from "@/lib/coins";
 import { cn } from "@/lib/utils";
 import { CoinDot, coinPillClass } from "./coin-pill";
-import { playClink } from "./coin-sound";
+import { playClink, unlockSound } from "./coin-sound";
 
 /** What a started shower reports back: whether the tick-off was saved. */
 export type Shower = { saved: () => void; failed: () => void };
@@ -32,6 +32,8 @@ type Api = {
 };
 
 const idle: Shower = { saved: () => {}, failed: () => {} };
+/** Apart from the rest, so the task list does not re-render with every coin that lands. */
+const StartContext = createContext<Api["start"]>(() => idle);
 const Context = createContext<Api>({
   start: () => idle,
   registerPill: () => () => {},
@@ -40,7 +42,7 @@ const Context = createContext<Api>({
   glow: false,
 });
 
-export const useCoinShower = () => useContext(Context).start;
+export const useCoinShower = () => useContext(StartContext);
 
 /**
  * The total to show in a pill: the server's, except while a shower is playing, when the coins
@@ -76,7 +78,6 @@ export function CoinShowerProvider({ children }: { children: ReactNode }) {
   const nextId = useRef(1);
   const timers = useRef(new Set<ReturnType<typeof setTimeout>>());
   const frames = useRef(new Set<number>());
-  const flying = useRef(0);
   const baseline = useRef(0);
   const overriding = useRef(false);
   const serverNow = useRef(0);
@@ -119,6 +120,7 @@ export function CoinShowerProvider({ children }: { children: ReactNode }) {
   const start = useCallback(
     (origin: DOMRect, coins: number): Shower => {
       if (coins <= 0) return idle;
+      unlockSound();
       const id = nextId.current++;
       const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
       if (!overriding.current) baseline.current = serverNow.current;
@@ -146,7 +148,6 @@ export function CoinShowerProvider({ children }: { children: ReactNode }) {
         return coin ? centre(coin.getBoundingClientRect()) : centre(origin);
       };
       const from = centre(origin);
-      flying.current += SHOWER_COINS;
 
       for (let i = 0; i < SHOWER_COINS; i++) {
         later(() => {
@@ -162,11 +163,14 @@ export function CoinShowerProvider({ children }: { children: ReactNode }) {
             const p = flightPoint(from, target(), t, bend);
             coin.style.transform = `translate(${p.x - 8}px, ${p.y - 8}px) scale(${flightScale(t)})`;
             if (t < 1) {
-              frames.current.add(requestAnimationFrame(step));
+              const frame = requestAnimationFrame((time) => {
+                frames.current.delete(frame);
+                step(time);
+              });
+              frames.current.add(frame);
               return;
             }
             coin.remove();
-            flying.current -= 1;
             dispatch({ type: "land", id });
             bump();
             playClink();
@@ -212,6 +216,7 @@ export function CoinShowerProvider({ children }: { children: ReactNode }) {
 
   return (
     <Context.Provider value={api}>
+      <StartContext.Provider value={start}>
       {children}
       <div ref={layer} aria-hidden className="pointer-events-none fixed inset-0 z-[60] overflow-hidden" />
       <div
@@ -231,6 +236,7 @@ export function CoinShowerProvider({ children }: { children: ReactNode }) {
       <div role="status" aria-live="polite" className="sr-only">
         <span key={announcement.n}>{announcement.text}</span>
       </div>
+      </StartContext.Provider>
     </Context.Provider>
   );
 }
