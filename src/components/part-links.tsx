@@ -3,7 +3,7 @@
 import { ArrowLeft } from "lucide-react";
 import Link from "next/link";
 import { useSyncExternalStore } from "react";
-import { rememberedPart, type PartKey } from "@/lib/parts";
+import { PARTS, rememberedPart, type PartKey } from "@/lib/parts";
 
 const PART_KEY = "hemmafix-part";
 const noSubscribe = () => () => {};
@@ -30,7 +30,8 @@ export function rememberPart(part: PartKey) {
 
 /** The ← on Gjort and Hemmet: back to the part it was opened from. */
 export function BackToPart() {
-  const href = useRememberedPart() === "listor" ? "/listor" : "/";
+  const remembered = useRememberedPart();
+  const href = PARTS.find((p) => p.key === remembered)!.href;
   return (
     <Link href={href} aria-label="Tillbaka" className="-ml-3 flex size-11 items-center justify-center rounded-lg text-muted-foreground">
       <ArrowLeft className="size-5" />
