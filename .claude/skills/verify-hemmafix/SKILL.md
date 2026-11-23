@@ -259,7 +259,7 @@ away and the pass ends with beads pending.
 
 1. Stop the server you started (*Launching*), the Inspector and any `docs/ui` server you started,
    and only those.
-2. `verify-app reset`: it empties the home (floors, rooms, chores, history, connected apps and the
+2. `verify-app reset`: it empties the home (floors, rooms, chores, history, lists, connected apps and the
    members the helper added), sets every role back to adult and keeps the logins. Never drop the
    database: that would cost the navigator their login.
 3. `git -C .cerebro/worktrees/psylocke status --porcelain` shows nothing: the look writes only to the
