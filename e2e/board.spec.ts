@@ -1,3 +1,4 @@
+import { filterSelect } from "./support/board";
 import type { Page } from "@playwright/test";
 import { formatDue, todayIso } from "../src/lib/dates";
 import { nextDueDate } from "../src/lib/recurrence";
@@ -8,7 +9,7 @@ import { expect, test } from "./support/test";
 const today = () => todayIso();
 const dueLabel = (iso: string) => formatDue(iso, today())!.label;
 
-const todo = (page: Page) => page.getByRole("group", { name: "Att göra" });
+const todo = (page: Page) => page.getByRole("tabpanel");
 const item = (page: Page, title: string) => todo(page).getByRole("listitem").filter({ hasText: title });
 const done = (page: Page) => page.getByRole("list", { name: "Klart" });
 
@@ -56,22 +57,25 @@ test("an adult adds a recurring task from a template; ticking it off brings the 
 
   const task = item(page, "Dammsuga");
   await expect(task).toContainText("Vardagsrum");
-  // It is due today: the Idag divider says so, and the row says neither that nor how often it recurs.
-  await expect(todo(page).getByRole("list", { name: "Idag", exact: true }).getByRole("listitem").filter({ hasText: "Dammsuga" })).toBeVisible();
+  // It is due today, so it is in Nu, and the row says neither that nor how often it recurs.
   await expect(task).not.toContainText("Idag");
   await expect(task).not.toContainText("Varje");
 
   await task.getByRole("button", { name: "Markera som klar" }).click();
+  // The next one is a week on, under Senare.
+  await page.getByRole("tab", { name: /^Senare,/ }).click();
   await expect(item(page, "Dammsuga")).toContainText(dueLabel(nextDueDate(today(), { unit: "week", interval: 1 })));
   await expect(item(page, "Dammsuga")).toHaveCount(1);
 
   // Undoing the tick removes the next one again.
+  await page.getByRole("tab", { name: /^Nu,/ }).click();
   await page.getByText(/Klart senaste veckan/).click();
   const ticked = done(page).getByRole("listitem").filter({ hasText: "Dammsuga" });
   await expect(ticked).toContainText("Klar av mig");
   await ticked.getByRole("button", { name: "Ångra klar" }).click();
-  await expect(todo(page).getByRole("list", { name: "Idag", exact: true }).getByRole("listitem").filter({ hasText: "Dammsuga" })).toHaveCount(1);
   await expect(item(page, "Dammsuga")).toHaveCount(1);
+  await page.getByRole("tab", { name: /^Senare,/ }).click();
+  await expect(item(page, "Dammsuga")).toHaveCount(0);
 });
 
 test("an adult adds a one-off task of their own; once done it is gone", async ({ page, context }) => {
@@ -87,6 +91,7 @@ test("an adult adds a one-off task of their own; once done it is gone", async ({
   await form.getByRole("combobox", { name: "Vem" }).selectOption({ label: "Anna Andersson (jag)" });
   await form.getByRole("button", { name: "Lägg till" }).click();
 
+  await page.getByRole("tab", { name: /^Senare,/ }).click();
   const task = item(page, "Laga cykeln");
   await expect(task).toContainText("Kök");
   await expect(task).toContainText(dueLabel("2030-06-01"));
@@ -94,7 +99,7 @@ test("an adult adds a one-off task of their own; once done it is gone", async ({
   await expect(task.getByRole("combobox", { name: "Tilldela den här gången" }).locator("option:checked")).toHaveText("Jag");
 
   await task.getByRole("button", { name: "Markera som klar" }).click();
-  await expect(page.getByText("Inget att göra just nu")).toBeVisible();
+  await expect(todo(page).getByText("Inget planerat längre fram.")).toBeVisible();
 });
 
 test("a new task starts as a one-off, and the form opens that way every time", async ({ page, context }) => {
@@ -121,7 +126,7 @@ test("a new task starts as a one-off, and the form opens that way every time", a
   await expect(form.getByRole("radio", { name: "Återkommande" })).toBeChecked();
 
   // Closing and opening again starts over on "En gång".
-  await form.getByRole("button", { name: "Stäng" }).click();
+  await page.getByRole("dialog", { name: "Ny uppgift" }).getByRole("button", { name: "Stäng" }).click();
   form = await openNewTaskForm(page);
   await expect(form.getByRole("radio", { name: "En gång" })).toBeChecked();
   await expect(form.getByLabel("Klart senast")).toHaveValue("");
@@ -140,20 +145,20 @@ test("the open tasks can be filtered on room and on person, and the filter survi
   await page.goto("/");
   const titles = () => todo(page).getByRole("listitem").locator("p.font-medium");
 
-  await page.getByRole("combobox", { name: "Filtrera på rum" }).selectOption({ label: "Kök" });
+  await (await filterSelect(page, "Rum")).selectOption({ label: "Kök" });
   await expect(titles()).toHaveText(["Diska", "Torka bänken"]);
 
-  await page.getByRole("combobox", { name: "Filtrera på person" }).selectOption({ label: "Ingen tilldelad" });
+  await (await filterSelect(page, "Person")).selectOption({ label: "Ingen tilldelad" });
   await expect(titles()).toHaveText(["Torka bänken"]);
 
   await page.reload();
   await expect(titles()).toHaveText(["Torka bänken"]);
 
-  await page.getByRole("combobox", { name: "Filtrera på rum" }).selectOption({ label: "Alla rum" });
-  await page.getByRole("combobox", { name: "Filtrera på person" }).selectOption({ label: "Bo Andersson" });
+  await (await filterSelect(page, "Rum")).selectOption({ label: "Alla rum" });
+  await (await filterSelect(page, "Person")).selectOption({ label: "Bo Andersson" });
   await expect(titles()).toHaveText(["Diska"]);
 
-  await page.getByRole("combobox", { name: "Filtrera på person" }).selectOption({ label: "Mina" });
+  await (await filterSelect(page, "Person")).selectOption({ label: "Mina" });
   await expect(titles()).toHaveText(["Städa toaletten"]);
 });
 
@@ -175,6 +180,7 @@ test("an adult gives a recurring task to someone every time, or just this time",
   await thisTime.selectOption({ label: "Jag" });
   await expect(thisTime.locator("option:checked")).toHaveText("Jag");
   await task.getByRole("button", { name: "Markera som klar" }).click();
+  await page.getByRole("tab", { name: /^Senare,/ }).click();
   const next = item(page, "Diska");
   await expect(next).toContainText(dueLabel(nextDueDate(today(), { unit: "week", interval: 1 })));
   await expect(next.getByRole("combobox", { name: "Tilldela den här gången" }).locator("option:checked")).toHaveText("Bo");
@@ -204,6 +210,7 @@ test("a change on one device shows up on another without reloading", async ({ pa
     const form = await openNewTaskForm(page);
     await form.getByRole("textbox", { name: "Titel" }).fill(title);
     await form.getByRole("combobox", { name: "Rum" }).selectOption({ label: "Kök" });
+    await form.getByLabel("Klart senast").fill(today());
     await form.getByRole("button", { name: "Lägg till" }).click();
     await expect(item(page, title)).toBeVisible();
   };

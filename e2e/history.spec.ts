@@ -71,7 +71,7 @@ test("a tick shows up in the history, and an undone tick goes away", async ({ pa
   await page.getByRole("link", { name: "Tillbaka" }).click();
   await page.getByText(/Klart senaste veckan/).click();
   await page.getByRole("button", { name: "Ångra klar" }).click();
-  await expect(page.getByRole("group", { name: "Att göra" })).toContainText("Diska");
+  await expect(page.getByRole("tabpanel")).toContainText("Diska");
   await chooseFromMenu(page, "Gjort");
   await expect(page.getByText("Du har inte bockat av något senaste månaden.")).toBeVisible();
 });

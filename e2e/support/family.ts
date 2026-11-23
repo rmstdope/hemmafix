@@ -10,6 +10,7 @@ import { sql } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/postgres-js";
 import type { BrowserContext } from "@playwright/test";
 import postgres from "postgres";
+import { todayIso } from "../../src/lib/dates";
 import * as schema from "../../src/db/schema";
 import { databaseUrl } from "../../test/database.mjs";
 import { E2E_AUTH_SECRET, E2E_BASE_URL, E2E_DB, PEOPLE, type Person } from "./env";
@@ -156,7 +157,7 @@ export async function seedChore(opts: {
   await db.insert(schema.choreInstance).values({
     choreId: c!.id,
     householdId,
-    dueDate: opts.dueDate ?? null,
+    dueDate: opts.dueDate === undefined ? todayIso() : opts.dueDate,
     assigneeId: opts.assigneeId ?? null,
   });
   return c!;

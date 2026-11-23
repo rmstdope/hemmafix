@@ -1,6 +1,5 @@
 "use client";
 
-import { Plus, X } from "lucide-react";
 import Link from "next/link";
 import { useActionState, useState } from "react";
 import { toast } from "sonner";
@@ -60,6 +59,7 @@ export function AddChoreForm({
   members,
   currentUserId,
   today,
+  onClose,
 }: {
   floors: Option[];
   rooms: Room[];
@@ -69,20 +69,16 @@ export function AddChoreForm({
   currentUserId: string;
   /** YYYY-MM-DD in the household's time zone, from the server. */
   today: string;
+  /** Closes the sheet; it is rendered only while open, so the draft goes with it. */
+  onClose: () => void;
 }) {
-  const [open, setOpen] = useState(false);
   const [draft, setDraft] = useState<Draft>(() => empty());
-  // Closing starts the next opening from a clean draft, since the draft lives here and not in the form.
-  const close = () => {
-    setDraft(empty());
-    setOpen(false);
-  };
   const [, action, pending] = useActionState<ActionState, FormData>(async (prev, formData) => {
     const isRoutine = formData.get("mode") === "routine";
     const result = isRoutine ? await addRoutine(prev, formData) : await createChore(prev, formData);
     if (result.ok) {
       toast.success(isRoutine ? routineAddedNotice(result.count ?? 0) : "Uppgiften är tillagd");
-      close();
+      onClose();
     } else if (result.error) {
       toast.error(result.error);
     }
@@ -110,23 +106,15 @@ export function AddChoreForm({
     });
   };
 
-  if (!open) {
-    return (
-      <Button size="lg" className="h-11 w-full" onClick={() => setOpen(true)}>
-        <Plus /> Ny uppgift
-      </Button>
-    );
-  }
-
   if (rooms.length === 0) {
     return (
-      <div className="space-y-3 rounded-xl border bg-card p-4 text-sm">
+      <div className="space-y-3 text-sm">
         <p>Varje uppgift hör till ett rum. Lägg till hemmets rum först.</p>
         <div className="flex gap-2">
           <Link href="/hemmet" className="flex h-11 items-center rounded-lg bg-primary px-4 font-medium text-primary-foreground">
             Lägg till rum
           </Link>
-          <Button variant="ghost" className="h-11" onClick={close}>
+          <Button variant="ghost" className="h-11" onClick={onClose}>
             Avbryt
           </Button>
         </div>
@@ -151,16 +139,9 @@ export function AddChoreForm({
       // Not `action`: React resets a form after its action, and the selects would then show their
       // first option while the draft still holds what was chosen.
       onSubmit={submitKeepingValues(action)}
-      className="space-y-3 rounded-xl border bg-card p-4"
+      className="space-y-3"
       aria-label="Ny uppgift"
     >
-      <div className="flex items-center justify-between">
-        <h2 className="font-medium">Ny uppgift</h2>
-        <Button type="button" variant="ghost" size="icon-lg" aria-label="Stäng" onClick={close}>
-          <X />
-        </Button>
-      </div>
-
       <div className="grid grid-cols-2 gap-1 rounded-lg bg-muted p-1 text-sm" role="radiogroup" aria-label="Vad ska läggas till?">
         {(
           [
