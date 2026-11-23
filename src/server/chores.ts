@@ -3,7 +3,7 @@ import { cache } from "react";
 import { z } from "zod";
 import { aliasedTable, and, asc, desc, eq, gt, gte, isNotNull, isNull, ne, sql, type SQL } from "drizzle-orm";
 import { db, pg } from "@/db";
-import { chore, choreInstance, dailyChest, floor, highFive, household, membership, room, user } from "@/db/schema";
+import { chore, choreInstance, dailyChest, floor, highFive, household, lookPurchase, membership, room, user } from "@/db/schema";
 import { addDays, HOME_TIME_ZONE, todayIso } from "@/lib/dates";
 import { UserError } from "@/lib/errors";
 import { assertCan, can, type Role } from "@/lib/permissions";
@@ -29,7 +29,7 @@ export async function notifyHouseholdChanged(householdId: string) {
   await pg.notify(TASKS_CHANNEL, householdId);
 }
 
-export type Member = { id: string; name: string; image: string | null };
+export type Member = { id: string; name: string; image: string | null; frame: string };
 
 export async function getHousehold(householdId: string) {
   const [h] = await db.select().from(household).where(eq(household.id, householdId)).limit(1);
@@ -38,7 +38,7 @@ export async function getHousehold(householdId: string) {
 
 export async function listMembers(householdId: string): Promise<Member[]> {
   return db
-    .select({ id: user.id, name: user.name, image: user.image })
+    .select({ id: user.id, name: user.name, image: user.image, frame: sql<string>`coalesce(${membership.frame}, 'none')` })
     .from(membership)
     .innerJoin(user, eq(user.id, membership.userId))
     .where(eq(membership.householdId, householdId))
@@ -50,7 +50,13 @@ export type FamilyMember = Member & { role: Role };
 /** Everyone in the home with their role, alphabetically. */
 export async function listFamily(householdId: string): Promise<FamilyMember[]> {
   return db
-    .select({ id: user.id, name: user.name, image: user.image, role: membership.role })
+    .select({
+      id: user.id,
+      name: user.name,
+      image: user.image,
+      frame: sql<string>`coalesce(${membership.frame}, 'none')`,
+      role: membership.role,
+    })
     .from(membership)
     .innerJoin(user, eq(user.id, membership.userId))
     .where(eq(membership.householdId, householdId))
@@ -384,10 +390,25 @@ export async function uncompleteInstance(actor: Actor, id: string) {
 }
 
 /**
- * The actor's coins: what the ticks they hold are worth. Derived, so Ångra takes coins back by
- * clearing the tick, and a tick from before coins existed (null) earns nothing.
+ * The actor's coins in hand: what they earned (`sumEarned`) less what they spent on looks.
+ * Derived, so a purchase is a row and nothing is stored twice.
  */
-async function sumCoins(householdId: string, userId: string): Promise<number> {
+export async function balanceOf(householdId: string, userId: string): Promise<number> {
+  const [earned, [spent]] = await Promise.all([
+    sumEarned(householdId, userId),
+    db
+      .select({ total: sql<number>`coalesce(sum(${lookPurchase.price}), 0)::int` })
+      .from(lookPurchase)
+      .where(and(eq(lookPurchase.householdId, householdId), eq(lookPurchase.userId, userId))),
+  ]);
+  return earned - (spent?.total ?? 0);
+}
+
+/**
+ * Every coin the actor earned: what the ticks they hold are worth, and their chests. Derived, so
+ * Ångra takes coins back by clearing the tick, and a tick from before coins existed (null) earns nothing.
+ */
+async function sumEarned(householdId: string, userId: string): Promise<number> {
   const [ticks] = await db
     .select({ total: sql<number>`coalesce(sum(${choreInstance.coins}), 0)::int` })
     .from(choreInstance)
@@ -413,15 +434,16 @@ async function sumCoins(householdId: string, userId: string): Promise<number> {
 }
 
 /** Once per request, though the corner is rendered by both the desktop strip and the phone header. */
-const coinTotalOf = cache(sumCoins);
-export const getCoinTotal = (actor: Actor) => coinTotalOf(actor.householdId, actor.userId);
+const balanceCached = cache(balanceOf);
+const earnedCached = cache(sumEarned);
+export const getCoinTotal = (actor: Actor) => balanceCached(actor.householdId, actor.userId);
 
 /**
  * Every coin the actor has earned, which their level comes from. Spending never lowers it, so once
  * the shop exists the pill's total (`getCoinTotal`) subtracts purchases and this does not; undoing a
  * tick takes its coins off both.
  */
-export const getLifetimeCoins = (actor: Actor) => coinTotalOf(actor.householdId, actor.userId);
+export const getLifetimeCoins = (actor: Actor) => earnedCached(actor.householdId, actor.userId);
 
 // ---------------------------------------------------------------------------
 // The board
