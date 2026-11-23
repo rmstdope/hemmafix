@@ -1,6 +1,6 @@
 import type { Page } from "@playwright/test";
 import { E2E_BASE_URL } from "./support/env";
-import { logIn, seedChore, seedDone, seedRooms } from "./support/family";
+import { logIn, logInWithChestTaken, seedChore, seedDone, seedRooms } from "./support/family";
 import { chooseFromMenu } from "./support/menu";
 import { expect, test } from "./support/test";
 
@@ -58,7 +58,7 @@ test("an adult sees what anyone in the home has done, over a chosen period", asy
 });
 
 test("a tick shows up in the history, and an undone tick goes away", async ({ page, context }) => {
-  await logIn(context, "anna", "adult");
+  await logInWithChestTaken(context, "anna", "adult");
   const rooms = await seedRooms("Kök");
   await seedChore({ title: "Diska", roomId: rooms["Kök"]!.id, recurrence: null });
 

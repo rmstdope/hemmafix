@@ -92,6 +92,13 @@
       "when": 1795460349375,
       "tag": "0012_wooden_gorgon",
       "breakpoints": true
+    },
+    {
+      "idx": 13,
+      "version": "7",
+      "when": 1795462196458,
+      "tag": "0013_daily_chest",
+      "breakpoints": true
     }
   ]
 }

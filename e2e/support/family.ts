@@ -74,6 +74,19 @@ async function homeId() {
 }
 
 /**
+ * Logs in someone whose chest for today is already made (and unopened, so it counts for
+ * nothing), so ticking a task off shows no chest card and the coin tests count only the task's
+ * own coins.
+ */
+export async function logInWithChestTaken(context: BrowserContext, person: Person, role: schema.MemberRole = "child") {
+  const user = await logIn(context, person, role);
+  await db
+    .insert(schema.dailyChest)
+    .values({ householdId: await homeId(), userId: user.id, day: todayIso(), coins: 5 });
+  return user;
+}
+
+/**
  * Creates `person` as a member of the (single) household with `role` and gives `context`
  * a logged-in session cookie for them.
  */

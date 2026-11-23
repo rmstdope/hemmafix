@@ -1,7 +1,7 @@
 import type { Page } from "@playwright/test";
 import { eq } from "drizzle-orm";
 import { choreInstance } from "../src/db/schema";
-import { db, logIn, seedChore, seedDone, seedRooms } from "./support/family";
+import { db, logIn, logInWithChestTaken, seedChore, seedDone, seedRooms } from "./support/family";
 import { menuButton } from "./support/menu";
 import { expect, test } from "./support/test";
 
@@ -15,7 +15,7 @@ const undo = async (page: Page, title: string) => {
 };
 
 test("ticking a task off adds its coins at once, and ↺ takes them back", async ({ page, context }) => {
-  await logIn(context, "bo", "child");
+  await logInWithChestTaken(context, "bo", "child");
   const rooms = await seedRooms("Kök");
   await seedChore({ title: "Diska", roomId: rooms["Kök"]!.id, recurrence: null });
   await page.goto("/");
@@ -31,7 +31,7 @@ test("ticking a task off adds its coins at once, and ↺ takes them back", async
 });
 
 test("a tick from before coins existed earns nothing, and undoing it takes nothing", async ({ page, context }) => {
-  const bo = await logIn(context, "bo", "child");
+  const bo = await logInWithChestTaken(context, "bo", "child");
   const rooms = await seedRooms("Kök");
   await seedDone({ title: "Gammal", roomId: rooms["Kök"]!.id, completedById: bo.id });
   await seedChore({ title: "Ny", roomId: rooms["Kök"]!.id, recurrence: null });

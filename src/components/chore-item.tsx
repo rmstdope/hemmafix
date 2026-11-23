@@ -18,7 +18,7 @@ import { DEFAULT_COINS } from "@/lib/coins";
 import { formatDue } from "@/lib/dates";
 import { roomLabel } from "@/lib/floors";
 import { CoinBadge } from "./coin-badge";
-import { useCoinShower, type Shower } from "./coin-shower";
+import { useCoinShower, useOfferChest, type Shower } from "./coin-shower";
 import { EditChoreForm } from "./edit-chore-form";
 import { cn } from "@/lib/utils";
 import type { InstanceView, Member } from "@/server/chores";
@@ -58,6 +58,7 @@ export function ChoreItem({
   highFive?: { canGive: boolean; givenByMe: boolean; names: string[] };
 }) {
   const startShower = useCoinShower();
+  const offerChest = useOfferChest();
   const [pending, startTransition] = useTransition();
   const [assigneeId, setOptimisticAssignee] = useOptimistic(t.assigneeId);
   const [hidden, setHidden] = useOptimistic(false);
@@ -85,6 +86,7 @@ export function ChoreItem({
         toast.error(result.error);
       } else {
         shower?.saved();
+        if (result.chestId && result.chestCoins !== undefined) offerChest({ id: result.chestId, coins: result.chestCoins });
         if (success) toast.success(success);
       }
     });

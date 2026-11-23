@@ -1,11 +1,13 @@
 import "server-only";
 import { cache } from "react";
+import { z } from "zod";
 import { aliasedTable, and, asc, desc, eq, gt, gte, isNotNull, isNull, ne, sql, type SQL } from "drizzle-orm";
 import { db, pg } from "@/db";
-import { chore, choreInstance, floor, highFive, household, membership, room, user } from "@/db/schema";
+import { chore, choreInstance, dailyChest, floor, highFive, household, membership, room, user } from "@/db/schema";
 import { addDays, HOME_TIME_ZONE, todayIso } from "@/lib/dates";
 import { UserError } from "@/lib/errors";
 import { assertCan, can, type Role } from "@/lib/permissions";
+import { rollChestCoins } from "@/lib/chest";
 import { findTemplate } from "@/lib/chore-templates";
 import { nextDueDate, type Recurrence } from "@/lib/recurrence";
 import {
@@ -249,11 +251,15 @@ export async function deleteChore(actor: Actor, id: string) {
  * Ticks off an open instance. For a recurring task the next instance is created at once,
  * due one interval after today, and assigned to whoever does the task every time.
  */
-export async function completeInstance(actor: Actor, id: string) {
+export async function completeInstance(
+  actor: Actor,
+  id: string,
+  { offerChest = true }: { offerChest?: boolean } = {},
+): Promise<{ chestId: string | null; chestCoins: number | null }> {
   assertCan(actor, "task:complete");
   const target = instanceIdInput.parse(id);
 
-  await db.transaction(async (tx) => {
+  const chest = await db.transaction(async (tx) => {
     // Lock the instance and its task: two people ticking at the same moment must not both
     // create a next instance, and a tick and an undo of the same task take turns.
     const [row] = await tx
@@ -299,7 +305,32 @@ export async function completeInstance(actor: Actor, id: string) {
         assigneeId: row.seriesAssigneeId,
       });
     }
+
+    // The first tick of the day that gives coins offers the day's chest; later ticks, and an
+    // undone and repeated tick, find it taken. Undo never takes a chest back.
+    if (row.coins <= 0 || !offerChest) return null;
+    const [chest] = await tx
+      .insert(dailyChest)
+      .values({ householdId: actor.householdId, userId: actor.userId, day: todayIso(), coins: rollChestCoins() })
+      .onConflictDoNothing()
+      .returning({ id: dailyChest.id, coins: dailyChest.coins });
+    return chest ?? null;
   });
+  return { chestId: chest?.id ?? null, chestCoins: chest?.coins ?? null };
+}
+
+/** Opens the actor's own chest, which credits its coins. Opening again changes nothing. */
+export async function openChest(actor: Actor, id: string): Promise<number> {
+  assertCan(actor, "task:complete");
+  const chestId = z.string().uuid().safeParse(id);
+  if (!chestId.success) throw new UserError("Kistan finns inte längre");
+  const [chest] = await db
+    .update(dailyChest)
+    .set({ openedAt: sql`coalesce(${dailyChest.openedAt}, now())` })
+    .where(and(eq(dailyChest.id, chestId.data), eq(dailyChest.userId, actor.userId)))
+    .returning({ coins: dailyChest.coins });
+  if (!chest) throw new UserError("Kistan finns inte längre");
+  return chest.coins;
 }
 
 /**
@@ -357,7 +388,7 @@ export async function uncompleteInstance(actor: Actor, id: string) {
  * clearing the tick, and a tick from before coins existed (null) earns nothing.
  */
 async function sumCoins(householdId: string, userId: string): Promise<number> {
-  const [row] = await db
+  const [ticks] = await db
     .select({ total: sql<number>`coalesce(sum(${choreInstance.coins}), 0)::int` })
     .from(choreInstance)
     .where(
@@ -367,7 +398,18 @@ async function sumCoins(householdId: string, userId: string): Promise<number> {
         isNotNull(choreInstance.completedAt),
       ),
     );
-  return row?.total ?? 0;
+  // A chest counts once opened, or once its day is over, so an unopened one is never lost.
+  const [chests] = await db
+    .select({ total: sql<number>`coalesce(sum(${dailyChest.coins}), 0)::int` })
+    .from(dailyChest)
+    .where(
+      and(
+        eq(dailyChest.householdId, householdId),
+        eq(dailyChest.userId, userId),
+        sql`(${dailyChest.openedAt} is not null or ${dailyChest.day} < ${todayIso()})`,
+      ),
+    );
+  return (ticks?.total ?? 0) + (chests?.total ?? 0);
 }
 
 /** Once per request, though the corner is rendered by both the desktop strip and the phone header. */

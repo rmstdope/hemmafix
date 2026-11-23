@@ -75,7 +75,12 @@ describe("as a child", () => {
     const mine = await weeklyTask("Diska");
     const annas = await weeklyTask("Damma");
 
-    expect(await actions.completeInstance(mine.instanceId)).toEqual(OK);
+    // The first tick of the day also reports the day's chest.
+    expect(await actions.completeInstance(mine.instanceId)).toEqual({
+      ...OK,
+      chestId: expect.any(String),
+      chestCoins: expect.any(Number),
+    });
     expect(await actions.uncompleteInstance(mine.instanceId)).toEqual(OK);
 
     as(f.adult);
@@ -123,7 +128,7 @@ describe("as an adult", () => {
     expect(
       await actions.editChore(first.id, { ok: false }, form({ title: "Diska allt", roomId: f.kitchen.id, interval: "2", unit: "day" })),
     ).toEqual(OK);
-    expect(await actions.completeInstance(first.id)).toEqual(OK);
+    expect(await actions.completeInstance(first.id)).toMatchObject(OK);
     expect(await actions.completeInstance(first.id)).toEqual({ ok: false, error: "Någon har redan bockat av den" });
     expect(await actions.uncompleteInstance(first.id)).toEqual(OK);
     expect(await actions.deleteChore(c!.id)).toEqual(OK);
