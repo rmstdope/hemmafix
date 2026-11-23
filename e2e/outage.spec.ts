@@ -47,8 +47,15 @@ for (const [down, refuse] of [
   }) => {
     await logIn(context, "anna", "adult");
     await seedRooms("Kök");
-    await page.route("**/api/events", refuse);
+    // The stream must have failed before the server answers again, or it would simply open.
+    let failed!: () => void;
+    const streamFailed = new Promise<void>((resolve) => (failed = resolve));
+    await page.route("**/api/events", async (route) => {
+      await refuse(route);
+      failed();
+    });
     await page.goto("/hemmet");
+    await streamFailed;
     const field = page.getByRole("textbox", { name: "Nytt rum" });
     await field.fill("Gäst");
 

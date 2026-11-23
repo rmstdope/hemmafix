@@ -16,6 +16,10 @@ async function serverAnswers() {
   }
 }
 
+/** How long to wait before reopening an event stream that ended, at first and at most. */
+const RECONNECT_MIN_MS = 5_000;
+const RECONNECT_MAX_MS = 60_000;
+
 /** Refreshes the page data when another family member changes a task. */
 export function LiveUpdates() {
   const router = useRouter();
@@ -24,6 +28,7 @@ export function LiveUpdates() {
     let timer: ReturnType<typeof setTimeout> | undefined;
     let reconnect: ReturnType<typeof setTimeout> | undefined;
     let source: EventSource | undefined;
+    let reconnectDelay = RECONNECT_MIN_MS;
     const refreshSoon = () => {
       clearTimeout(timer);
       timer = setTimeout(async () => {
@@ -39,13 +44,18 @@ export function LiveUpdates() {
       source = stream;
       stream.onmessage = refreshSoon;
       // After a dropped connection (phone asleep, network switch, a deploy) catch up.
-      stream.onopen = refreshSoon;
+      stream.onopen = () => {
+        reconnectDelay = RECONNECT_MIN_MS;
+        refreshSoon();
+      };
       // A network error is retried by EventSource itself, but any other answer than the stream
-      // (the proxy's 502 while the app restarts) ends its retries for good: open a new one.
+      // (the proxy's 502 while the app restarts, a 401 once logged out) ends its retries for
+      // good: open a new one, waiting longer each time it fails again.
       stream.onerror = () => {
         if (stream.readyState !== EventSource.CLOSED) return;
         clearTimeout(reconnect);
-        reconnect = setTimeout(connect, 5000);
+        reconnect = setTimeout(connect, reconnectDelay);
+        reconnectDelay = Math.min(reconnectDelay * 2, RECONNECT_MAX_MS);
       };
     };
     connect();
