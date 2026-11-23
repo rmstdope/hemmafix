@@ -1,5 +1,6 @@
 import "server-only";
 import { and, eq, sql } from "drizzle-orm";
+import { cache } from "react";
 import { db } from "@/db";
 import { lookPurchase, membership } from "@/db/schema";
 import { UserError } from "@/lib/errors";
@@ -15,7 +16,11 @@ export type MyLooks = {
   chosen: Record<LookKind, string>;
 };
 
-export async function getLooks(actor: Actor): Promise<MyLooks> {
+/** Once per request: the layout, the corner and the Jag page all ask. */
+export const getLooks = (actor: Actor) => cachedLooks(actor.userId, actor.householdId);
+
+const cachedLooks = cache(async (userId: string, householdId: string): Promise<MyLooks> => {
+  const actor = { userId, householdId };
   const [[m], bought] = await Promise.all([
     db
       .select({ frame: membership.frame, theme: membership.theme, coin: membership.coinLook })
@@ -28,7 +33,7 @@ export async function getLooks(actor: Actor): Promise<MyLooks> {
   ]);
   const chosen = Object.fromEntries(LOOK_KINDS.map((k) => [k, m?.[k] ?? defaultLook(k).key])) as Record<LookKind, string>;
   return { owned: bought.map((b) => `${b.kind}:${b.key}`).sort(), chosen };
-}
+});
 
 type Executor = Pick<typeof db, "select" | "update" | "insert">;
 
@@ -51,10 +56,11 @@ export async function buyLook(actor: Actor, kind: string, key: string) {
   const look = findLook(input.kind, input.key)!;
   if (look.price === 0) throw new UserError("Utseendet är gratis.");
   await db.transaction(async (tx) => {
-    // One purchase at a time per person, so two devices cannot spend the same coins twice.
-    await tx.execute(sql`select pg_advisory_xact_lock(hashtext(${"look:" + actor.userId}))`);
+    // One spend at a time per person, whatever it buys (rewards take the same lock), so two
+    // devices cannot spend the same coins twice.
+    await tx.execute(sql`select pg_advisory_xact_lock(hashtext('hemmafix:coins:' || ${actor.userId}))`);
     if ((await ownedBy(tx, actor, look.kind, look.key)).length > 0) throw new UserError("Du har redan det utseendet.");
-    if ((await balanceOf(actor.householdId, actor.userId)) < look.price) {
+    if ((await balanceOf(actor.householdId, actor.userId, tx)) < look.price) {
       throw new UserError("Du har inte tillräckligt med mynt.");
     }
     await tx

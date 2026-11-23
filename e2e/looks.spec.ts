@@ -106,6 +106,7 @@ test("a theme changes only the buyer's colours, and a coin look only the buyer's
   await tile(page, "Lila, 200 mynt").click();
   await sheet(page).getByRole("button", { name: "Köp för 200 mynt" }).click();
   await expect(page.locator('[data-look-own="lila"]').first()).toBeAttached();
+  await expect(page.getByRole("link", { name: "Jag" }).and(page.locator("[aria-current=page]")).first()).toHaveCSS("color", "rgb(124, 58, 237)");
   await tile(page, "Silver, 100 mynt").click();
   await sheet(page).getByRole("button", { name: "Köp för 100 mynt" }).click();
   await expect(tile(page, "Silver, används")).toBeVisible();
@@ -119,6 +120,7 @@ test("a theme changes only the buyer's colours, and a coin look only the buyer's
   await expect(pill(annaPage)).toBeVisible();
   await expect(annaPage.locator('[data-look-own="svart"]').first()).toBeAttached();
   await expect(annaPage.locator('[data-look-own="lila"]')).toHaveCount(0);
+  await expect(annaPage.getByRole("link", { name: "Uppgifter" }).and(annaPage.locator("[aria-current=page]")).first()).not.toHaveCSS("color", "rgb(124, 58, 237)");
   await expect(pill(annaPage).locator("[data-coin]")).not.toHaveCSS("background-image", /rgb\(203, 213, 225\)/);
   await other.close();
 });

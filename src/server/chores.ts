@@ -383,14 +383,17 @@ export async function uncompleteInstance(actor: Actor, id: string) {
   });
 }
 
+/** Where a balance is read: the pool, or a transaction that already holds the person's coins lock. */
+type Reader = Pick<typeof db, "select">;
+
 /**
  * The actor's coins in hand: what they earned (`sumEarned`) less what they spent on looks.
  * Derived, so a purchase is a row and nothing is stored twice.
  */
-export async function balanceOf(householdId: string, userId: string): Promise<number> {
+export async function balanceOf(householdId: string, userId: string, ex: Reader = db): Promise<number> {
   const [earned, [spent]] = await Promise.all([
-    sumEarned(householdId, userId),
-    db
+    sumEarned(householdId, userId, ex),
+    ex
       .select({ total: sql<number>`coalesce(sum(${lookPurchase.price}), 0)::int` })
       .from(lookPurchase)
       .where(and(eq(lookPurchase.householdId, householdId), eq(lookPurchase.userId, userId))),
@@ -402,8 +405,8 @@ export async function balanceOf(householdId: string, userId: string): Promise<nu
  * Every coin the actor earned: what the ticks they hold are worth, and their chests. Derived, so
  * Ångra takes coins back by clearing the tick, and a tick from before coins existed (null) earns nothing.
  */
-async function sumEarned(householdId: string, userId: string): Promise<number> {
-  const [ticks] = await db
+async function sumEarned(householdId: string, userId: string, ex: Reader = db): Promise<number> {
+  const [ticks] = await ex
     .select({ total: sql<number>`coalesce(sum(${choreInstance.coins}), 0)::int` })
     .from(choreInstance)
     .where(
@@ -414,7 +417,7 @@ async function sumEarned(householdId: string, userId: string): Promise<number> {
       ),
     );
   // A chest counts once opened, or once its day is over, so an unopened one is never lost.
-  const [chests] = await db
+  const [chests] = await ex
     .select({ total: sql<number>`coalesce(sum(${dailyChest.coins}), 0)::int` })
     .from(dailyChest)
     .where(
