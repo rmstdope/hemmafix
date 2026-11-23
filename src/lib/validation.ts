@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { findTemplate } from "./chore-templates";
+import { DEFAULT_COINS, MAX_COINS } from "./coins";
 import { ROLES } from "./permissions";
 import { MAX_INTERVAL, RECURRENCE_UNITS, type Recurrence } from "./recurrence";
 
@@ -15,6 +16,15 @@ const optionalText = (max: number) =>
 export const isoDate = z.iso.date({ error: "Ogiltigt datum" });
 
 export const choreTitle = z.string().trim().min(1, "Skriv vad som ska göras").max(200, "Max 200 tecken");
+const COINS_ERROR = "Mynt måste vara ett heltal mellan 0 och 100";
+/** What a task gives for a tick: whole, 0 to 100. Text from a form or a number from Claude. */
+export const coinsInput = z.preprocess(
+  (v) => (typeof v === "string" && v.trim() !== "" ? Number(v) : v),
+  z.number({ error: COINS_ERROR }).int(COINS_ERROR).min(0, COINS_ERROR).max(MAX_COINS, COINS_ERROR),
+);
+/** An empty or missing amount is no amount: undefined. */
+const optionalCoins = z.preprocess((v) => (v === "" || v === null ? undefined : v), coinsInput.optional());
+
 const optionalDate = z
   .union([isoDate, z.literal("")])
   .nullish()
@@ -68,6 +78,7 @@ export const createChoreInput = z
       .refine((v) => v === null || findTemplate(v) !== undefined, "Okänd fördefinierad uppgift"),
     ...cadenceFields,
     kind: cadenceFields.kind.unwrap().default("once"),
+    coins: optionalCoins,
   })
   .transform((v, ctx) => {
     const { recurrence, firstDueDate } = resolveCadence(v, ctx);
@@ -79,6 +90,7 @@ export const createChoreInput = z
       /** null: today for a recurring task, no due date for a one-off. */
       firstDueDate,
       assigneeId: v.assigneeId,
+      coins: v.coins ?? DEFAULT_COINS,
     };
   });
 export type CreateChoreInput = z.infer<typeof createChoreInput>;
@@ -111,6 +123,8 @@ export const editChoreInput = z
       .optional(),
     unit: z.enum(RECURRENCE_UNITS, { error: "Välj dag, vecka eller månad" }).optional(),
     dueDate: optionalDate,
+    /** Undefined leaves the task's amount as it is. */
+    coins: optionalCoins,
   })
   .transform((v, ctx) => {
     let recurrence: Recurrence | null = null;
@@ -121,7 +135,7 @@ export const editChoreInput = z
       }
       recurrence = { unit: v.unit, interval: v.interval };
     }
-    return { title: v.title, roomId: v.roomId, recurrence, dueDate: v.dueDate };
+    return { title: v.title, roomId: v.roomId, recurrence, dueDate: v.dueDate, coins: v.coins };
   });
 export type EditChoreInput = z.infer<typeof editChoreInput>;
 

@@ -6,8 +6,10 @@ import { editChore, type ActionState } from "@/app/actions";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { submitKeepingValues } from "@/components/submit-keeping-values";
+import { DEFAULT_COINS } from "@/lib/coins";
 import type { Recurrence, RecurrenceUnit } from "@/lib/recurrence";
 import { cn } from "@/lib/utils";
+import { CoinStepper } from "./coin-stepper";
 import { RoomOptions } from "./room-options";
 
 type Option = { id: string; name: string };
@@ -30,7 +32,14 @@ export function EditChoreForm({
   onDone,
 }: {
   /** The open instance the form edits from, and its task. */
-  task: { id: string; title: string; roomId: string | null; recurrence: Recurrence | null; dueDate: string | null };
+  task: {
+    id: string;
+    title: string;
+    roomId: string | null;
+    recurrence: Recurrence | null;
+    dueDate: string | null;
+    coins: number | null;
+  };
   floors: Option[];
   rooms: Room[];
   onDone: () => void;
@@ -38,6 +47,7 @@ export function EditChoreForm({
   const [kind, setKind] = useState<"recurring" | "once">(task.recurrence ? "recurring" : "once");
   const [interval, setInterval] = useState(String(task.recurrence?.interval ?? 1));
   const [roomId, setRoomId] = useState(task.roomId ?? "");
+  const [coins, setCoins] = useState(task.coins ?? DEFAULT_COINS);
   const [, action, pending] = useActionState<ActionState, FormData>(async (prev, formData) => {
     const result = await editChore(task.id, prev, formData);
     if (result.ok) {
@@ -150,6 +160,8 @@ export function EditChoreForm({
           className={fieldClass}
         />
       </label>
+
+      <CoinStepper name="coins" value={coins} onChange={setCoins} />
 
       <div className="flex gap-2">
         <Button type="submit" className="h-11 flex-1" disabled={pending}>

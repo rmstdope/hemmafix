@@ -140,6 +140,7 @@ export async function seedChore(opts: {
   recurrence?: { unit: "day" | "week" | "month"; interval: number } | null;
   dueDate?: string | null;
   assigneeId?: string | null;
+  coins?: number;
 }) {
   const householdId = await homeId();
   const recurrence = opts.recurrence === undefined ? { unit: "week" as const, interval: 1 } : opts.recurrence;
@@ -152,6 +153,7 @@ export async function seedChore(opts: {
       recurrenceUnit: recurrence?.unit ?? null,
       recurrenceInterval: recurrence?.interval ?? null,
       assigneeId: opts.assigneeId ?? null,
+      ...(opts.coins !== undefined && { coins: opts.coins }),
     })
     .returning();
   await db.insert(schema.choreInstance).values({

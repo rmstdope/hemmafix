@@ -78,8 +78,8 @@ describe("the lookup of ids", () => {
     const text = formatTaskLookup(
       {
         open: [
-          { id: "i1", choreId: "c1", title: "Diska", roomName: "Kök", floorName: "Plan 1", assigneeName: "Anna", dueDate: "2026-11-15", recurrence: { unit: "week", interval: 2 } },
-          { id: "i4", choreId: "c4", title: "Byt lampa", roomName: null, assigneeName: null, dueDate: null, recurrence: null },
+          { id: "i1", choreId: "c1", title: "Diska", roomName: "Kök", floorName: "Plan 1", assigneeName: "Anna", dueDate: "2026-11-15", recurrence: { unit: "week", interval: 2 }, coins: 30 },
+          { id: "i4", choreId: "c4", title: "Byt lampa", roomName: null, assigneeName: null, dueDate: null, recurrence: null, coins: 0 },
         ],
         rooms: [{ id: "r1", name: "Kök", floorName: "Plan 1" }],
         members: [{ id: "anna", name: "Anna", role: "adult" }],
@@ -93,8 +93,8 @@ describe("the lookup of ids", () => {
     expect(text).toBe(
       [
         "Öppna uppgifter:",
-        "- Diska – Kök · Plan 1, Anna, Idag, Varannan vecka (uppgift c1, tillfälle i1, nästa datum 2026-11-15)",
-        "- Byt lampa – ingen tilldelad, inget datum (uppgift c4, tillfälle i4)",
+        "- Diska – Kök · Plan 1, Anna, Idag, Varannan vecka, 30 mynt (uppgift c1, tillfälle i1, nästa datum 2026-11-15)",
+        "- Byt lampa – ingen tilldelad, inget datum, 0 mynt (uppgift c4, tillfälle i4)",
         "Rum:",
         "- Kök, Plan 1 (id r1)",
         "Familj:",
@@ -246,10 +246,10 @@ describe("routines", () => {
   it("lists each routine with its tasks and ids", () => {
     expect(
       formatRoutines([
-        { id: "r1", name: "Städa", tasks: [{ id: "t1", title: "Dammsug" }, { id: "t2", title: "Torka" }] },
+        { id: "r1", name: "Städa", tasks: [{ id: "t1", title: "Dammsug", coins: 25 }, { id: "t2", title: "Torka", coins: 10 }] },
         { id: "r2", name: "Tom", tasks: [] },
       ]),
-    ).toBe("Städa [r1]\n- Dammsug [t1]\n- Torka [t2]\n\nTom [r2]\n(inga uppgifter)");
+    ).toBe("Städa [r1]\n- Dammsug [t1] – 25 mynt\n- Torka [t2] – 10 mynt\n\nTom [r2]\n(inga uppgifter)");
   });
 
   it("says when there are none", () => {

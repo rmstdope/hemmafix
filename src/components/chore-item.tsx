@@ -12,9 +12,10 @@ import {
   type ActionState,
 } from "@/app/actions";
 import { Button } from "@/components/ui/button";
-import { COINS_PER_TASK } from "@/lib/coins";
+import { DEFAULT_COINS } from "@/lib/coins";
 import { formatDue } from "@/lib/dates";
 import { roomLabel } from "@/lib/floors";
+import { CoinBadge } from "./coin-badge";
 import { useCoinShower, type Shower } from "./coin-shower";
 import { EditChoreForm } from "./edit-chore-form";
 import { cn } from "@/lib/utils";
@@ -113,7 +114,7 @@ export function ChoreItem({
                 () => completeInstance(t.id),
                 () => setHidden(true),
                 undefined,
-                startShower(e.currentTarget.getBoundingClientRect(), COINS_PER_TASK),
+                startShower(e.currentTarget.getBoundingClientRect(), t.coins ?? DEFAULT_COINS),
               )
             }
           >
@@ -139,6 +140,8 @@ export function ChoreItem({
             )}
           </p>
         </div>
+
+        {t.coins !== null && <CoinBadge coins={t.coins} faded={completed} />}
 
         {!completed && !canManage && assigneeId && (
           <span className="shrink-0 text-sm text-muted-foreground">{firstName(assigneeId)}</span>

@@ -15,9 +15,11 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { attempt } from "@/components/attempt";
+import { CoinBadge } from "@/components/coin-badge";
+import { CoinStepper } from "@/components/coin-stepper";
 import { removeRoutineNotice } from "@/lib/routine-texts";
 
-type Routine = { id: string; name: string; tasks: { id: string; title: string }[] };
+type Routine = { id: string; name: string; tasks: { id: string; title: string; coins: number }[] };
 
 /** A routine's page: its name, its tasks, and what can be done to them. */
 export function RoutineEditor({ routine, suggestions }: { routine: Routine; suggestions: string[] }) {
@@ -84,14 +86,16 @@ export function RoutineEditor({ routine, suggestions }: { routine: Routine; sugg
                   <EditField
                     label={`Ändra ${t.title}`}
                     initial={t.title}
+                    coins={t.coins}
                     onCancel={() => setEditingId(null)}
-                    onSave={(title) => attempt(() => updateRoutineTask(routine.id, t.id, title))}
+                    onSave={(title, coins) => attempt(() => updateRoutineTask(routine.id, t.id, title, coins))}
                     onSaved={() => setEditingId(null)}
                   />
                 </li>
               ) : (
                 <li key={t.id} className="flex items-center gap-1 py-1 pr-1 pl-3">
                   <span className="min-w-0 flex-1 break-words">{t.title}</span>
+                  <CoinBadge coins={t.coins} />
                   <Button
                     variant="ghost"
                     size="icon-lg"
@@ -130,46 +134,68 @@ export function RoutineEditor({ routine, suggestions }: { routine: Routine; sugg
 function EditField({
   label,
   initial,
+  coins,
   onSave,
   onSaved,
   onCancel,
 }: {
   label: string;
   initial: string;
-  onSave: (value: string) => Promise<boolean>;
+  /** With an amount (a routine's task), the "Mynt" control comes with the name. */
+  coins?: number;
+  onSave: (value: string, coins?: number) => Promise<boolean>;
   onSaved: () => void;
   onCancel: () => void;
 }) {
   const [value, setValue] = useState(initial);
+  const [amount, setAmount] = useState(coins ?? 0);
   const [pending, startTransition] = useTransition();
   return (
     <form
-      className="flex min-w-0 flex-1 gap-2"
+      className={coins === undefined ? "flex min-w-0 flex-1 gap-2" : "min-w-0 flex-1 space-y-3"}
       onSubmit={(e) => {
         e.preventDefault();
         startTransition(async () => {
-          if (await onSave(value)) onSaved();
+          if (await onSave(value, coins === undefined ? undefined : amount)) onSaved();
         });
       }}
+      onKeyDown={(e) => {
+        if (e.key === "Escape") onCancel();
+      }}
     >
-      <Input
-        value={value}
-        onChange={(e) => setValue(e.target.value)}
-        onKeyDown={(e) => {
-          if (e.key === "Escape") onCancel();
-        }}
-        aria-label={label}
-        autoFocus
-        autoComplete="off"
-        className="h-11 text-base md:text-sm"
-      />
+      <div className="flex min-w-0 flex-1 gap-2">
+        <Input
+          value={value}
+          onChange={(e) => setValue(e.target.value)}
+          aria-label={label}
+          autoFocus
+          autoComplete="off"
+          className="h-11 text-base md:text-sm"
+        />
+        {coins === undefined && <EditButtons pending={pending} onCancel={onCancel} />}
+      </div>
+      {coins !== undefined && (
+        <>
+          <CoinStepper value={amount} onChange={setAmount} />
+          <div className="flex gap-2">
+            <EditButtons pending={pending} onCancel={onCancel} />
+          </div>
+        </>
+      )}
+    </form>
+  );
+}
+
+function EditButtons({ pending, onCancel }: { pending: boolean; onCancel: () => void }) {
+  return (
+    <>
       <Button type="submit" className="h-11 shrink-0" disabled={pending}>
         Spara
       </Button>
       <Button type="button" variant="ghost" className="h-11 shrink-0" onClick={onCancel}>
         Avbryt
       </Button>
-    </form>
+    </>
   );
 }
 

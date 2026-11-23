@@ -23,6 +23,7 @@ import * as routines from "./routines";
 // src/server/routines.ts once the member is known, so mistakes are answered in Swedish.
 const routineId = z.string().describe("Rutinens id från visa_rutiner");
 const taskId = z.string().describe("Uppgiftens id från visa_rutiner");
+const mynt = z.number().optional().describe("Hur många mynt uppgiften ger när den bockas av, heltal 0–100. Utelämnad: 10 för en ny uppgift, oförändrat för en ändrad");
 const change = { readOnlyHint: false, destructiveHint: false, idempotentHint: false } as const;
 const removal = { readOnlyHint: false, destructiveHint: true, idempotentHint: true } as const;
 
@@ -96,12 +97,12 @@ export function registerRoutineTools(server: McpServer, userId: string): void {
     {
       title: "Lägg till uppgift i rutin",
       description: "Lägger till en uppgift sist i en rutin. Ta id från visa_rutiner.",
-      inputSchema: z.object({ routineId, titel: z.string() }),
+      inputSchema: z.object({ routineId, titel: z.string(), mynt }),
       annotations: change,
     },
-    ({ routineId: id, titel }) =>
+    ({ routineId: id, titel, mynt: coins }) =>
       runTool(userId, true, async (actor) => {
-        const created = await routines.addRoutineTask(actor, id, titel);
+        const created = await routines.addRoutineTask(actor, id, titel, coins);
         return routineTaskAddedText(routineTaskTitle.parse(titel), created.id);
       }),
   );
@@ -110,13 +111,13 @@ export function registerRoutineTools(server: McpServer, userId: string): void {
     "byt_namn_pa_uppgift_i_rutin",
     {
       title: "Ändra uppgift i rutin",
-      description: "Byter text på en uppgift i en rutin. Ta id från visa_rutiner.",
-      inputSchema: z.object({ routineId, taskId, titel: z.string() }),
+      description: "Byter text och/eller mynt på en uppgift i en rutin. Ta id från visa_rutiner.",
+      inputSchema: z.object({ routineId, taskId, titel: z.string(), mynt }),
       annotations: change,
     },
-    ({ routineId: id, taskId: task, titel }) =>
+    ({ routineId: id, taskId: task, titel, mynt: coins }) =>
       runTool(userId, true, async (actor) => {
-        await routines.updateRoutineTask(actor, id, task, titel);
+        await routines.updateRoutineTask(actor, id, task, titel, coins);
         return routineTaskRenamedText(routineTaskTitle.parse(titel));
       }),
   );

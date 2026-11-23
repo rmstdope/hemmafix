@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { addRoutineInput, boardFilter, createChoreInput, listItemText, listName, listOrder, restoredItems, routineName, routineTaskTitle } from "./validation";
+import { addRoutineInput, boardFilter, createChoreInput, editChoreInput, coinsInput, listItemText, listName, listOrder, restoredItems, routineName, routineTaskTitle } from "./validation";
 
 const ROOM = "6f1c3b0e-5f8a-4c7e-9d2a-1b3c4d5e6f70";
 const parse = (fields: Record<string, string>) => createChoreInput.safeParse(fields);
@@ -20,6 +20,7 @@ describe("createChoreInput", () => {
       roomId: ROOM,
       recurrence: { unit: "week", interval: 1 },
       firstDueDate: null,
+      coins: 10,
       assigneeId: null,
     });
   });
@@ -170,5 +171,35 @@ describe("lists", () => {
     expect(restoredItems.safeParse([{ ...one, id: "x" }]).success).toBe(false);
     expect(restoredItems.safeParse([{ ...one, rank: 3_000_000_000 }]).success).toBe(false);
     expect(restoredItems.safeParse(Array.from({ length: 1001 }, () => one)).success).toBe(false);
+  });
+});
+
+describe("coins on a task", () => {
+  it("starts a new task at 10 when none is given", () => {
+    expect(createChoreInput.parse({ title: "x", roomId: ROOM })).toMatchObject({ coins: 10 });
+    expect(createChoreInput.parse({ title: "x", roomId: ROOM, coins: "" })).toMatchObject({ coins: 10 });
+  });
+
+  it("takes a whole amount from 0 to 100, as text from the form or a number from Claude", () => {
+    expect(createChoreInput.parse({ title: "x", roomId: ROOM, coins: "0" })).toMatchObject({ coins: 0 });
+    expect(createChoreInput.parse({ title: "x", roomId: ROOM, coins: "100" })).toMatchObject({ coins: 100 });
+    expect(createChoreInput.parse({ title: "x", roomId: ROOM, coins: 35 })).toMatchObject({ coins: 35 });
+  });
+
+  it.each(["101", "-1", "1.5", "abc"])("refuses %s in Swedish", (coins) => {
+    const r = createChoreInput.safeParse({ title: "x", roomId: ROOM, coins });
+    expect(r.success ? "" : r.error.issues[0]?.message).toBe("Mynt måste vara ett heltal mellan 0 och 100");
+  });
+
+  it("leaves a task's amount unchanged on edit when none is given", () => {
+    const edit = (coins?: string | number) => editChoreInput.parse({ title: "x", roomId: ROOM, kind: "once", coins });
+    expect(edit()).toMatchObject({ coins: undefined });
+    expect(edit("")).toMatchObject({ coins: undefined });
+    expect(edit("40")).toMatchObject({ coins: 40 });
+  });
+
+  it("checks a routine task's amount the same way", () => {
+    expect(coinsInput.parse(60)).toBe(60);
+    expect(coinsInput.safeParse(101).success).toBe(false);
   });
 });

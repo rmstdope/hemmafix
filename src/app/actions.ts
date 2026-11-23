@@ -108,12 +108,12 @@ export async function deleteRoutine(id: string) {
   return act((m) => routines.deleteRoutine(m, id));
 }
 
-export async function addRoutineTask(routineId: string, title: string) {
-  return act((m) => routines.addRoutineTask(m, routineId, title));
+export async function addRoutineTask(routineId: string, title: string, coins?: number) {
+  return act((m) => routines.addRoutineTask(m, routineId, title, coins));
 }
 
-export async function updateRoutineTask(routineId: string, taskId: string, title: string) {
-  return act((m) => routines.updateRoutineTask(m, routineId, taskId, title));
+export async function updateRoutineTask(routineId: string, taskId: string, title: string, coins?: number) {
+  return act((m) => routines.updateRoutineTask(m, routineId, taskId, title, coins));
 }
 
 export async function removeRoutineTask(routineId: string, taskId: string) {

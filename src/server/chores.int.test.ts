@@ -4,7 +4,7 @@ import { db } from "@/db";
 import { chore, choreInstance, household, membership } from "@/db/schema";
 import { addDays, todayIso } from "@/lib/dates";
 import { UserError } from "@/lib/errors";
-import { COINS_PER_TASK } from "@/lib/coins";
+import { DEFAULT_COINS } from "@/lib/coins";
 import { ForbiddenError } from "@/lib/permissions";
 import { nextDueDate } from "@/lib/recurrence";
 import { createFamily } from "../../test/integration/factories";
@@ -657,8 +657,8 @@ describe("coins", () => {
     await completeInstance(f.adult, diska!.id);
     await completeInstance(f.child, damma!.id);
 
-    expect(await total(f.adult)).toBe(COINS_PER_TASK);
-    expect(await total(f.child)).toBe(COINS_PER_TASK);
+    expect(await total(f.adult)).toBe(DEFAULT_COINS);
+    expect(await total(f.child)).toBe(DEFAULT_COINS);
     expect(await total(f.neighbour)).toBe(0);
   });
 
@@ -666,7 +666,7 @@ describe("coins", () => {
     await createChore(f.adult, weekly("Dammsuga"));
     await completeInstance(f.child, (await open())[0]!.id);
     await completeInstance(f.child, (await open())[0]!.id);
-    expect(await total(f.child)).toBe(2 * COINS_PER_TASK);
+    expect(await total(f.child)).toBe(2 * DEFAULT_COINS);
   });
 
   it("is taken back by Ångra, also from a child when an adult undoes it, and earned again by a new tick", async () => {
@@ -678,10 +678,10 @@ describe("coins", () => {
 
     await uncompleteInstance(f.adult, t!.id);
     expect(await total(f.child)).toBe(0);
-    expect(await total(f.adult)).toBe(COINS_PER_TASK);
+    expect(await total(f.adult)).toBe(DEFAULT_COINS);
 
     await completeInstance(f.child, t!.id);
-    expect(await total(f.child)).toBe(COINS_PER_TASK);
+    expect(await total(f.child)).toBe(DEFAULT_COINS);
   });
 
   it("is not earned by a tick from before coins existed, and undoing one takes nothing and never goes below 0", async () => {
@@ -691,10 +691,10 @@ describe("coins", () => {
     await completeInstance(f.child, gammal!.id);
     await db.update(choreInstance).set({ coins: null }).where(eq(choreInstance.id, gammal!.id));
     await completeInstance(f.child, ny!.id);
-    expect(await total(f.child)).toBe(COINS_PER_TASK);
+    expect(await total(f.child)).toBe(DEFAULT_COINS);
 
     await uncompleteInstance(f.child, gammal!.id);
-    expect(await total(f.child)).toBe(COINS_PER_TASK);
+    expect(await total(f.child)).toBe(DEFAULT_COINS);
     await uncompleteInstance(f.child, ny!.id);
     expect(await total(f.child)).toBe(0);
   });
@@ -708,5 +708,99 @@ describe("coins", () => {
       .set({ completedAt: null, completedById: null })
       .where(eq(choreInstance.id, t!.id));
     expect(await total(f.child)).toBe(0);
+  });
+});
+
+describe("what a task gives", () => {
+  const total = getCoinTotal;
+  const editWith = async (coins?: string, who = f.adult) => {
+    const [current] = await open();
+    return editChore(who, current!.id, {
+      title: current!.title,
+      roomId: f.kitchen.id,
+      kind: "once",
+      ...(coins !== undefined && { coins }),
+    });
+  };
+
+  it("is 10 for a new task, and the list shows it", async () => {
+    await createChore(f.adult, once("Diska"));
+    expect((await open())[0]!.coins).toBe(10);
+  });
+
+  it("is set when a task is added, 0 to 100, and a tick earns exactly that", async () => {
+    await createChore(f.adult, once("Putsa", { coins: "35" }));
+    await createChore(f.adult, once("Damma", { coins: "0" }));
+    const rows = await open();
+    expect(rows.map((r) => [r.title, r.coins])).toEqual([
+      ["Putsa", 35],
+      ["Damma", 0],
+    ]);
+    await completeInstance(f.child, rows[0]!.id);
+    await completeInstance(f.child, rows[1]!.id);
+    expect(await total(f.child)).toBe(35);
+  });
+
+  it("refuses an amount outside 0 to 100", async () => {
+    await expect(createChore(f.adult, once("x", { coins: "101" }))).rejects.toThrow("mellan 0 och 100");
+    await expect(createChore(f.adult, once("x", { coins: "-1" }))).rejects.toThrow("mellan 0 och 100");
+    expect(await open()).toHaveLength(0);
+  });
+
+  it("changes from the next tick on, for a recurring task every time, and ↺ takes back what that tick gave", async () => {
+    await createChore(f.adult, weekly("Dammsuga", { coins: "20" }));
+    await completeInstance(f.child, (await open())[0]!.id);
+    expect(await total(f.child)).toBe(20);
+
+    await editChore(f.adult, (await open())[0]!.id, {
+      title: "Dammsuga",
+      roomId: f.kitchen.id,
+      kind: "recurring",
+      interval: "1",
+      unit: "week",
+      coins: "45",
+    });
+    expect((await open())[0]!.coins).toBe(45);
+    expect(await total(f.child)).toBe(20);
+
+    await completeInstance(f.child, (await open())[0]!.id);
+    expect(await total(f.child)).toBe(65);
+    await completeInstance(f.child, (await open())[0]!.id);
+    expect(await total(f.child)).toBe(110);
+
+    // The first tick earned 20; undoing the latest (45) takes back 45, not the first's 20.
+    const done = await listRecentlyCompleted(f.adult);
+    expect(done.map((d) => d.coins).sort()).toEqual([20, 45, 45]);
+    await uncompleteInstance(f.child, done.find((d) => d.isLatestTick)!.id);
+    expect(await total(f.child)).toBe(65);
+  });
+
+  it("is left alone by an edit that gives no amount", async () => {
+    await createChore(f.adult, once("Putsa", { coins: "35" }));
+    await editWith(undefined);
+    expect((await open())[0]!.coins).toBe(35);
+    await editWith("");
+    expect((await open())[0]!.coins).toBe(35);
+  });
+
+  it("shows a done row what its tick gave, and nothing for a tick from before coins existed", async () => {
+    await createChore(f.adult, once("Ny", { coins: "30" }));
+    await createChore(f.adult, once("Gammal"));
+    const [ny, gammal] = await open();
+    await completeInstance(f.child, ny!.id);
+    await completeInstance(f.child, gammal!.id);
+    await db.update(choreInstance).set({ coins: null }).where(eq(choreInstance.id, gammal!.id));
+    const done = await listRecentlyCompleted(f.adult);
+    expect(done.map((d) => [d.title, d.coins]).sort()).toEqual([
+      ["Gammal", null],
+      ["Ny", 30],
+    ]);
+  });
+
+  it("is for adults only: a child can neither add nor change an amount", async () => {
+    await expect(createChore(f.child, once("Godis", { coins: "100" }))).rejects.toThrow(ForbiddenError);
+    await createChore(f.adult, once("Diska"));
+    await expect(editWith("100", f.child)).rejects.toThrow(ForbiddenError);
+    expect((await open())[0]!.coins).toBe(10);
   });
 });
