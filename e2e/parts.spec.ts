@@ -1,3 +1,4 @@
+import { filterSelect } from "./support/board";
 import type { Page } from "@playwright/test";
 import { logIn, seedChore, seedRooms } from "./support/family";
 import { chooseFromMenu, menuItem } from "./support/menu";
@@ -18,7 +19,7 @@ test("an adult moves between Uppgifter and Listor, and the filter is kept", asyn
   await expect(parts(page).getByRole("link")).toHaveText(["Uppgifter", "Listor"]);
   await expect(parts(page).getByRole("link", { name: "Uppgifter" })).toHaveAttribute("aria-current", "page");
 
-  await page.getByRole("combobox", { name: "Filtrera på rum" }).selectOption({ label: "Kök" });
+  await (await filterSelect(page, "Rum")).selectOption({ label: "Kök" });
   await expect(page.getByText("Dammsuga")).toHaveCount(0);
 
   await parts(page).getByRole("link", { name: "Listor" }).click();
@@ -32,7 +33,7 @@ test("an adult moves between Uppgifter and Listor, and the filter is kept", asyn
 
   await parts(page).getByRole("link", { name: "Uppgifter" }).click();
   await expect(page.getByRole("heading", { name: "Uppgifter" })).toBeVisible();
-  await expect(page.getByRole("combobox", { name: "Filtrera på rum" })).toHaveValue(/room:/);
+  await expect(await filterSelect(page, "Rum")).toHaveValue(/room:/);
   await expect(page.getByText("Diska")).toBeVisible();
   await expect(page.getByText("Dammsuga")).toHaveCount(0);
 });

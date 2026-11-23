@@ -86,3 +86,11 @@ describe("formatLastUsed", () => {
     expect(formatLastUsed(new Date("2026-11-14T23:30:00Z"), new Date("2026-11-15T00:30:00Z"))).toBe("i dag 00:30");
   });
 });
+
+describe("tab day words", () => {
+  it("writes a day short for the tab and long for the reader", async () => {
+    const { formatTabDay, formatTabDayLong } = await import("./dates");
+    expect(formatTabDay("2026-11-25")).toBe("Ons 25");
+    expect(formatTabDayLong("2026-11-26")).toBe("Torsdag 26 november");
+  });
+});
