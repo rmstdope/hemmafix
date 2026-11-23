@@ -1,11 +1,13 @@
 "use client";
 
 import { Menu } from "@base-ui/react/menu";
+import { Popover } from "@base-ui/react/popover";
 import { History, LogOut, Settings } from "lucide-react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 import { authClient } from "@/lib/auth-client";
+import { coinsLabel, formatCoins } from "@/lib/coins";
 import { litPart } from "@/lib/parts";
 import { cn } from "@/lib/utils";
 import { MemberAvatar } from "./member-avatar";
@@ -14,81 +16,120 @@ import { rememberPart, useRememberedPart } from "./part-links";
 const itemClass =
   "flex min-h-11 w-full cursor-default items-center gap-3 rounded-lg px-3 text-sm outline-none select-none data-[highlighted]:bg-muted data-[disabled]:opacity-50";
 
-/** The member's picture, and the menu it opens: Gjort, Hemmet (adults) and Logga ut. */
+type Panel = "menu" | "coins" | null;
+
+/**
+ * The member's coin total, and the picture with the menu it opens: Gjort, Hemmet (adults) and
+ * Logga ut. The pill's bubble and the menu are never open together.
+ */
 export function UserMenu({
   name,
   image,
   role,
   canManageHome,
+  coins,
 }: {
   name: string;
   image: string | null;
   role: "adult" | "child";
   canManageHome: boolean;
+  coins: number;
 }) {
   const router = useRouter();
   const pathname = usePathname();
   const remembered = useRememberedPart();
   const [pending, startTransition] = useTransition();
   // Next keeps a page it left alive, so a menu left open would still be open on the way back.
-  const [open, setOpen] = useState(false);
+  const [panel, setPanel] = useState<Panel>(null);
   const [openedAt, setOpenedAt] = useState(pathname);
   if (openedAt !== pathname) {
     setOpenedAt(pathname);
-    setOpen(false);
+    setPanel(null);
   }
+  // Closing only closes your own panel: a press on the other trigger has already opened that one.
+  const panelState = (mine: Exclude<Panel, null>) => ({
+    open: panel === mine,
+    onOpenChange: (next: boolean) => setPanel((current) => (next ? mine : current === mine ? null : current)),
+  });
   // Gjort and Hemmet remember the part they were opened from; Gjort itself keeps what it has.
   const opening = () => rememberPart(litPart(pathname, remembered) ?? remembered);
 
   return (
-    <Menu.Root open={open} onOpenChange={setOpen}>
-      <Menu.Trigger
-        aria-label="Meny"
-        className="flex size-11 items-center justify-center rounded-full outline-none focus-visible:ring-3 focus-visible:ring-ring/50 data-[popup-open]:bg-muted"
-      >
-        <MemberAvatar name={name} image={image} />
-      </Menu.Trigger>
-      <Menu.Portal>
-        <Menu.Positioner side="bottom" align="end" sideOffset={6} collisionPadding={8} className="z-50">
-          <Menu.Popup className="w-56 max-w-[calc(100vw-1rem)] rounded-xl border bg-popover p-1 text-popover-foreground shadow-md outline-none">
-            <div className="px-3 py-2">
-              <p className="truncate text-sm font-medium">{name}</p>
-              <p className="text-xs text-muted-foreground">{role === "adult" ? "Vuxen" : "Barn"}</p>
-            </div>
-            <Menu.LinkItem
-              render={<Link href="/gjort" />}
-              closeOnClick
-              onClick={pathname === "/gjort" ? undefined : opening}
-              aria-current={pathname === "/gjort" ? "page" : undefined}
-              className={cn(itemClass, pathname === "/gjort" && "bg-muted font-medium")}
+    <div className="flex shrink-0 items-center gap-2">
+      <Popover.Root {...panelState("coins")}>
+        <Popover.Trigger
+          aria-label={coinsLabel(coins)}
+          className="flex h-8 items-center gap-1.5 rounded-full border border-amber-300 bg-amber-100 py-0.5 pr-2.5 pl-1 text-sm font-semibold whitespace-nowrap text-zinc-900 tabular-nums outline-none focus-visible:ring-3 focus-visible:ring-ring/50 data-[popup-open]:ring-3 data-[popup-open]:ring-amber-200 dark:border-amber-700 dark:bg-amber-950 dark:text-amber-100 dark:data-[popup-open]:ring-amber-800"
+        >
+          <span
+            aria-hidden
+            className="size-[18px] shrink-0 rounded-full bg-[radial-gradient(circle_at_35%_35%,#fde68a,#f59e0b_70%,#b45309)] shadow-[inset_0_0_0_1.5px_#d97706]"
+          />
+          {formatCoins(coins)}
+        </Popover.Trigger>
+        <Popover.Portal>
+          <Popover.Positioner side="bottom" align="end" sideOffset={6} collisionPadding={16} className="z-50">
+            <Popover.Popup
+              initialFocus={false}
+              className="w-56 max-w-[calc(100vw-2rem)] rounded-xl border bg-popover p-3 text-popover-foreground shadow-md outline-none"
             >
-              <History className="size-5" aria-hidden />
-              Gjort
-            </Menu.LinkItem>
-            {canManageHome && (
-              <Menu.LinkItem render={<Link href="/hemmet" />} closeOnClick onClick={opening} className={itemClass}>
-                <Settings className="size-5" aria-hidden />
-                Hemmet
+              <Popover.Title className="text-sm font-medium">Dina mynt</Popover.Title>
+              <Popover.Description className="mt-1 text-sm text-muted-foreground">
+                Du får mynt för varje uppgift du bockar av.
+              </Popover.Description>
+            </Popover.Popup>
+          </Popover.Positioner>
+        </Popover.Portal>
+      </Popover.Root>
+      <Menu.Root {...panelState("menu")}>
+        <Menu.Trigger
+          aria-label="Meny"
+          className="flex size-11 items-center justify-center rounded-full outline-none focus-visible:ring-3 focus-visible:ring-ring/50 data-[popup-open]:bg-muted"
+        >
+          <MemberAvatar name={name} image={image} />
+        </Menu.Trigger>
+        <Menu.Portal>
+          <Menu.Positioner side="bottom" align="end" sideOffset={6} collisionPadding={8} className="z-50">
+            <Menu.Popup className="w-56 max-w-[calc(100vw-1rem)] rounded-xl border bg-popover p-1 text-popover-foreground shadow-md outline-none">
+              <div className="px-3 py-2">
+                <p className="truncate text-sm font-medium">{name}</p>
+                <p className="text-xs text-muted-foreground">{role === "adult" ? "Vuxen" : "Barn"}</p>
+              </div>
+              <Menu.LinkItem
+                render={<Link href="/gjort" />}
+                closeOnClick
+                onClick={pathname === "/gjort" ? undefined : opening}
+                aria-current={pathname === "/gjort" ? "page" : undefined}
+                className={cn(itemClass, pathname === "/gjort" && "bg-muted font-medium")}
+              >
+                <History className="size-5" aria-hidden />
+                Gjort
               </Menu.LinkItem>
-            )}
-            <Menu.Separator className="my-1 h-px bg-border" />
-            <Menu.Item
-              closeOnClick={false}
-              disabled={pending}
-              className={itemClass}
-              onClick={() =>
-                startTransition(async () => {
-                  await authClient.signOut();
-                  router.replace("/login");
-                })
-              }
-            >
-              <LogOut className="size-5" aria-hidden />
-              {pending ? "Loggar ut…" : "Logga ut"}
-            </Menu.Item>
-          </Menu.Popup>
-        </Menu.Positioner>
-      </Menu.Portal>
-    </Menu.Root>
+              {canManageHome && (
+                <Menu.LinkItem render={<Link href="/hemmet" />} closeOnClick onClick={opening} className={itemClass}>
+                  <Settings className="size-5" aria-hidden />
+                  Hemmet
+                </Menu.LinkItem>
+              )}
+              <Menu.Separator className="my-1 h-px bg-border" />
+              <Menu.Item
+                closeOnClick={false}
+                disabled={pending}
+                className={itemClass}
+                onClick={() =>
+                  startTransition(async () => {
+                    await authClient.signOut();
+                    router.replace("/login");
+                  })
+                }
+              >
+                <LogOut className="size-5" aria-hidden />
+                {pending ? "Loggar ut…" : "Logga ut"}
+              </Menu.Item>
+            </Menu.Popup>
+          </Menu.Positioner>
+        </Menu.Portal>
+      </Menu.Root>
+    </div>
   );
 }
