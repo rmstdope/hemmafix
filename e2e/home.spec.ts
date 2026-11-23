@@ -1,3 +1,4 @@
+import { filterSelect } from "./support/board";
 import type { Page } from "@playwright/test";
 import { chooseFromMenu, menuItem } from "./support/menu";
 import { expect, test } from "./support/test";
@@ -55,7 +56,7 @@ test("a child sees the tasks and ticks them off, but cannot manage anything", as
   await seedChore({ title: "Mata katten", roomId: rooms["Kök"]!.id });
 
   await childPage.goto("/");
-  const todo = childPage.getByRole("group", { name: "Att göra" });
+  const todo = childPage.getByRole("tabpanel");
   const task = todo.getByRole("listitem").filter({ hasText: "Bädda sängen" });
   await expect(task).toBeVisible();
   await expect(task.getByText("Jag")).toBeVisible();
@@ -66,11 +67,11 @@ test("a child sees the tasks and ticks them off, but cannot manage anything", as
   await expect(childPage.getByRole("button", { name: "Mer" })).toHaveCount(0);
   await expect(childPage.getByRole("combobox", { name: "Tilldela den här gången" })).toHaveCount(0);
   // Children can filter too.
-  await childPage.getByRole("combobox", { name: "Filtrera på person" }).selectOption({ label: "Mina" });
+  await (await filterSelect(childPage, "Person")).selectOption({ label: "Mina" });
   await expect(todo.getByRole("listitem")).toHaveCount(1);
 
   await task.getByRole("button", { name: "Markera som klar" }).click();
-  await expect(childPage.getByText("Inga uppgifter här.")).toBeVisible();
+  await expect(childPage.getByRole("tabpanel").getByText("Inga uppgifter här.")).toBeVisible();
 
   // A child may undo their own tick.
   await childPage.getByText(/Klart senaste veckan/).click();

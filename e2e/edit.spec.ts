@@ -8,7 +8,7 @@ import { chooseFromMenu } from "./support/menu";
 import { expect, test } from "./support/test";
 
 const item = (page: Page, title: string) =>
-  page.getByRole("group", { name: "Att göra" }).getByRole("listitem").filter({ hasText: title });
+  page.getByRole("tabpanel").getByRole("listitem").filter({ hasText: title });
 
 test("an adult edits a task's title, room, how often and next date", async ({ page, context }) => {
   await logIn(context, "anna", "adult");
@@ -27,12 +27,15 @@ test("an adult edits a task's title, room, how often and next date", async ({ pa
   await form.getByRole("button", { name: "Spara" }).click();
   await expect(page.getByText("Uppgiften är ändrad")).toBeVisible();
 
+  // The new date is far off, so the task moved to Senare.
+  await page.getByRole("tab", { name: /^Senare,/ }).click();
   const edited = item(page, "Torka handfatet");
   await expect(edited).toContainText("Badrum");
   await expect(edited).not.toContainText("Var 3:e dag");
   await expect(edited).toContainText(formatDue("2030-06-01", todayIso())!.label);
   // How often it recurs is no longer on the row; it is still in Ändra.
   await page.reload();
+  await expect(page.getByRole("tab", { name: /^Senare,/ })).toHaveAttribute("aria-selected", "true");
   await item(page, "Torka handfatet").getByRole("button", { name: "Mer" }).click();
   await item(page, "Torka handfatet").getByRole("button", { name: "Ändra" }).click();
   await expect(page.getByRole("form", { name: "Ändra Torka handfatet" }).getByRole("spinbutton", { name: "Antal" })).toHaveValue("3");
@@ -45,7 +48,8 @@ test("a task ticked off before an edit keeps its old name in the history", async
   await page.goto("/");
 
   await item(page, "Diska").getByRole("button", { name: "Markera som klar" }).click();
-  // The next time is on the list; rename the task from there.
+  // The next time is on the list, under Senare; rename the task from there.
+  await page.getByRole("tab", { name: /^Senare,/ }).click();
   await item(page, "Diska").getByRole("button", { name: "Mer" }).click();
   await item(page, "Diska").getByRole("button", { name: "Ändra" }).click();
   await page.getByRole("form", { name: "Ändra Diska" }).getByRole("textbox", { name: "Titel" }).fill("Handdiska");
