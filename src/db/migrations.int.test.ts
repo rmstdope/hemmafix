@@ -440,3 +440,36 @@ describe("0016: looks", () => {
     ).rejects.toThrow();
   });
 });
+
+describe("0017: rewards", () => {
+  beforeEach(reset);
+
+  it("only adds tables, so the previous release keeps working; prices 1 to 1 000, three purchase states", async () => {
+    await migrateUpTo(sql, "0016_looks");
+    const [home] = await sql`insert into household (name) values ('Hemma') returning id`;
+    await sql`insert into "user" (id, name, email, email_verified) values ('a', 'Anna', 'a@example.com', true)`;
+    await sql`insert into floor (household_id, name, position) values (${home!.id}, '1', 1)`;
+    const [r] = await sql`insert into room (household_id, floor_id, name)
+      select ${home!.id}, id, 'Kök' from floor returning id`;
+    const [c] = await sql`insert into chore (household_id, room_id, title) values (${home!.id}, ${r!.id}, 'Diska') returning id`;
+    const before = await sql`select table_name from information_schema.tables where table_schema = 'public'`;
+
+    await migrateUpTo(sql, "0017_rewards");
+
+    const after = await sql`select table_name from information_schema.tables where table_schema = 'public'`;
+    const added = after.map((t) => t.table_name).filter((n) => !before.some((b) => b.table_name === n));
+    expect(added.sort()).toEqual(["reward", "reward_purchase"]);
+    // The previous release, which does not know the tables, still ticks.
+    await sql`insert into chore_instance (chore_id, household_id) values (${c!.id}, ${home!.id})`;
+    await sql`update chore_instance set completed_at = now(), completed_by_id = 'a', coins = 10`;
+
+    await sql`insert into reward (household_id, name, price) values (${home!.id}, 'Glass', 1000)`;
+    await expect(sql`insert into reward (household_id, name, price) values (${home!.id}, 'Gratis', 0)`).rejects.toThrow();
+    await expect(sql`insert into reward (household_id, name, price) values (${home!.id}, 'Dyr', 1001)`).rejects.toThrow();
+    await sql`insert into reward_purchase (household_id, buyer_id, name, price) values (${home!.id}, 'a', 'Glass', 50)`;
+    await expect(
+      sql`insert into reward_purchase (household_id, buyer_id, name, price, status) values (${home!.id}, 'a', 'Glass', 50, 'lost')`,
+    ).rejects.toThrow();
+    expect(await sql`select status from reward_purchase`).toEqual([{ status: "waiting" }]);
+  });
+});

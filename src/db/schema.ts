@@ -646,3 +646,48 @@ export const lookPurchase = pgTable(
     check("look_purchase_price_check", sql`${t.price} >= 0`),
   ],
 );
+
+/** A reward the family can buy with coins ("Glass"); adults add, change and remove them. */
+export const reward = pgTable(
+  "reward",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    householdId: uuid("household_id")
+      .notNull()
+      .references(() => household.id, { onDelete: "cascade" }),
+    name: text("name").notNull(),
+    /** In coins, 1 to 1 000. */
+    price: integer("price").notNull(),
+    ...timestamps,
+  },
+  (t) => [index("reward_household_idx").on(t.householdId), check("reward_price_check", sql`${t.price} between 1 and 1000`)],
+);
+
+/**
+ * One purchase of a reward. It keeps the reward's name and price as bought, so changing or
+ * removing the reward never touches it. The coins are spent while it is `waiting` or `given`;
+ * `declined` gives them back. A purchase the buyer cancels is deleted.
+ */
+export const rewardPurchase = pgTable(
+  "reward_purchase",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    householdId: uuid("household_id")
+      .notNull()
+      .references(() => household.id, { onDelete: "cascade" }),
+    buyerId: text("buyer_id")
+      .notNull()
+      .references(() => user.id, { onDelete: "cascade" }),
+    name: text("name").notNull(),
+    price: integer("price").notNull(),
+    status: text("status").notNull().default("waiting"),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    /** When it was given or declined. */
+    resolvedAt: timestamp("resolved_at", { withTimezone: true }),
+  },
+  (t) => [
+    index("reward_purchase_household_status_idx").on(t.householdId, t.status),
+    index("reward_purchase_buyer_idx").on(t.buyerId, t.createdAt),
+    check("reward_purchase_status_check", sql`${t.status} in ('waiting', 'given', 'declined')`),
+  ],
+);
