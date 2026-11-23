@@ -30,7 +30,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
         <ThemeProvider attribute="class" defaultTheme="system" enableSystem disableTransitionOnChange>
           {children}
           {/* At the bottom, as the agreed mockups draw notices: at the top they covered the field they were about. */}
-          <Toaster position="bottom-center" />
+          <Toaster position="bottom-center" mobileOffset={{ bottom: "calc(4.5rem + env(safe-area-inset-bottom))" }} />
         </ThemeProvider>
       </body>
     </html>
