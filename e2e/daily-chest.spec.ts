@@ -24,8 +24,8 @@ test("the first tick-off of the day offers a chest, opened with a press, and its
   await setUp(page, context);
   await tick(page, "Diska");
   await expect(card(page)).toBeVisible({ timeout: 5_000 });
-  // Only once the shower has landed.
-  await expect(pill(page)).toHaveText("10");
+  // Only once the shower has landed: the pill already shows every coin of the tick-off.
+  expect(await pill(page).innerText()).toBe("10");
   await expect(card(page).getByText("Dagens kista")).toBeVisible();
   await expect(card(page).getByText("Tryck för att öppna")).toBeVisible();
   await expect(card(page).getByRole("button", { name: "Öppna kistan" })).toBeFocused();
@@ -39,6 +39,7 @@ test("the first tick-off of the day offers a chest, opened with a press, and its
 
   await card(page).getByRole("button", { name: "Fortsätt" }).click();
   await expect(card(page)).toBeHidden();
+  await expect(page.locator("main")).toBeFocused();
   await expect(pill(page)).toHaveText(String(10 + coins), { timeout: 5_000 });
   await expect(page.getByRole("status")).toHaveText(`Du fick ${coins} mynt`);
 
@@ -56,6 +57,7 @@ test("a chest closed unopened with Esc opens itself and its coins are credited a
   await expect(card(page)).toBeVisible({ timeout: 5_000 });
   await page.keyboard.press("Escape");
   await expect(card(page)).toBeHidden();
+  await expect(page.locator("main")).toBeFocused();
   await expect(pill(page)).toHaveText(/^(15|16|17|18|19|20)$/, { timeout: 5_000 });
   await expect(page.getByRole("status")).toHaveText(/^Du fick (5|6|7|8|9|10) mynt$/);
   const total = Number(await pill(page).innerText());
@@ -85,7 +87,8 @@ test("a task worth 0 coins offers no chest", async ({ page, context }) => {
   await seedChore({ title: "Gratis", roomId: rooms["Kök"]!.id, recurrence: null, coins: 0 });
   await page.goto("/");
   await tick(page, "Gratis");
-  await page.waitForTimeout(1_500);
+  await expect(page.getByText("Inget att göra just nu")).toBeVisible();
+  await expect(pill(page)).toHaveText("0");
   await expect(card(page)).toBeHidden();
 });
 

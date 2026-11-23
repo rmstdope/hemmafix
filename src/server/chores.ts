@@ -251,7 +251,11 @@ export async function deleteChore(actor: Actor, id: string) {
  * Ticks off an open instance. For a recurring task the next instance is created at once,
  * due one interval after today, and assigned to whoever does the task every time.
  */
-export async function completeInstance(actor: Actor, id: string): Promise<{ chestId: string | null; chestCoins: number | null }> {
+export async function completeInstance(
+  actor: Actor,
+  id: string,
+  { offerChest = true }: { offerChest?: boolean } = {},
+): Promise<{ chestId: string | null; chestCoins: number | null }> {
   assertCan(actor, "task:complete");
   const target = instanceIdInput.parse(id);
 
@@ -304,7 +308,7 @@ export async function completeInstance(actor: Actor, id: string): Promise<{ ches
 
     // The first tick of the day that gives coins offers the day's chest; later ticks, and an
     // undone and repeated tick, find it taken. Undo never takes a chest back.
-    if (row.coins <= 0) return null;
+    if (row.coins <= 0 || !offerChest) return null;
     const [chest] = await tx
       .insert(dailyChest)
       .values({ householdId: actor.householdId, userId: actor.userId, day: todayIso(), coins: rollChestCoins() })
@@ -317,6 +321,7 @@ export async function completeInstance(actor: Actor, id: string): Promise<{ ches
 
 /** Opens the actor's own chest, which credits its coins. Opening again changes nothing. */
 export async function openChest(actor: Actor, id: string): Promise<number> {
+  assertCan(actor, "task:complete");
   const chestId = z.string().uuid().safeParse(id);
   if (!chestId.success) throw new UserError("Kistan finns inte längre");
   const [chest] = await db

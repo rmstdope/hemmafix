@@ -74,12 +74,9 @@ async function homeId() {
 }
 
 /**
- * Creates `person` as a member of the (single) household with `role` and gives `context`
- * a logged-in session cookie for them.
- */
-/**
- * Logs in someone whose chest for today is already made (and unopened, so it counts for nothing), so ticking a task off shows no chest
- * card and the coin tests count only the task's own coins.
+ * Logs in someone whose chest for today is already made (and unopened, so it counts for
+ * nothing), so ticking a task off shows no chest card and the coin tests count only the task's
+ * own coins.
  */
 export async function logInWithChestTaken(context: BrowserContext, person: Person, role: schema.MemberRole = "child") {
   const user = await logIn(context, person, role);
@@ -89,6 +86,10 @@ export async function logInWithChestTaken(context: BrowserContext, person: Perso
   return user;
 }
 
+/**
+ * Creates `person` as a member of the (single) household with `role` and gives `context`
+ * a logged-in session cookie for them.
+ */
 export async function logIn(
   context: BrowserContext,
   person: Person,

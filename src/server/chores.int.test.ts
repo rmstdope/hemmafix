@@ -840,6 +840,15 @@ describe("daily chest", () => {
     expect((await completeInstance(f.child, t!.id)).chestId).toBeNull();
   });
 
+  it("is not made by a tick that asks for none, as the MCP tools do, and is still offered to the next tick", async () => {
+    await createChore(f.adult, once("Diska"));
+    await createChore(f.adult, once("Damma"));
+    const [a, b] = await open();
+    expect(await completeInstance(f.child, a!.id, { offerChest: false })).toEqual({ chestId: null, chestCoins: null });
+    expect(await chestsOf(f.child.userId)).toHaveLength(0);
+    expect((await completeInstance(f.child, b!.id)).chestId).not.toBeNull();
+  });
+
   it("is each person's own", async () => {
     await createChore(f.adult, once("Diska"));
     await createChore(f.adult, once("Damma"));

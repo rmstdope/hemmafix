@@ -222,6 +222,12 @@ export function CoinShowerProvider({ children }: { children: ReactNode }) {
     (origin: DOMRect) => {
       if (!chest) return;
       setChest(null);
+      // The ticked row is gone by now, so the dialog's close would leave focus on the page's top.
+      setTimeout(() => {
+        const list = document.querySelector<HTMLElement>("main");
+        list?.setAttribute("tabindex", "-1");
+        list?.focus({ preventScroll: true });
+      }, 0);
       const shower = start(origin, chest.coins);
       openChest(chest.id).then(
         (result) => {

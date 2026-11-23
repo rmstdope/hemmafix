@@ -222,9 +222,7 @@ export async function editChore(
 }
 
 export async function completeInstance(id: string) {
-  return act(async (m) => {
-    return chores.completeInstance(m, id);
-  });
+  return act((m) => chores.completeInstance(m, id));
 }
 
 export async function openChest(id: string) {
