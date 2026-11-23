@@ -5,7 +5,7 @@ CREATE TABLE "badge_award" (
 	"key" text NOT NULL,
 	"coins" integer NOT NULL,
 	"won_at" timestamp with time zone DEFAULT now() NOT NULL,
-	CONSTRAINT "badge_award_user_key_unique" UNIQUE("user_id","key"),
+	CONSTRAINT "badge_award_user_household_key_unique" UNIQUE("user_id","household_id","key"),
 	CONSTRAINT "badge_award_coins_check" CHECK ("badge_award"."coins" >= 0)
 );
 --> statement-breakpoint

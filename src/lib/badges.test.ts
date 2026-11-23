@@ -17,7 +17,16 @@ describe("badges", () => {
       "Första köpet",
     ]);
     expect(BADGE_COINS).toBe(25);
-    expect(BADGES[3]!.description).toBe("Gör en uppgift i varje rum i hemmet.");
+    expect(BADGES.map((b) => [b.emoji, b.description])).toEqual([
+      ["🥇", "Bocka av din första uppgift."],
+      ["🔟", "Gör samma uppgift tio gånger."],
+      ["🔥", "Gör minst en uppgift sju dagar i rad."],
+      ["🏠", "Gör en uppgift i varje rum i hemmet."],
+      ["📅", "En hel vecka, måndag till söndag, utan att någon av dina uppgifter blir sen."],
+      ["💯", "Bocka av 100 uppgifter."],
+      ["⭐", "Nå nivå 5."],
+      ["🛍️", "Köp något i Butik."],
+    ]);
   });
 
   it("are earned at their boundaries", () => {
@@ -47,6 +56,10 @@ describe("badges", () => {
     expect(progressLine("level-5", with_({ lifetime: 320 }))).toEqual({ have: 320, need: 1000, text: "320 av 1 000 mynt." });
     expect(progressLine("first-task", none)).toBeNull();
     expect(progressLine("first-buy", none)).toBeNull();
+  });
+
+  it("show no room progress for a home without rooms", () => {
+    expect(progressLine("every-room", with_({ rooms: 0 }))).toBeNull();
   });
 
   it("never show progress beyond the goal", () => {

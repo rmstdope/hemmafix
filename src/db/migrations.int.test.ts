@@ -477,7 +477,7 @@ describe("0017: rewards", () => {
 describe("0018: badges", () => {
   beforeEach(reset);
 
-  it("only adds tables, so the previous release keeps working; one badge per person, one epoch row made by the migration", async () => {
+  it("only adds tables, so the previous release keeps working; one badge per person and home, one epoch row made by the migration", async () => {
     await migrateUpTo(sql, "0017_rewards");
     const [home] = await sql`insert into household (name) values ('Hemma') returning id`;
     await sql`insert into "user" (id, name, email, email_verified) values ('a', 'Anna', 'a@example.com', true)`;

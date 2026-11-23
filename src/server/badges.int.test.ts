@@ -70,6 +70,40 @@ describe("winning badges", () => {
     expect(await getCoinTotal(f.child)).toBe(30 + 11 + 25 * rows.length);
   });
 
+  /** `days` earlier days in a row, each with one tick, made straight in the database (no badge awarded). */
+  async function earlierDays(days: number) {
+    for (let d = 1; d <= days; d++) {
+      const title = `Tidigare ${++n}`;
+      await createChore(f.adult, { title, roomId: f.kitchen.id, kind: "once", coins: "0" });
+      const [t] = (await listOpenInstances(f.adult, {})).filter((i) => i.title === title);
+      const day = addDays(todayIso(), -d);
+      await db
+        .update(choreInstance)
+        .set({ completedAt: new Date(`${day}T10:00:00Z`), completedById: f.child.userId, coins: 0, tickedOn: day })
+        .where(eq(choreInstance.id, t!.id));
+    }
+  }
+
+  it("7 dagar i rad is won by the seventh day in a row, not the sixth", async () => {
+    await earlierDays(5);
+    await tick(f.child, f.kitchen.id, 0); // day 6
+    expect(await won()).not.toContain("week-streak");
+    expect((await getBadges(f.child)).find((b) => b.key === "week-streak")!.progress?.text).toBe("6 av 7 dagar.");
+  });
+
+  it("7 dagar i rad is won on day 7", async () => {
+    await earlierDays(6);
+    await tick(f.child, f.kitchen.id, 0);
+    expect(await won()).toContain("week-streak");
+  });
+
+  it("days before badges began do not count towards 7 dagar i rad", async () => {
+    await earlierDays(6);
+    await db.update(badgeEpoch).set({ startedAt: new Date(`${addDays(todayIso(), -3)}T00:00:00Z`) });
+    await tick(f.child, f.kitchen.id, 0);
+    expect(await won()).not.toContain("week-streak");
+  });
+
   it("a won badge stays when the tick that won it is undone, and its coins stay", async () => {
     const id = await tick();
     await uncompleteInstance(f.child, id);
@@ -131,7 +165,7 @@ describe("winning badges", () => {
     expect(await won()).toContain("first-buy");
   });
 
-  it("Första köpet through a reward stays after the reward is declined", async () => {
+  it("Första köpet through a reward stays after the reward is declined or cancelled (a badge is never taken back)", async () => {
     await tick(f.child, f.kitchen.id, 100);
     await addReward(f.adult, { name: "Glass", price: 50 });
     const [r] = await listRewards(f.adult);
@@ -140,6 +174,7 @@ describe("winning badges", () => {
     const [p] = await listMyPurchases(f.child);
     await declineReward(f.adult, p!.id);
     expect(await won()).toContain("first-buy");
+    expect(await getCoinTotal(f.child)).toBe(100 + 25 + 25 + 0); // tick, first-task, first-buy; the 50 came back
   });
 
   it("ticks made before badges began count for nothing", async () => {
@@ -152,6 +187,12 @@ describe("winning badges", () => {
     await tick(f.adult);
     expect(await won(f.child)).toEqual([]);
     expect(await won(f.adult)).toEqual(["first-task"]);
+  });
+
+  it("a badge won in one home does not show in another home of the same person", async () => {
+    await tick();
+    expect(await won()).toEqual(["first-task"]);
+    expect(await won({ ...f.child, householdId: f.neighbour.householdId })).toEqual([]);
   });
 
   it("nothing is won twice when the page is read again", async () => {

@@ -139,7 +139,7 @@ export async function awardBadges(ex: Runner, actor: Actor): Promise<BadgeKey[]>
   const epoch = await epochOf(ex);
   for (let pass = 0; pass < 2; pass++) {
     const have = new Set(
-      (await ex.select({ key: badgeAward.key }).from(badgeAward).where(eq(badgeAward.userId, actor.userId))).map((r) => r.key),
+      (await ex.select({ key: badgeAward.key }).from(badgeAward).where(and(eq(badgeAward.userId, actor.userId), eq(badgeAward.householdId, actor.householdId)))).map((r) => r.key),
     );
     if (have.size >= BADGE_KEYS.length) break;
     const missing = earnedKeys(await gatherFacts(ex, actor, epoch)).filter((k) => !have.has(k));
@@ -175,7 +175,7 @@ export async function getBadges(actor: Actor): Promise<BadgeView[]> {
   const newlyWon = await db.transaction((tx) => awardBadges(tx, actor));
   if (newlyWon.length > 0) await notifyHouseholdChanged(actor.householdId);
   const wonAt = new Map(
-    (await db.select({ key: badgeAward.key, at: badgeAward.wonAt }).from(badgeAward).where(eq(badgeAward.userId, actor.userId))).map((r) => [
+    (await db.select({ key: badgeAward.key, at: badgeAward.wonAt }).from(badgeAward).where(and(eq(badgeAward.userId, actor.userId), eq(badgeAward.householdId, actor.householdId)))).map((r) => [
       r.key,
       r.at,
     ]),

@@ -694,7 +694,7 @@ export const rewardPurchase = pgTable(
 
 /**
  * A badge a person has won (src/lib/badges.ts), once each. The coins are kept as paid (25, or 0 for
- * a badge that was only marked won) and count in earned coins; a badge is never taken back.
+ * a badge that was only marked won) and count in earned coins; a badge is never taken back. Per person and home, like their coins.
  */
 export const badgeAward = pgTable(
   "badge_award",
@@ -711,7 +711,7 @@ export const badgeAward = pgTable(
     wonAt: timestamp("won_at", { withTimezone: true }).notNull().defaultNow(),
   },
   (t) => [
-    unique("badge_award_user_key_unique").on(t.userId, t.key),
+    unique("badge_award_user_household_key_unique").on(t.userId, t.householdId, t.key),
     check("badge_award_coins_check", sql`${t.coins} >= 0`),
   ],
 );

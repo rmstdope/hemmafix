@@ -1,5 +1,5 @@
 {
-  "id": "122375a4-c202-4d11-9791-6e1c1b035797",
+  "id": "c0a5b60c-2ce3-4724-af22-952ab8d2bc5c",
   "prevId": "5e2cfdc7-275a-4fbb-a1c5-91fcf4269e63",
   "version": "7",
   "dialect": "postgresql",
@@ -293,11 +293,12 @@
       },
       "compositePrimaryKeys": {},
       "uniqueConstraints": {
-        "badge_award_user_key_unique": {
-          "name": "badge_award_user_key_unique",
+        "badge_award_user_household_key_unique": {
+          "name": "badge_award_user_household_key_unique",
           "nullsNotDistinct": false,
           "columns": [
             "user_id",
+            "household_id",
             "key"
           ]
         }

@@ -38,7 +38,7 @@ export function BadgeGrid({ badges }: { badges: BadgeView[] }) {
               <span aria-hidden className="text-[11px] leading-tight break-words hyphens-auto text-muted-foreground">
                 {b.name}
               </span>
-              {!b.won && b.progress ? (
+              {!b.won && b.progress && b.progress.need > 0 ? (
                 <span aria-hidden className="h-1 w-4/5 overflow-hidden rounded-full bg-border">
                   <span className="block h-full bg-muted-foreground/60" style={{ width: `${(b.progress.have / b.progress.need) * 100}%` }} />
                 </span>

@@ -20,6 +20,7 @@ export async function weekCounts(actor: Actor, start: string): Promise<WeekCount
     .where(
       and(
         eq(badgeAward.userId, actor.userId),
+        eq(badgeAward.householdId, actor.householdId),
         gte(badgeAward.wonAt, startOfDay(start)),
         lt(badgeAward.wonAt, startOfDay(addDays(start, 7))),
       ),

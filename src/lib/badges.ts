@@ -84,6 +84,7 @@ export function progressLine(key: BadgeKey, f: BadgeFacts): { have: number; need
     case "week-streak":
       return line(f.run, STREAK_GOAL, (n) => `${n} av ${STREAK_GOAL} dagar.`);
     case "every-room":
+      if (f.rooms === 0) return null;
       return line(f.roomsDone, f.rooms, (n) => `${n} av ${f.rooms} rum klara.`);
     case "quiet-week":
       return line(f.quietDays, 7, (n) => `${n} av 7 dagar.`);
