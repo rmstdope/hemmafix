@@ -1,5 +1,7 @@
 import type { Locator, Page } from "@playwright/test";
-import { logIn } from "./support/family";
+import { eq } from "drizzle-orm";
+import { choreInstance } from "../src/db/schema";
+import { db, logIn, seedChore, seedDone, seedRooms } from "./support/family";
 import { chooseFromMenu } from "./support/menu";
 import { expect, test } from "./support/test";
 
@@ -86,4 +88,52 @@ test("a child has Jag too, and Gjort opened from Jag goes back to it", async ({ 
   await expect(parts(page).getByRole("link", { name: "Jag" })).toHaveAttribute("aria-current", "page");
   await page.getByRole("link", { name: "Tillbaka" }).click();
   await expect(page.getByRole("heading", { name: "Jag" })).toBeVisible();
+});
+
+const levelCard = (page: Page) => page.getByRole("region", { name: "Nivå" });
+
+test("a new member is level 1 and sees what the next level takes", async ({ page, context }) => {
+  await logIn(context, "bo", "child");
+  await go(page, "/jag");
+  await expect(levelCard(page).getByText("Nivå 1 · Nybörjare")).toBeVisible();
+  await expect(levelCard(page).getByText("0 av 100 mynt till nivå 2")).toBeVisible();
+  await expect(levelCard(page).getByRole("progressbar")).toHaveAttribute("aria-valuenow", "0");
+});
+
+test("the card shows the level from earned coins, and the bar fills within the level", async ({ page, context }) => {
+  const anna = await logIn(context, "anna", "adult");
+  const rooms = await seedRooms("Kök");
+  const done = await seedDone({ title: "Stor", roomId: rooms["Kök"]!.id, completedById: anna.id });
+  await db.update(choreInstance).set({ coins: 320 }).where(eq(choreInstance.choreId, done.id));
+  await go(page, "/jag");
+  await expect(levelCard(page).getByText("Nivå 3 · Fixare")).toBeVisible();
+  await expect(levelCard(page).getByText("320 av 500 mynt till nivå 4")).toBeVisible();
+  await expect(levelCard(page).getByRole("progressbar")).toHaveAttribute("aria-valuenow", "28");
+});
+
+test("an open Jag follows a tick made on another device, live", async ({ page, context, browser }) => {
+  await logIn(context, "bo", "child");
+  const rooms = await seedRooms("Kök");
+  await seedChore({ title: "Diska", roomId: rooms["Kök"]!.id, recurrence: null, coins: 100 });
+  await go(page, "/jag");
+  await expect(levelCard(page).getByText("Nivå 1 · Nybörjare")).toBeVisible();
+
+  const other = await browser.newContext();
+  await other.addCookies(await context.cookies());
+  const otherPage = await other.newPage();
+  await otherPage.goto("/");
+  await otherPage.getByRole("button", { name: "Diska: markera som klar" }).click();
+  await expect(otherPage.getByRole("button", { name: "Diska: markera som klar" })).toBeHidden();
+
+  await expect(levelCard(page).getByText("Nivå 2 · Hjälpreda")).toBeVisible();
+  await expect(levelCard(page).getByText("100 av 250 mynt till nivå 3")).toBeVisible();
+  await other.close();
+});
+
+test("on a 300px phone the level card fits", async ({ page, context }) => {
+  await logIn(context, "bo", "child");
+  await page.setViewportSize({ width: 300, height: 640 });
+  await go(page, "/jag");
+  await expect(levelCard(page).getByText("Nivå 1 · Nybörjare")).toBeVisible();
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth)).toBe(true);
 });

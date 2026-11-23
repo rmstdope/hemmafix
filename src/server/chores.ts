@@ -374,6 +374,13 @@ async function sumCoins(householdId: string, userId: string): Promise<number> {
 const coinTotalOf = cache(sumCoins);
 export const getCoinTotal = (actor: Actor) => coinTotalOf(actor.householdId, actor.userId);
 
+/**
+ * Every coin the actor has earned, which their level comes from. Spending never lowers it, so once
+ * the shop exists the pill's total (`getCoinTotal`) subtracts purchases and this does not; undoing a
+ * tick takes its coins off both.
+ */
+export const getLifetimeCoins = (actor: Actor) => coinTotalOf(actor.householdId, actor.userId);
+
 // ---------------------------------------------------------------------------
 // The board
 // ---------------------------------------------------------------------------

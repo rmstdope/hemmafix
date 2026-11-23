@@ -17,6 +17,7 @@ import {
   deleteChore,
   editChore,
   getCoinTotal,
+  getLifetimeCoins,
   listCompletedBy,
   listOpenInstances,
   listRecentlyCompleted,
@@ -708,6 +709,31 @@ describe("coins", () => {
       .set({ completedAt: null, completedById: null })
       .where(eq(choreInstance.id, t!.id));
     expect(await total(f.child)).toBe(0);
+  });
+});
+
+describe("lifetime coins", () => {
+  it("count what a member's ticks gave, not other members' or other homes'", async () => {
+    await createChore(f.adult, once("Diska", { coins: "30" }));
+    await createChore(f.adult, once("Damma", { coins: "20" }));
+    const [diska, damma] = await open();
+    await completeInstance(f.child, diska!.id);
+    await completeInstance(f.adult, damma!.id);
+    expect(await getLifetimeCoins(f.child)).toBe(30);
+    expect(await getLifetimeCoins(f.adult)).toBe(20);
+    expect(await getLifetimeCoins(f.neighbour)).toBe(0);
+  });
+
+  it("lose a tick that is undone, and count a tick from before coins existed as nothing", async () => {
+    await createChore(f.adult, once("Diska", { coins: "30" }));
+    await createChore(f.adult, once("Damma", { coins: "20" }));
+    const [diska, damma] = await open();
+    await completeInstance(f.child, diska!.id);
+    await completeInstance(f.child, damma!.id);
+    await db.update(choreInstance).set({ coins: null }).where(eq(choreInstance.id, damma!.id));
+    expect(await getLifetimeCoins(f.child)).toBe(30);
+    await uncompleteInstance(f.child, diska!.id);
+    expect(await getLifetimeCoins(f.child)).toBe(0);
   });
 });
 
