@@ -203,6 +203,9 @@ test("desktop Hemmet and a routine's page have the strip with the lit tab, the c
   await hemmet.click();
   await expect(page.getByRole("menuitem", { name: "Hemmet" })).toHaveCount(0);
   await expect(page.getByRole("heading", { name: "Hemmet" })).toBeVisible();
+  await page.getByRole("link", { name: "Tillbaka", exact: true }).click();
+  await expect(page.getByRole("heading", { name: "Listor" })).toBeVisible();
+  await chooseFromMenu(page, "Hemmet");
 
   await page.goto("/hemmet/rutiner/6f1c3b0e-5f8a-4c7e-9d2a-1b3c4d5e6f70");
   await expect(parts(page).getByRole("link", { name: "Listor" })).toHaveAttribute("aria-current", "page");
