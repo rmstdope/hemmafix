@@ -3,6 +3,7 @@
 import { useState, useSyncExternalStore } from "react";
 import { JAG_PARTS, parseJagPart, type JagPart } from "@/lib/parts";
 import { cn } from "@/lib/utils";
+import { useHydrated } from "../lists/use-hydrated";
 
 const STORE_KEY = "hemmafix-jag-part";
 const EVENT = "hemmafix-jag-part";
@@ -28,7 +29,9 @@ export function JagParts() {
   const stored = useSyncExternalStore(subscribe, read, () => "framsteg" as const);
   // Without storage the choice still holds until the page is left.
   const [fallback, setFallback] = useState<JagPart | null>(null);
-  const current = fallback ?? stored;
+  const hydrated = useHydrated();
+  // The server cannot know the stored part: until React has taken over, neither is pressed.
+  const current = hydrated ? (fallback ?? stored) : null;
 
   const choose = (part: JagPart) => {
     try {
@@ -40,7 +43,7 @@ export function JagParts() {
   };
 
   return (
-    <>
+    <div data-hydrated={hydrated}>
       <div role="group" aria-label="Visa" className="mb-3 flex rounded-xl bg-muted p-[3px]">
         {JAG_PARTS.map((p) => {
           const on = p.key === current;
@@ -60,9 +63,9 @@ export function JagParts() {
           );
         })}
       </div>
-      <p className="rounded-xl border border-dashed p-6 text-center text-muted-foreground">
-        {current === "framsteg" ? "Dina framsteg kommer hit." : "Butiken kommer hit."}
+      <p className="min-h-20 rounded-xl border border-dashed p-6 text-center text-muted-foreground">
+        {current === null ? "" : current === "framsteg" ? "Dina framsteg kommer hit." : "Butiken kommer hit."}
       </p>
-    </>
+    </div>
   );
 }
