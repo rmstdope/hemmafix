@@ -30,6 +30,7 @@ type Panel = "menu" | "coins" | null;
 export function UserMenu({
   name,
   image,
+  frame,
   role,
   canManageHome,
   coins: serverCoins,
@@ -38,6 +39,7 @@ export function UserMenu({
 }: {
   name: string;
   image: string | null;
+  frame: string;
   role: "adult" | "child";
   canManageHome: boolean;
   coins: number;
@@ -104,7 +106,7 @@ export function UserMenu({
           aria-label="Meny"
           className="flex size-11 items-center justify-center rounded-full outline-none focus-visible:ring-3 focus-visible:ring-ring/50 data-[popup-open]:bg-muted"
         >
-          <MemberAvatar name={name} image={image} />
+          <MemberAvatar name={name} image={image} frame={frame} />
         </Menu.Trigger>
         <Menu.Portal>
           <Menu.Positioner side="bottom" align="end" sideOffset={6} collisionPadding={8} className="z-50">

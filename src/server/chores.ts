@@ -3,7 +3,7 @@ import { cache } from "react";
 import { z } from "zod";
 import { aliasedTable, and, asc, desc, eq, gt, gte, isNotNull, isNull, ne, sql, type SQL } from "drizzle-orm";
 import { db, pg } from "@/db";
-import { chore, choreInstance, dailyChest, floor, highFive, household, membership, room, user } from "@/db/schema";
+import { chore, choreInstance, dailyChest, floor, highFive, household, lookPurchase, membership, room, user } from "@/db/schema";
 import { addDays, HOME_TIME_ZONE, todayIso } from "@/lib/dates";
 import { UserError } from "@/lib/errors";
 import { assertCan, can, type Role } from "@/lib/permissions";
@@ -390,12 +390,30 @@ export async function uncompleteInstance(actor: Actor, id: string) {
   });
 }
 
+/** Where a balance is read: the pool, or a transaction that already holds the person's coins lock. */
+type Reader = Pick<typeof db, "select">;
+
 /**
- * The actor's coins: what the ticks they hold are worth. Derived, so Ångra takes coins back by
- * clearing the tick, and a tick from before coins existed (null) earns nothing.
+ * The actor's coins in hand: what they earned (`sumEarned`) less what they spent on looks.
+ * Derived, so a purchase is a row and nothing is stored twice.
  */
-async function sumCoins(householdId: string, userId: string): Promise<number> {
-  const [ticks] = await db
+export async function balanceOf(householdId: string, userId: string, ex: Reader = db): Promise<number> {
+  const [earned, [spent]] = await Promise.all([
+    sumEarned(householdId, userId, ex),
+    ex
+      .select({ total: sql<number>`coalesce(sum(${lookPurchase.price}), 0)::int` })
+      .from(lookPurchase)
+      .where(and(eq(lookPurchase.householdId, householdId), eq(lookPurchase.userId, userId))),
+  ]);
+  return earned - (spent?.total ?? 0);
+}
+
+/**
+ * Every coin the actor earned: what the ticks they hold are worth, and their chests. Derived, so
+ * Ångra takes coins back by clearing the tick, and a tick from before coins existed (null) earns nothing.
+ */
+async function sumEarned(householdId: string, userId: string, ex: Reader = db): Promise<number> {
+  const [ticks] = await ex
     .select({ total: sql<number>`coalesce(sum(${choreInstance.coins}), 0)::int` })
     .from(choreInstance)
     .where(
@@ -406,7 +424,7 @@ async function sumCoins(householdId: string, userId: string): Promise<number> {
       ),
     );
   // A chest counts once opened, or once its day is over, so an unopened one is never lost.
-  const [chests] = await db
+  const [chests] = await ex
     .select({ total: sql<number>`coalesce(sum(${dailyChest.coins}), 0)::int` })
     .from(dailyChest)
     .where(
@@ -445,15 +463,16 @@ const streakCache = cache(async (householdId: string, userId: string) =>
 export const getStreak = (actor: Actor) => streakCache(actor.householdId, actor.userId);
 
 /** Once per request, though the corner is rendered by both the desktop strip and the phone header. */
-const coinTotalOf = cache(sumCoins);
-export const getCoinTotal = (actor: Actor) => coinTotalOf(actor.householdId, actor.userId);
+const balanceCached = cache(balanceOf);
+const earnedCached = cache(sumEarned);
+export const getCoinTotal = (actor: Actor) => balanceCached(actor.householdId, actor.userId);
 
 /**
  * Every coin the actor has earned, which their level comes from. Spending never lowers it, so once
  * the shop exists the pill's total (`getCoinTotal`) subtracts purchases and this does not; undoing a
  * tick takes its coins off both.
  */
-export const getLifetimeCoins = (actor: Actor) => coinTotalOf(actor.householdId, actor.userId);
+export const getLifetimeCoins = (actor: Actor) => earnedCached(actor.householdId, actor.userId);
 
 // ---------------------------------------------------------------------------
 // The board

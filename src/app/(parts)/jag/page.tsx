@@ -1,12 +1,14 @@
 import { Suspense } from "react";
+import { Looks } from "@/components/jag/looks";
 import { LevelCard } from "@/components/jag/level-card";
 import { WeekCard } from "@/components/jag/week-card";
 import { JagParts } from "@/components/jag/jag-parts";
 import { LiveUpdates } from "@/components/live-updates";
 import { PageCorner } from "@/components/page-corner";
 import { StreakCard } from "@/components/jag/streak-card";
-import { getHousehold, getLifetimeCoins, getStreak } from "@/server/chores";
+import { getCoinTotal, getHousehold, getLifetimeCoins, getStreak } from "@/server/chores";
 import { requireMember } from "@/server/dal";
+import { getLooks } from "@/server/looks";
 import { getWeekCard } from "@/server/weeks";
 
 export const metadata = { title: "Jag – Hemmafix" };
@@ -23,11 +25,13 @@ export default function JagPage() {
 
 async function Jag() {
   const member = await requireMember();
-  const [home, lifetimeCoins, week, streak] = await Promise.all([
+  const [home, lifetimeCoins, week, streak, coins, looks] = await Promise.all([
     getHousehold(member.householdId),
     getLifetimeCoins(member),
     getWeekCard(member),
     getStreak(member),
+    getCoinTotal(member),
+    getLooks(member),
   ]);
   return (
     <>
@@ -46,11 +50,12 @@ async function Jag() {
           <>
             <WeekCard now={week.now} before={week.before} />
             <div className="mb-3">
-              <LevelCard name={member.name} image={member.image} lifetimeCoins={lifetimeCoins} />
+              <LevelCard name={member.name} image={member.image} lifetimeCoins={lifetimeCoins} frame={looks.chosen.frame} />
             </div>
             <StreakCard run={streak.run} />
           </>
         }
+        butik={<Looks name={member.name} image={member.image} coins={coins} owned={looks.owned} chosen={looks.chosen} />}
       />
     </>
   );
