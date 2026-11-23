@@ -4,6 +4,7 @@ import type { McpServer } from "@modelcontextprotocol/server";
 import { z } from "zod";
 import { db } from "@/db";
 import { chore, choreInstance } from "@/db/schema";
+import { DEFAULT_COINS } from "@/lib/coins";
 import { CHORE_TEMPLATES } from "@/lib/chore-templates";
 import { todayIso } from "@/lib/dates";
 import { UserError } from "@/lib/errors";
@@ -122,7 +123,7 @@ export function registerTaskTools(server: McpServer, userId: string): void {
               assigneeName: i.assigneeId ? (names.get(i.assigneeId) ?? null) : null,
               dueDate: i.dueDate,
               recurrence: i.recurrence,
-              coins: i.coins ?? 10,
+              coins: i.coins ?? DEFAULT_COINS,
             })),
             rooms: rooms.map((r) => ({ id: r.id, name: r.name, floorName: floorNames.get(r.floorId) ?? null })),
             members: members.map((m) => ({ id: m.id, name: m.name, role: m.role })),

@@ -723,10 +723,8 @@ describe("what a task gives", () => {
     });
   };
 
-  it("is 10 for a new task and for one made before the amount existed, and the list shows it", async () => {
+  it("is 10 for a new task, and the list shows it", async () => {
     await createChore(f.adult, once("Diska"));
-    expect((await open())[0]!.coins).toBe(10);
-    await db.update(chore).set({ coins: 10 });
     expect((await open())[0]!.coins).toBe(10);
   });
 

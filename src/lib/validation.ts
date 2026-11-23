@@ -18,12 +18,12 @@ export const isoDate = z.iso.date({ error: "Ogiltigt datum" });
 export const choreTitle = z.string().trim().min(1, "Skriv vad som ska göras").max(200, "Max 200 tecken");
 const COINS_ERROR = "Mynt måste vara ett heltal mellan 0 och 100";
 /** What a task gives for a tick: whole, 0 to 100. Text from a form or a number from Claude. */
-export const routineTaskCoins = z.preprocess(
+export const coinsInput = z.preprocess(
   (v) => (typeof v === "string" && v.trim() !== "" ? Number(v) : v),
   z.number({ error: COINS_ERROR }).int(COINS_ERROR).min(0, COINS_ERROR).max(MAX_COINS, COINS_ERROR),
 );
 /** An empty or missing amount is no amount: undefined. */
-const optionalCoins = z.preprocess((v) => (v === "" || v === null ? undefined : v), routineTaskCoins.optional());
+const optionalCoins = z.preprocess((v) => (v === "" || v === null ? undefined : v), coinsInput.optional());
 
 const optionalDate = z
   .union([isoDate, z.literal("")])

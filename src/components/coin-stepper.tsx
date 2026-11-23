@@ -50,18 +50,25 @@ export function CoinStepper({
             type="number"
             inputMode="numeric"
             aria-label="Mynt"
-            min={0}
-            max={MAX_COINS}
-            step={1}
+            step="any"
             value={shown}
             onChange={(e) => {
               setTyped(e.target.value);
-              const n = e.target.value === "" ? NaN : Number(e.target.value);
-              if (Number.isInteger(n) && n >= 0 && n <= MAX_COINS) onChange(n);
+              // The parent always holds what leaving the field would make of it, so Enter saves that.
+              if (Number.isFinite(Number(e.target.value)) && e.target.value.trim() !== "") {
+                onChange(clampCoins(e.target.value, value));
+              }
             }}
             onKeyDown={(e) => {
               // No minus sign (nor the exponent or plus a number field would take).
               if (["-", "+", "e", "E"].includes(e.key)) e.preventDefault();
+              // The arrows step by 1 within 0 and 100. No min and max on the field itself: the
+              // browser would refuse to submit a typed 150 instead of letting it become 100.
+              if (e.key === "ArrowUp" || e.key === "ArrowDown") {
+                e.preventDefault();
+                setTyped(null);
+                onChange(clampCoins(String(submitted + (e.key === "ArrowUp" ? 1 : -1)), submitted));
+              }
             }}
             onBlur={() => {
               if (typed !== null) onChange(clampCoins(typed, value));

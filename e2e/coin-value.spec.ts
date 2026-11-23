@@ -44,6 +44,12 @@ test("an adult sets what a new task gives with − and +, or by typing, and ever
   await expect(amount).toHaveValue("0");
   await expect(less).toBeDisabled();
   await amount.fill("35");
+  await amount.press("ArrowUp");
+  await expect(amount).toHaveValue("36");
+  await amount.press("ArrowDown");
+  await amount.press("ArrowDown");
+  await expect(amount).toHaveValue("34");
+  await amount.fill("35");
 
   await form.getByRole("combobox", { name: "Rum" }).selectOption({ label: "Kök" });
   await form.getByRole("textbox", { name: "Titel" }).fill("Putsa fönster");
@@ -53,6 +59,29 @@ test("an adult sets what a new task gives with − and +, or by typing, and ever
 
   await expect(item(page, "Putsa fönster").getByText("35 mynt")).toBeAttached();
   await expect(item(page, "Putsa fönster").getByText("35", { exact: true })).toBeVisible();
+});
+
+test("picking a ready-made task leaves the amount at 10", async ({ page, context }) => {
+  await logIn(context, "anna", "adult");
+  await seedRooms("Kök");
+  const form = await openForm(page);
+  await form.getByRole("button", { name: "Fler mynt" }).click();
+  await expect(form.getByRole("spinbutton", { name: "Mynt" })).toHaveValue("15");
+  await form.getByRole("combobox", { name: "Fördefinierad uppgift" }).selectOption({ label: "Diska" });
+  await expect(form.getByRole("spinbutton", { name: "Mynt" })).toHaveValue("10");
+});
+
+test("a child sees the badge before the name of who has the task, and no control", async ({ page, context }) => {
+  const bo = await logIn(context, "bo", "child");
+  const rooms = await seedRooms("Kök");
+  await seedChore({ title: "Diska", roomId: rooms["Kök"]!.id, coins: 30, recurrence: null, assigneeId: bo.id });
+  await page.goto("/");
+  const row = item(page, "Diska");
+  await expect(row.getByText("30 mynt")).toBeAttached();
+  const badge = await row.getByText("30", { exact: true }).boundingBox();
+  const who = await row.getByText("Jag", { exact: true }).boundingBox();
+  expect(badge!.x).toBeLessThan(who!.x);
+  await expect(page.getByRole("button", { name: "Fler mynt" })).toHaveCount(0);
 });
 
 test("a ready-made task is added at 10, and a child sees the badge but no control", async ({ page, context }) => {
@@ -100,6 +129,7 @@ test("a tick earns the set amount, a changed amount counts from the next tick, a
   await page.getByRole("tablist").getByRole("tab", { name: /^Nu,/ }).click();
   await page.getByText(/Klart senaste veckan/).click();
   await expect(page.getByRole("listitem").filter({ hasText: "Dammsuga" }).getByText("20 mynt")).toBeAttached();
+  await expect(page.getByRole("list", { name: "Klart" }).locator("span.opacity-60").first()).toBeAttached();
   await page.getByRole("button", { name: "Dammsuga: ångra klar" }).click();
   await expect(pill(page)).toHaveAccessibleName("20 mynt");
 });
@@ -122,6 +152,11 @@ test("a routine carries an amount per task, shown in the routine and when adding
   await page.getByRole("textbox", { name: "Ändra Moppa" }).press("Escape");
   await expect(row.getByText("10 mynt")).toBeAttached();
 
+  await page.getByRole("button", { name: "Ändra Moppa" }).click();
+  // Enter straight from the typed number saves what leaving it would have made: 150 is 100.
+  await page.getByRole("spinbutton", { name: "Mynt" }).fill("150");
+  await page.getByRole("spinbutton", { name: "Mynt" }).press("Enter");
+  await expect(row.getByText("100 mynt")).toBeAttached();
   await page.getByRole("button", { name: "Ändra Moppa" }).click();
   await page.getByRole("spinbutton", { name: "Mynt" }).fill("60");
   await page.getByRole("button", { name: "Spara" }).click();

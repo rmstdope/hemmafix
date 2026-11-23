@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { addRoutineInput, boardFilter, createChoreInput, editChoreInput, routineTaskCoins, listItemText, listName, listOrder, restoredItems, routineName, routineTaskTitle } from "./validation";
+import { addRoutineInput, boardFilter, createChoreInput, editChoreInput, coinsInput, listItemText, listName, listOrder, restoredItems, routineName, routineTaskTitle } from "./validation";
 
 const ROOM = "6f1c3b0e-5f8a-4c7e-9d2a-1b3c4d5e6f70";
 const parse = (fields: Record<string, string>) => createChoreInput.safeParse(fields);
@@ -199,7 +199,7 @@ describe("coins on a task", () => {
   });
 
   it("checks a routine task's amount the same way", () => {
-    expect(routineTaskCoins.parse(60)).toBe(60);
-    expect(routineTaskCoins.safeParse(101).success).toBe(false);
+    expect(coinsInput.parse(60)).toBe(60);
+    expect(coinsInput.safeParse(101).success).toBe(false);
   });
 });

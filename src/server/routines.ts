@@ -7,7 +7,7 @@ import { UserError } from "@/lib/errors";
 import { assertCan } from "@/lib/permissions";
 import { ROUTINE_GONE, SAVE_FAILED } from "@/lib/routine-texts";
 import { MAX_ROUTINE_TASKS, READY_MADE_ROUTINES } from "@/lib/ready-made-routines";
-import { addRoutineInput, routineId, routineName, routineTaskCoins, routineTaskId, routineTaskTitle } from "@/lib/validation";
+import { addRoutineInput, routineId, routineName, coinsInput, routineTaskId, routineTaskTitle } from "@/lib/validation";
 import { assertMember, insertChore, lockRoom, type Tx } from "./chores";
 import type { Actor } from "./household";
 
@@ -162,7 +162,7 @@ export async function deleteRoutine(actor: Actor, id: string) {
 export async function addRoutineTask(actor: Actor, id: string, title: string, coins?: number): Promise<{ id: string }> {
   assertCan(actor, "routine:manage");
   const value = routineTaskTitle.parse(title);
-  const amount = coins === undefined ? DEFAULT_COINS : routineTaskCoins.parse(coins);
+  const amount = coins === undefined ? DEFAULT_COINS : coinsInput.parse(coins);
   return inHome(actor, async (tx) => {
     const target = await lockRoutine(tx, actor, id);
     const existing = await tx
@@ -182,7 +182,7 @@ export async function addRoutineTask(actor: Actor, id: string, title: string, co
 export async function updateRoutineTask(actor: Actor, id: string, taskId: string, title: string, coins?: number) {
   assertCan(actor, "routine:manage");
   const value = routineTaskTitle.parse(title);
-  const amount = coins === undefined ? undefined : routineTaskCoins.parse(coins);
+  const amount = coins === undefined ? undefined : coinsInput.parse(coins);
   const task = routineTaskId.safeParse(taskId);
   await inHome(actor, async (tx) => {
     const target = await lockRoutine(tx, actor, id);
