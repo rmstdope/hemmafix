@@ -78,6 +78,13 @@
       "when": 1795443346517,
       "tag": "0010_coins",
       "breakpoints": true
+    },
+    {
+      "idx": 11,
+      "version": "7",
+      "when": 1795451988079,
+      "tag": "0011_task_coins",
+      "breakpoints": true
     }
   ]
 }

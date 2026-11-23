@@ -279,3 +279,29 @@ describe("0010: coins", () => {
     expect(await sql`select count(*)::int as n from chore_instance where coins is null`).toEqual([{ n: 2 }]);
   });
 });
+
+describe("0011: a value per task", () => {
+  beforeEach(reset);
+
+  it("adds columns with a default of 10, so old rows give 10 and the previous release's inserts still work", async () => {
+    await migrateUpTo(sql, "0010_coins");
+    const [home] = await sql`insert into household (name) values ('Hemma') returning id`;
+    await sql`insert into floor (household_id, name, position) values (${home!.id}, '1', 1)`;
+    const [r] = await sql`insert into room (household_id, floor_id, name)
+      select ${home!.id}, id, 'Kök' from floor returning id`;
+    await sql`insert into chore (household_id, room_id, title) values (${home!.id}, ${r!.id}, 'Diska')`;
+    const [rt] = await sql`insert into routine (household_id, name) values (${home!.id}, 'Städa') returning id`;
+    await sql`insert into routine_task (routine_id, title) values (${rt!.id}, 'Dammsuga')`;
+
+    await migrateUpTo(sql, "0011_task_coins");
+
+    expect(await sql`select coins from chore`).toEqual([{ coins: 10 }]);
+    expect(await sql`select coins from routine_task`).toEqual([{ coins: 10 }]);
+    // The previous release's inserts, which do not know the columns, still work.
+    await sql`insert into chore (household_id, room_id, title) values (${home!.id}, ${r!.id}, 'Torka')`;
+    await sql`insert into routine_task (routine_id, title) values (${rt!.id}, 'Damma')`;
+    expect(await sql`select count(*)::int as n from chore where coins = 10`).toEqual([{ n: 2 }]);
+    await expect(sql`update chore set coins = 101`).rejects.toThrow();
+    await expect(sql`update routine_task set coins = -1`).rejects.toThrow();
+  });
+});

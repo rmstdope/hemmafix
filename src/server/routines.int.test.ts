@@ -160,6 +160,27 @@ describe("tasks in a routine", () => {
     await addRoutineTask(f.adult, other.id, "Moppa");
   });
 
+  it("give 10 coins when added, or the amount given, and keep it when only the name changes", async () => {
+    await addRoutineTask(f.adult, id, "Moppa");
+    await addRoutineTask(f.adult, id, "Damma", 40);
+    const coins = async () => (await getRoutine(f.adult, id))!.tasks.map((t) => [t.title, t.coins]);
+    expect(await coins()).toEqual([["Moppa", 10], ["Damma", 40]]);
+    const [moppa, damma] = (await getRoutine(f.adult, id))!.tasks;
+    await updateRoutineTask(f.adult, id, damma!.id, "Torka");
+    await updateRoutineTask(f.adult, id, moppa!.id, "Moppa", 0);
+    expect(await coins()).toEqual([["Moppa", 0], ["Torka", 40]]);
+    await updateRoutineTask(f.adult, id, damma!.id, "Torka", 100);
+    expect((await coins())[1]).toEqual(["Torka", 100]);
+  });
+
+  it("refuse an amount outside 0 to 100", async () => {
+    await expect(addRoutineTask(f.adult, id, "Moppa", 101)).rejects.toThrow("mellan 0 och 100");
+    await addRoutineTask(f.adult, id, "Damma");
+    const [damma] = (await getRoutine(f.adult, id))!.tasks;
+    await expect(updateRoutineTask(f.adult, id, damma!.id, "Damma", -1)).rejects.toThrow("mellan 0 och 100");
+    expect(await titles(id)).toEqual(["Damma"]);
+  });
+
   it("refuse an empty task and one over 200 characters", async () => {
     await expect(addRoutineTask(f.adult, id, " ")).rejects.toThrow("Skriv vad som ska göras");
     await expect(addRoutineTask(f.adult, id, "x".repeat(201))).rejects.toThrow("Max 200 tecken");
@@ -348,7 +369,7 @@ describe("listRoutinesWithTasks", () => {
     await addRoutineTask(f.adult, a.id, "Ett");
     await addRoutineTask(f.adult, a.id, "Två");
     expect(await listRoutinesWithTasks(f.adult)).toEqual([
-      { id: a.id, name: "Första", tasks: ["Ett", "Två"] },
+      { id: a.id, name: "Första", tasks: [{ title: "Ett", coins: 10 }, { title: "Två", coins: 10 }] },
       { id: b.id, name: "Andra", tasks: [] },
     ]);
   });
@@ -389,3 +410,25 @@ async function waitForLockOn(table: string) {
   }
   throw new Error(`nobody waited for a lock on ${table}`);
 }
+
+describe("amounts when a routine is added to the home", () => {
+  it("gives each new task its routine amount, and later changes to the routine leave added tasks alone", async () => {
+    await clearReadyMade();
+    const { id } = await createRoutine(f.adult, "Storstäd");
+    await addRoutineTask(f.adult, id, "Dammsuga", 25);
+    await addRoutineTask(f.adult, id, "Moppa");
+    await addRoutineToHome(f.adult, { routineId: id, roomId: f.kitchen.id, kind: "once" });
+    const [dammsuga] = (await getRoutine(f.adult, id))!.tasks;
+    await updateRoutineTask(f.adult, id, dammsuga!.id, "Dammsuga", 80);
+    const added = await db.select({ title: chore.title, coins: chore.coins }).from(chore).orderBy(chore.title);
+    expect(added).toEqual([
+      { title: "Dammsuga", coins: 25 },
+      { title: "Moppa", coins: 10 },
+    ]);
+  });
+
+  it("is adults only", async () => {
+    const { id } = await createRoutine(f.adult, "Storstäd");
+    await expect(addRoutineTask(f.child, id, "Moppa", 50)).rejects.toThrow(ForbiddenError);
+  });
+});

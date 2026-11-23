@@ -51,6 +51,7 @@ async function runAsMember(userId: string, changes: boolean, fn: (actor: Actor) 
 // (inside chores.ts) does the real checking, in Swedish, once the member is known.
 const id = z.string().describe("Ett id från visa_sysslor_med_id");
 const kind = z.string().optional().describe(`recurring (kommer tillbaka, standard) eller once (görs en gång). Saknar uppgiften en schemafras i visa_sysslor_med_id är den once; utelämnas kind blir den recurring`);
+const coins = z.number().optional().describe("Hur många mynt uppgiften ger när den bockas av, heltal 0–100. Utelämnad: 10 för en ny uppgift, oförändrat för en ändrad");
 const when = {
   interval: z.number().optional().describe("Hur ofta, i antal enheter (bara för recurring). Varje vecka = 1 week, Varannan vecka = 2 week, Var 3:e månad = 3 month"),
   unit: z.string().optional().describe(`${RECURRENCE_UNITS.join(", ")} (bara för recurring). Varannan vecka = 2 week, Varje månad = 1 month`),
@@ -121,6 +122,7 @@ export function registerTaskTools(server: McpServer, userId: string): void {
               assigneeName: i.assigneeId ? (names.get(i.assigneeId) ?? null) : null,
               dueDate: i.dueDate,
               recurrence: i.recurrence,
+              coins: i.coins ?? 10,
             })),
             rooms: rooms.map((r) => ({ id: r.id, name: r.name, floorName: floorNames.get(r.floorId) ?? null })),
             members: members.map((m) => ({ id: m.id, name: m.name, role: m.role })),
@@ -150,13 +152,15 @@ export function registerTaskTools(server: McpServer, userId: string): void {
         startDate: z.string().optional().describe("Första datum, ÅÅÅÅ-MM-DD (recurring; annars idag)"),
         dueDate: z.string().optional().describe("Förfallodatum, ÅÅÅÅ-MM-DD (once)"),
         assigneeId: z.string().optional().describe("Vem uppgiften tilldelas, varje gång (utelämna för ingen)"),
+        mynt: coins,
       }),
       annotations: WRITES,
     },
     (args) =>
       runAsMember(userId, true, async (actor) => {
         assertIds(args.roomId);
-        await chores.createChore(actor, { ...args, assigneeId: args.assigneeId ?? null });
+        const { mynt, ...rest } = args;
+        await chores.createChore(actor, { ...rest, assigneeId: rest.assigneeId ?? null, coins: mynt });
         const room = (await listRooms(actor.householdId)).find((r) => r.id === args.roomId);
         return taskCreatedText(args.title.trim(), room?.name ?? null);
       }),
@@ -174,13 +178,14 @@ export function registerTaskTools(server: McpServer, userId: string): void {
         kind,
         ...when,
         dueDate: z.string().optional().describe("Nästa datum, ÅÅÅÅ-MM-DD"),
+        mynt: coins,
       }),
       annotations: OVERWRITES,
     },
-    ({ instanceId, ...rest }) =>
+    ({ instanceId, mynt, ...rest }) =>
       runAsMember(userId, true, async (actor) => {
         assertIds(instanceId, rest.roomId);
-        await chores.editChore(actor, instanceId, rest);
+        await chores.editChore(actor, instanceId, { ...rest, coins: mynt });
         return taskEditedText(rest.title.trim());
       }),
   );

@@ -2,18 +2,19 @@ import "server-only";
 import { and, asc, eq, ne, sql } from "drizzle-orm";
 import { db } from "@/db";
 import { household, routine, routineTask } from "@/db/schema";
+import { DEFAULT_COINS } from "@/lib/coins";
 import { UserError } from "@/lib/errors";
 import { assertCan } from "@/lib/permissions";
 import { ROUTINE_GONE, SAVE_FAILED } from "@/lib/routine-texts";
 import { MAX_ROUTINE_TASKS, READY_MADE_ROUTINES } from "@/lib/ready-made-routines";
-import { addRoutineInput, routineId, routineName, routineTaskId, routineTaskTitle } from "@/lib/validation";
+import { addRoutineInput, routineId, routineName, routineTaskCoins, routineTaskId, routineTaskTitle } from "@/lib/validation";
 import { assertMember, insertChore, lockRoom, type Tx } from "./chores";
 import type { Actor } from "./household";
 
 const GONE = "Den här rutinen finns inte längre.";
 
 export type RoutineSummary = { id: string; name: string; taskCount: number };
-export type RoutineView = { id: string; name: string; tasks: { id: string; title: string }[] };
+export type RoutineView = { id: string; name: string; tasks: { id: string; title: string; coins: number }[] };
 
 /**
  * Gives the home its ready-made routines, once. The marker on the household stays set when
@@ -110,7 +111,7 @@ export async function getRoutine(actor: Actor, id: string): Promise<RoutineView 
       .where(and(eq(routine.id, parsed.data), eq(routine.householdId, actor.householdId)));
     if (!found) return null;
     const tasks = await tx
-      .select({ id: routineTask.id, title: routineTask.title })
+      .select({ id: routineTask.id, title: routineTask.title, coins: routineTask.coins })
       .from(routineTask)
       .where(eq(routineTask.routineId, found.id))
       .orderBy(asc(routineTask.seq));
@@ -158,9 +159,10 @@ export async function deleteRoutine(actor: Actor, id: string) {
   });
 }
 
-export async function addRoutineTask(actor: Actor, id: string, title: string): Promise<{ id: string }> {
+export async function addRoutineTask(actor: Actor, id: string, title: string, coins?: number): Promise<{ id: string }> {
   assertCan(actor, "routine:manage");
   const value = routineTaskTitle.parse(title);
+  const amount = coins === undefined ? DEFAULT_COINS : routineTaskCoins.parse(coins);
   return inHome(actor, async (tx) => {
     const target = await lockRoutine(tx, actor, id);
     const existing = await tx
@@ -171,14 +173,16 @@ export async function addRoutineTask(actor: Actor, id: string, title: string): P
       throw new UserError(`${value} finns redan i rutinen`);
     }
     if (existing.length >= MAX_ROUTINE_TASKS) throw new UserError("En rutin kan ha högst 30 uppgifter");
-    const [created] = await tx.insert(routineTask).values({ routineId: target, title: value }).returning({ id: routineTask.id });
+    const [created] = await tx.insert(routineTask).values({ routineId: target, title: value, coins: amount }).returning({ id: routineTask.id });
     return created!;
   });
 }
 
-export async function updateRoutineTask(actor: Actor, id: string, taskId: string, title: string) {
+/** Changes a task's name and, when `coins` is given, what it gives; left out, the amount stays. */
+export async function updateRoutineTask(actor: Actor, id: string, taskId: string, title: string, coins?: number) {
   assertCan(actor, "routine:manage");
   const value = routineTaskTitle.parse(title);
+  const amount = coins === undefined ? undefined : routineTaskCoins.parse(coins);
   const task = routineTaskId.safeParse(taskId);
   await inHome(actor, async (tx) => {
     const target = await lockRoutine(tx, actor, id);
@@ -191,7 +195,7 @@ export async function updateRoutineTask(actor: Actor, id: string, taskId: string
     if (existing.some((t) => t.id !== task.data && t.title.toLowerCase() === value.toLowerCase())) {
       throw new UserError(`${value} finns redan i rutinen`);
     }
-    await tx.update(routineTask).set({ title: value }).where(eq(routineTask.id, task.data));
+    await tx.update(routineTask).set({ title: value, ...(amount !== undefined && { coins: amount }) }).where(eq(routineTask.id, task.data));
   });
 }
 
@@ -209,7 +213,7 @@ export async function removeRoutineTask(actor: Actor, id: string, taskId: string
   });
 }
 
-export type RoutineWithTasks = { id: string; name: string; tasks: string[] };
+export type RoutineWithTasks = { id: string; name: string; tasks: { title: string; coins: number }[] };
 
 /** The home's routines with their task titles, for the add-a-routine form (adults). */
 export async function listRoutinesWithTasks(actor: Actor): Promise<RoutineWithTasks[]> {
@@ -217,16 +221,16 @@ export async function listRoutinesWithTasks(actor: Actor): Promise<RoutineWithTa
     // One statement, so routines and tasks come from one snapshot: two would let a routine
     // removed in between show up with no tasks.
     const rows = await tx
-      .select({ id: routine.id, name: routine.name, title: routineTask.title })
+      .select({ id: routine.id, name: routine.name, title: routineTask.title, coins: routineTask.coins })
       .from(routine)
       .leftJoin(routineTask, eq(routineTask.routineId, routine.id))
       .where(eq(routine.householdId, actor.householdId))
       .orderBy(asc(routine.seq), asc(routineTask.seq));
     const routines = new Map<string, RoutineWithTasks>();
-    for (const { id, name, title } of rows) {
+    for (const { id, name, title, coins } of rows) {
       const r = routines.get(id) ?? { id, name, tasks: [] };
       routines.set(id, r);
-      if (title !== null) r.tasks.push(title);
+      if (title !== null && coins !== null) r.tasks.push({ title, coins });
     }
     return [...routines.values()];
   });
@@ -251,7 +255,7 @@ export async function addRoutineToHome(actor: Actor, raw: unknown): Promise<{ co
     await lockRoom(tx, actor, input.roomId);
     await assertMember(tx, actor.householdId, input.assigneeId);
     const tasks = await tx
-      .select({ title: routineTask.title })
+      .select({ title: routineTask.title, coins: routineTask.coins })
       .from(routineTask)
       .where(eq(routineTask.routineId, found.id))
       .orderBy(asc(routineTask.seq));
@@ -259,7 +263,7 @@ export async function addRoutineToHome(actor: Actor, raw: unknown): Promise<{ co
     // One transaction means one now(): stamp each task a millisecond apart so the list keeps the routine's order.
     const start = Date.now();
     for (const [i, t] of tasks.entries()) {
-      await insertChore(tx, actor, { ...input, title: t.title, templateKey: null, createdAt: new Date(start + i) });
+      await insertChore(tx, actor, { ...input, title: t.title, coins: t.coins, templateKey: null, createdAt: new Date(start + i) });
     }
     return { count: tasks.length };
   });

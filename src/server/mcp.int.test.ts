@@ -214,7 +214,7 @@ describe("the task tools", () => {
     const { choreId, instanceId } = await createDiska(roomId);
     const text = said(await taskCall("anna", "visa_sysslor_med_id"));
     expect(text).toContain(`(uppgift ${choreId}, tillfälle ${instanceId}, nästa datum ${todayIso()})`);
-    expect(text).toContain("- Diska – Kök · Plan 1, ingen tilldelad, Idag, Varje dag (");
+    expect(text).toContain("- Diska – Kök · Plan 1, ingen tilldelad, Idag, Varje dag, 10 mynt (");
     expect(text).not.toMatch(/kind |interval |unit |dueDate/);
     expect(text).toContain(`- Kök, Plan 1 (id ${roomId})`);
     expect(text).toContain("- Bo, barn (id bo)");
@@ -239,6 +239,27 @@ describe("the task tools", () => {
     expect(r.isError).toBeFalsy();
     const [i] = await db.select().from(choreInstance);
     expect(i).toMatchObject({ dueDate: "2026-12-01", assigneeId: "bo" });
+  });
+
+  it("gives the amount of coins when creating and changing a task, 10 when left out, unchanged when left out on a change", async () => {
+    const roomId = await seedKitchen();
+    await taskCall("anna", "skapa_syssla", { title: "Putsa", roomId, kind: "once", mynt: 35 });
+    await taskCall("anna", "skapa_syssla", { title: "Damma", roomId, kind: "once" });
+    const coinsOf = async (title: string) => (await db.select().from(chore).where(eq(chore.title, title)))[0]!.coins;
+    expect(await coinsOf("Putsa")).toBe(35);
+    expect(await coinsOf("Damma")).toBe(10);
+
+    const [c] = await db.select().from(chore).where(eq(chore.title, "Putsa"));
+    const [i] = await openOf(c!.id);
+    await taskCall("anna", "andra_syssla", { instanceId: i!.id, title: "Putsa fönster", roomId, kind: "once" });
+    expect(await coinsOf("Putsa fönster")).toBe(35);
+    await taskCall("anna", "andra_syssla", { instanceId: i!.id, title: "Putsa fönster", roomId, kind: "once", mynt: 60 });
+    expect(await coinsOf("Putsa fönster")).toBe(60);
+
+    const bad = await taskCall("anna", "skapa_syssla", { title: "Dyr", roomId, kind: "once", mynt: 500 });
+    expect(bad).toMatchObject({ isError: true });
+    expect(said(bad)).toBe("Mynt måste vara ett heltal mellan 0 och 100");
+    expect(said(await taskCall("anna", "visa_sysslor_med_id"))).toContain("60 mynt");
   });
 
   it("creates a one-off with no deadline when the kind is left out, and says so in the tool description", async () => {
@@ -358,7 +379,7 @@ describe("the task tools", () => {
     const roomId = await seedKitchen();
     await taskCall("anna", "skapa_syssla", { title: "Diska", roomId, kind: "recurring", interval: 2, unit: "week", startDate: "2027-03-01" });
     const lookup = said(await taskCall("anna", "visa_sysslor_med_id"));
-    const [, instanceId] = /Varannan vecka \(uppgift [0-9a-f-]{36}, tillfälle ([0-9a-f-]{36}), nästa datum 2027-03-01\)/.exec(lookup) ?? [];
+    const [, instanceId] = /Varannan vecka, 10 mynt \(uppgift [0-9a-f-]{36}, tillfälle ([0-9a-f-]{36}), nästa datum 2027-03-01\)/.exec(lookup) ?? [];
     expect(instanceId).toBeDefined();
     const r = await taskCall("anna", "andra_syssla", { instanceId, title: "Diska och torka", roomId, kind: "recurring", interval: 2, unit: "week", dueDate: "2027-03-01" });
     expect(r.isError).toBeFalsy();

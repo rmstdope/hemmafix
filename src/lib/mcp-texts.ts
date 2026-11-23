@@ -73,7 +73,7 @@ export function formatOpenTasks(tasks: OpenTask[], today: string, showFloors = f
 const NONE = "(inga)";
 
 export type LookupInput = {
-  open: (OpenTask & { id: string; choreId: string; recurrence: Recurrence | null })[];
+  open: (OpenTask & { id: string; choreId: string; recurrence: Recurrence | null; coins: number })[];
   rooms: { id: string; name: string; floorName: string | null }[];
   members: { id: string; name: string; role: "adult" | "child" }[];
   recentlyDone: { id: string; title: string; doneByName: string | null; isLatestTick: boolean }[];
@@ -88,7 +88,7 @@ export function formatTaskLookup(input: LookupInput, today: string): string {
       input.open.map((t) => {
         // The room with its floor and the schedule read as in the app; the ISO date is what
         // andra_syssla needs handed back unchanged.
-        const line = formatOpenTasks([t], today, true) + (t.recurrence ? `, ${formatRecurrence(t.recurrence)}` : "");
+        const line = formatOpenTasks([t], today, true) + (t.recurrence ? `, ${formatRecurrence(t.recurrence)}` : "") + `, ${t.coins} mynt`;
         return `${line} (uppgift ${t.choreId}, tillfälle ${t.id}${t.dueDate ? `, nästa datum ${t.dueDate}` : ""})`;
       }),
     ),
@@ -175,14 +175,14 @@ export const roomAddedText = (room: string, floorName: string) =>
 export const floorAddedText = (floorName: string) => `${floorLabel(floorName)} lades till.`;
 
 export const NO_ROUTINES_TEXT = "Inga rutiner ännu.";
-export type RoutineListing = { id: string; name: string; tasks: { id: string; title: string }[] };
+export type RoutineListing = { id: string; name: string; tasks: { id: string; title: string; coins: number }[] };
 
 /** Routines in the order the app shows them, each with its tasks; the ids let Claude change or add them. */
 export function formatRoutines(routines: RoutineListing[]): string {
   if (routines.length === 0) return NO_ROUTINES_TEXT;
   return routines
     .map((r) =>
-      [`${r.name} [${r.id}]`, ...(r.tasks.length === 0 ? ["(inga uppgifter)"] : r.tasks.map((t) => `- ${t.title} [${t.id}]`))].join("\n"),
+      [`${r.name} [${r.id}]`, ...(r.tasks.length === 0 ? ["(inga uppgifter)"] : r.tasks.map((t) => `- ${t.title} [${t.id}] – ${t.coins} mynt`))].join("\n"),
     )
     .join("\n\n");
 }

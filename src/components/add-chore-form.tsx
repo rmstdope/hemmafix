@@ -7,15 +7,18 @@ import { addRoutine, createChore, type ActionState } from "@/app/actions";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { submitKeepingValues } from "@/components/submit-keeping-values";
+import { DEFAULT_COINS } from "@/lib/coins";
 import { CHORE_TEMPLATES, findTemplate } from "@/lib/chore-templates";
 import type { RecurrenceUnit } from "@/lib/recurrence";
 import { addRoutineButtonLabel, routineAddedNotice } from "@/lib/routine-texts";
 import { cn } from "@/lib/utils";
+import { CoinBadge } from "./coin-badge";
+import { CoinStepper } from "./coin-stepper";
 import { RoomOptions } from "./room-options";
 
 type Option = { id: string; name: string };
 type Room = Option & { floorId: string };
-type RoutineOption = Option & { tasks: string[] };
+type RoutineOption = Option & { tasks: { title: string; coins: number }[] };
 
 const fieldClass =
   "h-11 w-full min-w-0 rounded-lg border border-input bg-transparent px-3 text-base md:text-sm dark:bg-input/30";
@@ -37,6 +40,7 @@ type Draft = {
   unit: RecurrenceUnit;
   date: string;
   assigneeId: string;
+  coins: number;
 };
 
 const empty = (): Draft => ({
@@ -50,6 +54,7 @@ const empty = (): Draft => ({
   unit: "week",
   date: "",
   assigneeId: "",
+  coins: DEFAULT_COINS,
 });
 
 export function AddChoreForm({
@@ -96,6 +101,7 @@ export function AddChoreForm({
     const room = matches.length === 1 ? matches[0] : undefined;
     set({
       templateKey: key,
+      coins: DEFAULT_COINS,
       title: template.title,
       roomId: room?.id ?? draft.roomId,
       kind: template.recurrence ? "recurring" : "once",
@@ -204,9 +210,10 @@ export function AddChoreForm({
                 </p>
               ) : chosen ? (
                 <ul aria-label="Uppgifter i rutinen" className="space-y-1 text-sm">
-                  {chosen.tasks.map((title, i) => (
-                    <li key={i} className="break-words">
-                      · {title}
+                  {chosen.tasks.map((t, i) => (
+                    <li key={i} className="flex items-center gap-2">
+                      <span className="min-w-0 break-words">· {t.title}</span>
+                      <CoinBadge coins={t.coins} className="h-5 px-1.5" />
                     </li>
                   ))}
                 </ul>
@@ -361,6 +368,8 @@ export function AddChoreForm({
               </select>
             </label>
           </div>
+
+          {!isRoutine && <CoinStepper name="coins" value={draft.coins} onChange={(coins) => set({ coins })} />}
         </>
       )}
 

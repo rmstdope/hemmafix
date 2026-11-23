@@ -75,7 +75,7 @@ describe("listing routines", () => {
     notified.length = 0;
     const res = await call("anna", "visa_rutiner");
     expect(res.isError).toBeFalsy();
-    expect(textOf(res)).toMatch(new RegExp(`^Städa \\[${id}\\]\\n- Dammsug \\[[0-9a-f-]{36}\\]\\n- Torka \\[[0-9a-f-]{36}\\]$`));
+    expect(textOf(res)).toMatch(new RegExp(`^Städa \\[${id}\\]\\n- Dammsug \\[[0-9a-f-]{36}\\] – 10 mynt\\n- Torka \\[[0-9a-f-]{36}\\] – 10 mynt$`));
     await settle();
     expect(notified).toEqual([]);
   });
@@ -127,6 +127,24 @@ describe("tasks in a routine", () => {
     expect((await db.select().from(routineTask).where(eq(routineTask.id, taskId)))[0]!.title).toBe("Dammsuga");
     expect(textOf(await call("anna", "ta_bort_uppgift_ur_rutin", { routineId: id, taskId }))).toBe("Uppgiften togs bort ur rutinen.");
     expect(await db.select().from(routineTask).where(eq(routineTask.id, taskId))).toHaveLength(0);
+  });
+
+  it("take an amount of coins, 0 to 100: 10 when left out when added, unchanged when left out when changed", async () => {
+    const id = await makeRoutine("Städa", []);
+    const added = await call("anna", "lagg_till_uppgift_i_rutin", { routineId: id, titel: "Dammsug", mynt: 40 });
+    const taskId = idIn(textOf(added));
+    const coins = async () => (await db.select().from(routineTask).where(eq(routineTask.id, taskId)))[0]!.coins;
+    expect(await coins()).toBe(40);
+    await call("anna", "byt_namn_pa_uppgift_i_rutin", { routineId: id, taskId, titel: "Dammsuga" });
+    expect(await coins()).toBe(40);
+    await call("anna", "byt_namn_pa_uppgift_i_rutin", { routineId: id, taskId, titel: "Dammsuga", mynt: 0 });
+    expect(await coins()).toBe(0);
+    const other = await call("anna", "lagg_till_uppgift_i_rutin", { routineId: id, titel: "Torka" });
+    expect((await db.select().from(routineTask).where(eq(routineTask.id, idIn(textOf(other)))))[0]!.coins).toBe(10);
+    const bad = await call("anna", "lagg_till_uppgift_i_rutin", { routineId: id, titel: "Moppa", mynt: 101 });
+    expect(bad.isError).toBe(true);
+    expect(textOf(bad)).toBe("Mynt måste vara ett heltal mellan 0 och 100");
+    expect(textOf(await call("anna", "visa_rutiner"))).toContain("Dammsuga [");
   });
 
   it("refuse a duplicate and an unknown task, in Swedish", async () => {

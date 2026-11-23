@@ -412,10 +412,13 @@ export const chore = pgTable(
     assigneeId: text("assignee_id").references(() => user.id, { onDelete: "set null" }),
     createdById: text("created_by_id").references(() => user.id, { onDelete: "set null" }),
     archivedAt: timestamp("archived_at", { withTimezone: true }),
+    /** What a tick of this task earns (0-100); copied to the instance when it is ticked off. */
+    coins: integer("coins").notNull().default(10),
     ...timestamps,
   },
   (t) => [
     index("chore_household_idx").on(t.householdId),
+    check("chore_coins_check", sql`${t.coins} between 0 and 100`),
     check(
       "chore_recurrence_check",
       sql`(${t.recurrenceUnit} is null and ${t.recurrenceInterval} is null) or (${t.recurrenceUnit} is not null and ${t.recurrenceInterval} between 1 and ${sql.raw(String(MAX_INTERVAL))})`,
@@ -503,9 +506,14 @@ export const routineTask = pgTable(
     title: text("title").notNull(),
     /** The order tasks were added in. */
     seq: bigint("seq", { mode: "number" }).notNull().generatedAlwaysAsIdentity(),
+    /** What a task added from this one gives (0-100). */
+    coins: integer("coins").notNull().default(10),
     ...timestamps,
   },
-  (t) => [uniqueIndex("routine_task_routine_title_idx").on(t.routineId, sql`lower(${t.title})`)],
+  (t) => [
+    uniqueIndex("routine_task_routine_title_idx").on(t.routineId, sql`lower(${t.title})`),
+    check("routine_task_coins_check", sql`${t.coins} between 0 and 100`),
+  ],
 );
 
 /** A shared list of the household ("Inköp"). `updatedAt` moves whenever an item or the name changes. */

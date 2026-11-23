@@ -3,7 +3,6 @@ import { cache } from "react";
 import { aliasedTable, and, asc, desc, eq, gt, gte, isNotNull, isNull, ne, sql, type SQL } from "drizzle-orm";
 import { db, pg } from "@/db";
 import { chore, choreInstance, floor, household, membership, room, user } from "@/db/schema";
-import { COINS_PER_TASK } from "@/lib/coins";
 import { addDays, HOME_TIME_ZONE, todayIso } from "@/lib/dates";
 import { UserError } from "@/lib/errors";
 import { assertCan, can, type Role } from "@/lib/permissions";
@@ -88,7 +87,7 @@ export async function lockRoom(tx: Tx, actor: Actor, roomId: string) {
 export async function insertChore(
   tx: Tx,
   actor: Actor,
-  input: Pick<CreateChoreInput, "title" | "roomId" | "recurrence" | "firstDueDate" | "assigneeId"> & {
+  input: Pick<CreateChoreInput, "title" | "roomId" | "recurrence" | "firstDueDate" | "assigneeId" | "coins"> & {
     templateKey: string | null;
     /** When several tasks are added in one transaction, an increasing time keeps their order on the list. */
     createdAt?: Date;
@@ -104,6 +103,7 @@ export async function insertChore(
       recurrenceUnit: input.recurrence?.unit ?? null,
       recurrenceInterval: input.recurrence?.interval ?? null,
       assigneeId: input.assigneeId,
+      coins: input.coins,
       createdById: actor.userId,
       ...(input.createdAt && { createdAt: input.createdAt }),
     })
@@ -176,6 +176,8 @@ export async function editChore(actor: Actor, openInstanceId: string, raw: unkno
         recurrenceUnit: input.recurrence?.unit ?? null,
         recurrenceInterval: input.recurrence?.interval ?? null,
         templateKey: template && template.title === input.title ? current.templateKey : null,
+        // No amount given (Claude leaving it out): the task keeps what it gives.
+        ...(input.coins !== undefined && { coins: input.coins }),
       })
       .where(eq(chore.id, target));
     await tx
@@ -264,6 +266,7 @@ export async function completeInstance(actor: Actor, id: string) {
         seriesAssigneeId: chore.assigneeId,
         title: chore.title,
         roomId: chore.roomId,
+        coins: chore.coins,
       })
       .from(choreInstance)
       .innerJoin(chore, eq(chore.id, choreInstance.choreId))
@@ -281,7 +284,7 @@ export async function completeInstance(actor: Actor, id: string) {
         completedById: actor.userId,
         doneTitle: row.title,
         doneRoomId: row.roomId,
-        coins: COINS_PER_TASK,
+        coins: row.coins,
       })
       .where(and(eq(choreInstance.id, target), isNull(choreInstance.completedAt)))
       .returning({ id: choreInstance.id });
@@ -389,6 +392,8 @@ export type InstanceView = {
   completedByName: string | null;
   /** Whether this is the task's latest tick, the only one that can be undone. */
   isLatestTick: boolean;
+  /** What a tick of the task gives; for a done row what that tick gave (null: before coins existed). */
+  coins: number | null;
 };
 
 const completer = aliasedTable(user, "completer");
@@ -398,6 +403,9 @@ const completer = aliasedTable(user, "completer");
 // in a release that did not know about snapshots.
 const shownTitle = sql<string>`case when ${choreInstance.completedAt} is not null then coalesce(${choreInstance.doneTitle}, ${chore.title}) else ${chore.title} end`;
 const shownRoomId = sql`case when ${choreInstance.completedAt} is not null then coalesce(${choreInstance.doneRoomId}, ${chore.roomId}) else ${chore.roomId} end`;
+
+// A done row shows what its tick gave (null for ticks from before coins existed), an open one what the task gives.
+const shownCoins = sql<number | null>`case when ${choreInstance.completedAt} is not null then ${choreInstance.coins} else ${chore.coins} end`;
 
 const instanceColumns = {
   id: choreInstance.id,
@@ -414,6 +422,7 @@ const instanceColumns = {
   completedAt: choreInstance.completedAt,
   completedById: choreInstance.completedById,
   completedByName: completer.name,
+  coins: shownCoins,
 };
 
 type Row = { [K in keyof typeof instanceColumns]: unknown } & {
