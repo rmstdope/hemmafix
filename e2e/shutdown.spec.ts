@@ -49,6 +49,14 @@ async function expectPromptExit(server: ChildProcess, exited: Promise<unknown>, 
   expect(Date.now() - signalled).toBeLessThan(5_000);
 }
 
+function refusesConnections() {
+  return new Promise<boolean>((resolve) => {
+    const probe = connect(PORT, "localhost");
+    probe.once("connect", () => (probe.destroy(), resolve(false)));
+    probe.once("error", () => resolve(true));
+  });
+}
+
 async function cookieHeader(context: BrowserContext) {
   return (await context.cookies(BASE)).map((c) => `${c.name}=${c.value}`).join("; ");
 }
@@ -84,13 +92,17 @@ test("the server exits promptly on SIGTERM when an event stream is asked for aft
 
     const signalled = Date.now();
     server.kill("SIGTERM");
-    await new Promise((resolve) => setTimeout(resolve, 300));
+    // Once new connections are refused, the server has stopped listening with ours still busy.
+    await expect.poll(refusesConnections).toBe(true);
     socket.write("\r\n");
     await expect.poll(() => received).toContain('"status":"ok"');
-    // The same connection, kept alive, now asks for an event stream.
+    expect(received, "the busy connection is kept open").toMatch(/^Connection: keep-alive$/im);
+    // The same connection now asks for an event stream.
+    const answered = received.length;
     socket.write(`GET /api/events HTTP/1.1\r\nHost: localhost:${PORT}\r\nCookie: ${cookie}\r\n\r\n`);
 
     await expectPromptExit(server, exited, signalled);
+    expect(received.slice(answered), "the event stream was refused instead of asked for").not.toMatch(/^HTTP\/1\.1 401/);
     socket.destroy();
   });
 });
