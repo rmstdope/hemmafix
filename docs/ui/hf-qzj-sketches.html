@@ -1,0 +1,98 @@
+<!doctype html>
+<!--
+  A starter sheet for one round of concept sketches (skills/agree-experience, "Sketching the idea
+  first"; the agreed look is docs/ui/cb-icwi-concept-sketches.html). Copy it to the scratchpad as
+  <id>-sketches-<round>.html, set TITLE and IDEAS, and replace each idea's draw function. Two to
+  four ideas, never one and never more. Set AGREED to the agreed idea's letter only for the copy
+  kept in docs/ui/: it circles that idea in red and writes "agreed" beside it.
+
+  The look is marker on a whiteboard: wobbly doubled strokes, a handwriting typeface, real words on
+  the screen, one blue accent plus hatched fill for what the idea is about, red notes and arrows in
+  the margin. Rectangles and words only; no styling, no exact sizes.
+-->
+<html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Sketches</title>
+<link href="https://fonts.googleapis.com/css2?family=Caveat:wght@400;600&display=swap" rel="stylesheet">
+<style>
+  body{margin:0;background:#fdfcf8;font-family:system-ui,sans-serif;color:#222}
+  header{padding:14px 20px;border-bottom:1px solid #ddd;background:#fff}
+  h1{margin:0;font-size:18px} p{margin:4px 0 0;font-size:13px;color:#555}
+  main{padding:20px}
+  svg{max-width:100%;height:auto;background:#fffef9;border:1px solid #e6e2d6;border-radius:4px}
+</style>
+<script>
+// The hand-drawn helper. Every stroke is drawn twice with a little jitter; the seed is fixed so a
+// sheet looks the same each time it is opened.
+const BLUE = '#1971c2', RED = '#c92a2a', INK = '#1e1e1e';
+function Sketch(svg, o){ this.svg = svg; this.o = Object.assign({stroke: INK, w: 2.4, jit: 1.4, double: true, font: "'Caveat', cursive"}, o || {}); this.seed = 7; }
+Sketch.prototype.r = function(){ this.seed = (this.seed * 9301 + 49297) % 233280; return this.seed / 233280 - 0.5; };
+Sketch.prototype.add = function(tag, attrs, text){ const e = document.createElementNS('http://www.w3.org/2000/svg', tag); for (const k in attrs) e.setAttribute(k, attrs[k]); if (text) e.textContent = text; this.svg.appendChild(e); return e; };
+Sketch.prototype.line = function(x1, y1, x2, y2, o){ o = Object.assign({}, this.o, o || {}); for (let p = 0; p < (o.double ? 2 : 1); p++){ const j = o.jit, mx = (x1 + x2) / 2 + this.r() * j * 2, my = (y1 + y2) / 2 + this.r() * j * 2; this.add('path', {d: `M${x1 + this.r() * j},${y1 + this.r() * j} Q${mx},${my} ${x2 + this.r() * j},${y2 + this.r() * j}`, fill: 'none', stroke: o.stroke, 'stroke-width': o.w * (p ? 0.7 : 1), 'stroke-linecap': 'round', opacity: p ? 0.6 : 1}); } };
+Sketch.prototype.rect = function(x, y, w, h, o){ this.line(x, y, x + w, y, o); this.line(x + w, y, x + w, y + h, o); this.line(x + w, y + h, x, y + h, o); this.line(x, y + h, x, y, o); };
+Sketch.prototype.hachure = function(x, y, w, h, color, gap){ gap = gap || 8; for (let i = -h; i < w; i += gap){ const ax = Math.max(x, x + i), ay = y + Math.max(0, -i), bx = Math.min(x + w, x + i + h), by = y + Math.min(h, w - i); this.line(ax, ay, bx, by, {stroke: color || BLUE, w: 1.3, double: false, jit: 0.8}); } };
+Sketch.prototype.text = function(x, y, s, o){ o = Object.assign({size: 22, fill: this.o.stroke, anchor: 'start'}, o || {}); this.add('text', {x, y, 'font-family': this.o.font, 'font-size': o.size, fill: o.fill, 'text-anchor': o.anchor}, s); };
+Sketch.prototype.arrow = function(x1, y1, x2, y2, o){ this.line(x1, y1, x2, y2, o); const a = Math.atan2(y2 - y1, x2 - x1); this.line(x2, y2, x2 - 12 * Math.cos(a - 0.5), y2 - 12 * Math.sin(a - 0.5), o); this.line(x2, y2, x2 - 12 * Math.cos(a + 0.5), y2 - 12 * Math.sin(a + 0.5), o); };
+Sketch.prototype.note = function(x, y, s){ this.text(x, y, s, {fill: RED}); };
+// A loose hand-drawn loop, squarish so it takes in a box's corners: the kept sheet's mark on the agreed idea.
+Sketch.prototype.ring = function(cx, cy, rx, ry){ const f = t => Math.sign(t) * Math.pow(Math.abs(t), 0.3); let d = ''; for (let a = 0; a <= 6.75; a += 0.12){ const k = 1 + this.r() * 0.025 + (a > 6.3 ? 0.04 : 0); d += (a ? ' L' : 'M') + (cx + rx * k * f(Math.cos(a))) + ',' + (cy + ry * k * f(Math.sin(a))); } this.add('path', {d, fill: 'none', stroke: RED, 'stroke-width': 3, 'stroke-linecap': 'round', 'stroke-linejoin': 'round'}); };
+</script></head><body>
+<header><h1 id="title"></h1><p>Rough sketches of the idea. Which idea do we build on?</p></header>
+<main><svg id="sheet"></svg></main>
+<script>
+// ---- Edit from here --------------------------------------------------------------------------
+const TITLE = 'Undoing a tick-off after its coins were already spent';
+const AGREED = 'B';
+// Shared pieces: a phone row "Klart" with an undo button, and the coin pill.
+function topBar(s, pill, pillColor){ s.rect(10, 10, 520, 340); s.line(10, 52, 530, 52); s.text(24, 40, 'Uppgifter', {size: 24});
+  s.rect(400, 18, 116, 28); s.text(412, 40, pill, {size: 22, fill: pillColor || INK}); }
+function doneRow(s, y){ s.text(24, y - 10, 'Klart', {size: 20, fill: '#666'}); s.rect(24, y, 490, 40); s.rect(32, y + 6, 28, 28); s.text(38, y + 28, '↺', {size: 22});
+  s.text(72, y + 28, 'Dammsuga hallen · 50 mynt', {size: 21}); }
+const IDEAS = [
+  {letter: 'A', name: 'minus, paid back later', cost: 'a child can see a minus number', draw(s){
+    topBar(s, '● −50', RED); doneRow(s, 90);
+    s.text(24, 170, 'Butik', {size: 22}); s.rect(24, 180, 490, 60); s.hachure(24, 180, 490, 60, BLUE, 12);
+    s.text(36, 206, 'Du ligger 50 mynt back.', {size: 22, fill: BLUE}); s.text(36, 230, 'Nästa 50 mynt du tjänar betalar av det.', {size: 19, fill: BLUE});
+    s.text(36, 272, 'Glass   (grå)  100 mynt kvar', {size: 20, fill: '#888'});
+    s.note(300, 320, 'undo just happens ↑');
+  }},
+  {letter: 'B', name: 'minus, but undo warns first', cost: 'one more press when coins are spent', draw(s){
+    topBar(s, '● 0'); doneRow(s, 70);
+    s.rect(40, 130, 460, 200); s.hachure(40, 130, 460, 6, BLUE, 6);
+    s.text(60, 168, 'Ångra Dammsuga hallen?', {size: 24});
+    s.text(60, 200, 'Mynten är redan använda. Du får', {size: 20}); s.text(60, 222, '−50 mynt och betalar av dem', {size: 20}); s.text(60, 244, 'med nästa uppgifter.', {size: 20});
+    s.rect(60, 270, 150, 40); s.text(78, 296, 'Ångra ändå', {size: 21, fill: BLUE}); s.rect(230, 270, 120, 40); s.text(252, 296, 'Avbryt', {size: 21});
+    s.note(370, 300, 'only when it');s.note(370, 322, 'goes below 0');
+  }},
+  {letter: 'C', name: 'undo is blocked', cost: 'a wrong tick-off can no longer be fixed', draw(s){
+    topBar(s, '● 0'); doneRow(s, 90); s.hachure(32, 96, 28, 28, BLUE, 5);
+    s.rect(40, 170, 460, 80); s.hachure(40, 170, 460, 80, BLUE, 14);
+    s.text(56, 200, 'Går inte att ångra: mynten är', {size: 21, fill: BLUE}); s.text(56, 226, 'redan använda i Butik.', {size: 21, fill: BLUE});
+    s.note(60, 300, 'cancel the purchase first, then undo');
+  }},
+  {letter: 'D', name: 'never below 0', cost: 'earn, buy, undo, repeat = free rewards', draw(s){
+    topBar(s, '● 0'); doneRow(s, 90);
+    s.text(24, 170, 'Butik', {size: 22}); s.text(36, 206, 'Glass   (grå)  50 mynt kvar', {size: 20, fill: '#888'});
+    s.rect(24, 230, 490, 50); s.hachure(24, 230, 490, 50, BLUE, 12); s.text(36, 262, 'the missing 50 are just forgotten', {size: 21, fill: BLUE});
+    s.note(300, 320, 'nothing is said');
+  }},
+];
+// ---- to here ---------------------------------------------------------------------------------
+document.title = TITLE + ' — sketches';
+document.getElementById('title').textContent = TITLE;
+(function(){
+  const svg = document.getElementById('sheet'), cell = 430, left = 30, scale = 0.7, h = 385;
+  svg.setAttribute('viewBox', `0 0 ${IDEAS.length * cell + left} ${h}`);
+  svg.setAttribute('width', IDEAS.length * cell + left);
+  IDEAS.forEach((idea, i) => {
+    const x = left + i * cell;
+    const g = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+    g.setAttribute('transform', `translate(${x},28) scale(${scale})`);
+    svg.appendChild(g);
+    idea.draw(new Sketch(g));
+    const s = new Sketch(svg);
+    s.text(x + 5, 308, `${idea.letter} — ${idea.name}`, {size: 24});
+    s.text(x + 5, 333, idea.cost, {size: 20, fill: '#666'});
+    if (AGREED === idea.letter){ s.ring(x + 190, 184, 214, 176); s.text(x + 330, 378, 'agreed', {size: 26, fill: RED}); }
+  });
+})();
+</script></body></html>
