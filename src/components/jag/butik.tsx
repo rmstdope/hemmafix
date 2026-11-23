@@ -8,6 +8,7 @@ import { Sheet } from "@/components/sheet";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { formatCoins } from "@/lib/coins";
+import { debtCardText, debtCardTitle } from "@/lib/debt";
 import { buyText, coinsLeftText, givenWhen, PRICE_ERROR, purchasedWhen } from "@/lib/rewards";
 import { cn } from "@/lib/utils";
 import type { PurchaseView, RewardView } from "@/server/rewards";
@@ -46,6 +47,12 @@ export function Butik({
 
   return (
     <div className="space-y-6">
+      {balance < 0 && (
+        <section className="rounded-xl border border-red-300 bg-red-50 p-3 text-red-900 dark:border-red-800 dark:bg-red-950 dark:text-red-100">
+          <h2 className="font-semibold">{debtCardTitle(balance)}</h2>
+          <p className="text-sm">{debtCardText(balance)}</p>
+        </section>
+      )}
       {purchases.length > 0 && (
         <section aria-labelledby="butik-kopt">
           <h2 id="butik-kopt" className="mb-2 text-sm font-semibold text-muted-foreground">

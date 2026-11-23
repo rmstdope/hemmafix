@@ -18,6 +18,7 @@ import {
   taskRemovedText,
   taskTickedText,
   taskUntickedText,
+  taskUntickedDebtText,
 } from "@/lib/mcp-texts";
 import { RECURRENCE_UNITS } from "@/lib/recurrence";
 import * as chores from "./chores";
@@ -272,8 +273,9 @@ export function registerTaskTools(server: McpServer, userId: string): void {
         if (!found) throw new UserError(GONE);
         if (!found.completedAt) throw new UserError("Den är inte avbockad");
         const title = found.title;
-        await chores.uncompleteInstance(actor, instanceId);
-        return taskUntickedText(title);
+        // Claude already confirms writes with the person, so a spent tick is undone without the app's question.
+        const result = await chores.uncompleteInstance(actor, instanceId, { confirmDebt: true });
+        return result && "debt" in result ? taskUntickedDebtText(title, result.debt) : taskUntickedText(title);
       }),
   );
 }

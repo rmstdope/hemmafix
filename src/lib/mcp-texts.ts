@@ -1,3 +1,5 @@
+import { formatCoins } from "./coins";
+import type { UndoDebt } from "./debt";
 import { routineAddedNotice } from "./routine-texts";
 import { formatDay, formatDue, formatTime, todayIso } from "./dates";
 import { formatRecurrence, type Recurrence } from "./recurrence";
@@ -120,6 +122,9 @@ export const taskAssignedText = (title: string, who: string | null, everyTime: b
   `${title} är ${who ? `tilldelad ${who}` : "inte längre tilldelad någon"} ${everyTime ? "varje gång" : "den här gången"}.`;
 export const taskTickedText = (title: string) => `Klart: ${title} är avbockad.`;
 export const taskUntickedText = (title: string) => `${title} är inte längre avbockad.`;
+/** The undo took back coins that were already spent: the person ends below zero. */
+export const taskUntickedDebtText = (title: string, { own, name, balance }: UndoDebt) =>
+  `${title} är inte avbockad längre. Mynten var redan använda, så ${own ? "du" : name} har nu ${formatCoins(balance)} mynt.`;
 
 export type FloorWithRooms = { id: string; name: string; rooms: { id: string; name: string }[] };
 

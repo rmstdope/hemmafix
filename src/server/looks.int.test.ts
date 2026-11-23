@@ -3,7 +3,7 @@ import { db } from "@/db";
 import { household } from "@/db/schema";
 import { UserError } from "@/lib/errors";
 import { createFamily } from "../../test/integration/factories";
-import { completeInstance, createChore, getCoinTotal, getLifetimeCoins, listOpenInstances } from "./chores";
+import { completeInstance, createChore, getCoinTotal, getLifetimeCoins, listOpenInstances, uncompleteInstance } from "./chores";
 import { listMembersWithRoles } from "./household";
 import { buyLook, chooseLook, getLooks } from "./looks";
 
@@ -108,5 +108,21 @@ describe("the frame, which the family sees", () => {
     const family = await listMembersWithRoles(f.homeId);
     expect(family.find((m) => m.name === "Bo")?.frame).toBe("guld");
     expect(family.find((m) => m.name === "Anna")?.frame).toBe("none");
+  });
+});
+
+describe("below zero", () => {
+  it("still lets a person switch between looks they own, and buy nothing", async () => {
+    await createChore(f.adult, { title: "Rummet", roomId: f.kitchen.id, kind: "once", coins: "100" });
+    const [t] = (await listOpenInstances(f.adult, {})).filter((x) => x.title === "Rummet");
+    await completeInstance(f.child, t!.id, { offerChest: false });
+    await buyLook(f.child, "coin", "silver");
+    await uncompleteInstance(f.adult, t!.id, { confirmDebt: true });
+    expect(await getCoinTotal(f.child)).toBe(-100);
+
+    await chooseLook(f.child, "coin", "guld");
+    await chooseLook(f.child, "coin", "silver");
+    expect((await getLooks(f.child)).chosen.coin).toBe("silver");
+    await expect(buyLook(f.child, "frame", "guld")).rejects.toThrow("Du har inte tillräckligt med mynt.");
   });
 });

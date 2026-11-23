@@ -1,10 +1,10 @@
 import { beforeAll, beforeEach, describe, expect, it } from "vitest";
 import { and, eq, isNull } from "drizzle-orm";
 import { db, pg } from "@/db";
-import { badgeAward, chore, choreInstance, floor, household, membership, room, user } from "@/db/schema";
+import { badgeAward, chore, choreInstance, floor, household, lookPurchase, membership, room, user } from "@/db/schema";
 import { BADGE_KEYS } from "@/lib/badges";
 import { todayIso } from "@/lib/dates";
-import { getCoinTotal, TASKS_CHANNEL } from "./chores";
+import { completeInstance, getCoinTotal, TASKS_CHANNEL } from "./chores";
 
 process.env.ALLOWED_EMAILS = "anna@example.com, bo@example.com, eve@example.com";
 process.env.BETTER_AUTH_SECRET = "integration-secret-not-for-production-0123456789";
@@ -309,6 +309,29 @@ describe("the task tools", () => {
     expect(await getCoinTotal(anna)).toBe(10);
     await taskCall("anna", "angra_avbockning", { instanceId });
     expect(await getCoinTotal(anna)).toBe(0);
+  });
+
+  it("names the minus when an undo takes back coins that were already spent", async () => {
+    const roomId = await seedKitchen();
+    const { instanceId } = await createDiska(roomId);
+    await taskCall("anna", "bocka_av_syssla", { instanceId });
+    // Everything earned so far (badge coins included) is spent, so the undo ends 10 below zero.
+    const anna = { userId: "anna", householdId: homeId, role: "adult" as const, name: "Anna", image: null };
+    await db.insert(lookPurchase).values({ householdId: homeId, userId: "anna", kind: "coin", key: "silver", price: await getCoinTotal(anna) });
+    expect(said(await taskCall("anna", "angra_avbockning", { instanceId }))).toBe(
+      "Diska är inte avbockad längre. Mynten var redan använda, så du har nu −10 mynt.",
+    );
+  });
+
+  it("names the person when an adult undoes someone else's spent tick", async () => {
+    const roomId = await seedKitchen();
+    const { instanceId } = await createDiska(roomId);
+    await completeInstance({ userId: "bo", householdId: homeId, role: "child" }, instanceId);
+    const bo = { userId: "bo", householdId: homeId, role: "child" as const, name: "Bo", image: null };
+    await db.insert(lookPurchase).values({ householdId: homeId, userId: "bo", kind: "coin", key: "silver", price: await getCoinTotal(bo) });
+    expect(said(await taskCall("anna", "angra_avbockning", { instanceId }))).toBe(
+      "Diska är inte avbockad längre. Mynten var redan använda, så Bo har nu −10 mynt.",
+    );
   });
 
   it("ticking off twice says so", async () => {
