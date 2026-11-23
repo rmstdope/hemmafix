@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { addRoutineInput, boardFilter, createChoreInput, routineName, routineTaskTitle } from "./validation";
+import { addRoutineInput, boardFilter, createChoreInput, listItemText, listName, listOrder, restoredItems, routineName, routineTaskTitle } from "./validation";
 
 const ROOM = "6f1c3b0e-5f8a-4c7e-9d2a-1b3c4d5e6f70";
 const parse = (fields: Record<string, string>) => createChoreInput.safeParse(fields);
@@ -148,5 +148,26 @@ describe("addRoutineInput", () => {
     expect(msg({ routineId: "", roomId: ROOM, kind: "once" })).toBe("Rutinen finns inte längre");
     expect(msg({ routineId: ROUTINE, roomId: "", kind: "once" })).toBe("Välj ett rum");
     expect(msg({ routineId: ROUTINE, roomId: ROOM, kind: "recurring" })).toBe("Ange hur ofta");
+  });
+});
+
+describe("lists", () => {
+  it("trims names and items and takes at most 200 characters", () => {
+    expect(listName.parse("  Inköp ")).toBe("Inköp");
+    expect(listItemText.parse(" Mjölk ")).toBe("Mjölk");
+    expect(listName.safeParse("   ").success).toBe(false);
+    expect(listItemText.safeParse("").success).toBe(false);
+    expect(listName.safeParse("x".repeat(200)).success).toBe(true);
+    expect(listItemText.safeParse("x".repeat(201)).error?.issues[0]?.message).toBe("Max 200 tecken");
+  });
+  it("knows the three orders", () => {
+    expect(listOrder.safeParse("andrad").success).toBe(true);
+    expect(listOrder.safeParse("slump").success).toBe(false);
+  });
+  it("restores at most 1000 items, each with an id, text and rank", () => {
+    const one = { id: ROOM, text: "Ost", rank: 3, doneAt: null };
+    expect(restoredItems.safeParse([one]).success).toBe(true);
+    expect(restoredItems.safeParse([{ ...one, id: "x" }]).success).toBe(false);
+    expect(restoredItems.safeParse(Array.from({ length: 1001 }, () => one)).success).toBe(false);
   });
 });

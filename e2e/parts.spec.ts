@@ -23,8 +23,7 @@ test("an adult moves between Uppgifter and Listor, and the filter is kept", asyn
   await parts(page).getByRole("link", { name: "Listor" }).click();
   await expect(page).toHaveTitle("Listor – Hemmafix");
   await expect(page.getByRole("heading", { name: "Listor" })).toBeVisible();
-  await expect(page.getByText("Här kommer familjens listor – inköp, packning och annat ni vill bocka av tillsammans.")).toBeVisible();
-  await expect(page.getByText("Snart på plats.")).toBeVisible();
+  await expect(page.getByText("Inga listor ännu.")).toBeVisible();
   await expect(parts(page).getByRole("link", { name: "Listor" })).toHaveAttribute("aria-current", "page");
   // Gjort belongs to the tasks; Hemmet and Logga ut are on every part.
   await expect(page.getByRole("link", { name: "Gjort" })).toHaveCount(0);

@@ -11,20 +11,13 @@ import {
   removeRoutineTask,
   renameRoutine,
   updateRoutineTask,
-  type ActionState,
 } from "@/app/actions";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { removeRoutineNotice, SAVE_FAILED } from "@/lib/routine-texts";
+import { attempt } from "@/components/attempt";
+import { removeRoutineNotice } from "@/lib/routine-texts";
 
 type Routine = { id: string; name: string; tasks: { id: string; title: string }[] };
-
-/** Runs an action; a failure (also a thrown one) is a notice, and the caller learns whether it worked. */
-async function attempt(run: () => Promise<ActionState>): Promise<boolean> {
-  const result = await run().catch(() => ({ ok: false, error: SAVE_FAILED }));
-  if (!result.ok) toast.error(result.error ?? SAVE_FAILED);
-  return result.ok;
-}
 
 /** A routine's page: its name, its tasks, and what can be done to them. */
 export function RoutineEditor({ routine, suggestions }: { routine: Routine; suggestions: string[] }) {

@@ -321,6 +321,8 @@ export const membership = pgTable(
       .references(() => household.id, { onDelete: "cascade" }),
     // Least privilege by default: an adult makes another member an adult.
     role: memberRole("role").notNull().default("child"),
+    /** How this person sorts the Listor overview (src/lib/lists.ts); null means alphabetical. */
+    listOrder: text("list_order"),
     ...timestamps,
   },
   (t) => [
@@ -499,6 +501,39 @@ export const routineTask = pgTable(
     ...timestamps,
   },
   (t) => [uniqueIndex("routine_task_routine_title_idx").on(t.routineId, sql`lower(${t.title})`)],
+);
+
+/** A shared list of the household ("Inköp"). `updatedAt` moves whenever an item or the name changes. */
+export const list = pgTable(
+  "list",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    householdId: uuid("household_id")
+      .notNull()
+      .references(() => household.id, { onDelete: "cascade" }),
+    name: text("name").notNull(),
+    ...timestamps,
+  },
+  (t) => [index("list_household_idx").on(t.householdId)],
+);
+
+/**
+ * One thing on a list. Open items show highest `rank` first: a new or unticked item takes the
+ * next rank, and one put back by Ångra keeps its old one. Ticked items (`doneAt`) sit in Klart.
+ */
+export const listItem = pgTable(
+  "list_item",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    listId: uuid("list_id")
+      .notNull()
+      .references(() => list.id, { onDelete: "cascade" }),
+    text: text("text").notNull(),
+    rank: bigint("rank", { mode: "number" }).notNull(),
+    doneAt: timestamp("done_at", { withTimezone: true }),
+    ...timestamps,
+  },
+  (t) => [index("list_item_list_idx").on(t.listId)],
 );
 
 export type Chore = typeof chore.$inferSelect;

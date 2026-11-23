@@ -231,3 +231,27 @@ describe("0008: routines", () => {
     expect(await sql`select count(*)::int as n from routine`).toEqual([{ n: 0 }]);
   });
 });
+
+describe("0009: shared lists", () => {
+  beforeEach(reset);
+
+  it("only adds tables and a nullable column, so the previous release keeps working", async () => {
+    await migrateUpTo(sql, "0008_routines");
+    const [home] = await sql`insert into household (name) values ('Hemma') returning id`;
+    await sql`insert into "user" (id, name, email, email_verified) values ('a', 'Anna', 'a@example.com', true)`;
+    await sql`insert into membership (user_id, household_id, role) values ('a', ${home!.id}, 'adult')`;
+    const before = await sql`select table_name from information_schema.tables where table_schema = 'public'`;
+
+    await migrateUpTo(sql, "0009_lists");
+
+    const after = await sql`select table_name from information_schema.tables where table_schema = 'public'`;
+    const added = after.map((t) => t.table_name).filter((n) => !before.some((b) => b.table_name === n));
+    expect(added.sort()).toEqual(["list", "list_item"]);
+    // Existing members have no order of their own yet, and the previous release's insert of a
+    // member, without the new column, still works.
+    expect(await sql`select list_order from membership where user_id = 'a'`).toEqual([{ list_order: null }]);
+    await sql`insert into "user" (id, name, email, email_verified) values ('b', 'Bo', 'b@example.com', true)`;
+    await sql`insert into membership (user_id, household_id) values ('b', ${home!.id})`;
+    expect(await sql`select count(*)::int as n from list`).toEqual([{ n: 0 }]);
+  });
+});
