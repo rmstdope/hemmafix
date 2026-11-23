@@ -87,7 +87,9 @@ test("off, a tick-off makes no sound and no vibration", async ({ page, context }
   await page.keyboard.press("Escape");
   await tick(page, "Diska");
   await expect(page.getByRole("status")).toHaveText("Du fick 10 mynt");
-  await page.waitForTimeout(1_500);
+  // The shower has finished once the number reached the full amount and no coin is in the air.
+  await expect(page.getByRole("button", { name: /mynt$/ })).toHaveText("10", { timeout: 5_000 });
+  await expect(page.locator("[data-flying-coin]")).toHaveCount(0);
   expect(await seen(page)).toEqual({ clinks: 0, taps: 0 });
 });
 
@@ -101,7 +103,8 @@ test("off, reduced motion is quiet too; the setting belongs to the device, not t
   await expect(page.getByRole("status")).toHaveText("Du fick 10 mynt");
   expect(await seen(page)).toEqual({ clinks: 0, taps: 0 });
   const other = await browser.newContext();
-  await logIn(other, "anna", "adult");
+  // The same person on another device: same session, separate browser storage.
+  await other.addCookies(await context.cookies());
   const fresh = await other.newPage();
   await fresh.goto("/");
   await menuButton(fresh).click();

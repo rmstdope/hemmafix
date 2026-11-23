@@ -19,7 +19,7 @@ export function setSoundOn(on: boolean) {
     if (on) window.localStorage.removeItem(SOUND_KEY);
     else window.localStorage.setItem(SOUND_KEY, "off");
   } catch {
-    // The choice then only lasts until the page is closed.
+    // Storage is blocked: nothing is saved, so sound stays on (readSoundOn answers true).
   }
   listeners.forEach((listener) => listener());
 }
