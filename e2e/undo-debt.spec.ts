@@ -29,10 +29,19 @@ test("undoing a tick whose coins are spent asks first, and Ångra ändå leaves 
   await expect(pill(page)).toHaveText("0");
 
   const undo = page.getByRole("button", { name: "Städa rummet: ångra klar" });
+  // The row must never leave the list while the question is coming up.
+  await undo.evaluate((el) => {
+    const w = window as unknown as { rowGone: boolean };
+    w.rowGone = false;
+    new MutationObserver(() => {
+      if (!el.isConnected) w.rowGone = true;
+    }).observe(document.body, { childList: true, subtree: true });
+  });
   await undo.click();
   const dialog = page.getByRole("dialog", { name: "Mynten är redan använda" });
   await expect(dialog.getByText("Ångra ändå? Du får −150 mynt och kan inte köpa något förrän du har tjänat ihop dem igen.")).toBeVisible();
   await expect(dialog.getByRole("button", { name: "Avbryt" })).toBeFocused();
+  expect(await page.evaluate(() => (window as unknown as { rowGone: boolean }).rowGone)).toBe(false);
 
   await dialog.getByRole("button", { name: "Avbryt" }).click();
   await expect(dialog).toBeHidden();
@@ -58,6 +67,9 @@ test("an adult undoing a child's spent tick is asked in the child's name", async
   const boContext = await context.browser()!.newContext({ baseURL: E2E_BASE_URL, locale: "sv-SE" });
   const bo = await logIn(boContext, "bo", "child");
   await spentAfterTick(bo.id, 30);
+  const boPage = await boContext.newPage();
+  await boPage.goto("/");
+  await expect(pill(boPage)).toHaveText("120");
   await openKlart(page);
 
   await page.getByRole("button", { name: "Städa rummet: ångra klar" }).click();
@@ -67,8 +79,6 @@ test("an adult undoing a child's spent tick is asked in the child's name", async
   await expect(page.getByRole("button", { name: "Städa rummet: ångra klar" })).toHaveCount(0);
 
   // The child's red pill appears live, on their own device.
-  const boPage = await boContext.newPage();
-  await boPage.goto("/");
   await expect(pill(boPage)).toHaveText("−30");
   await boContext.close();
 });

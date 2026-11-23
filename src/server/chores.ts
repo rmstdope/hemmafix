@@ -385,14 +385,18 @@ export async function uncompleteInstance(
 
     // Taking the tick's coins back may leave the person below zero, when they spent them. They are
     // asked first; once confirmed the undo always goes ahead (nothing bought is taken away).
-    const ticker = row.completedById!;
-    await tx.execute(sql`select pg_advisory_xact_lock(hashtext('hemmafix:coins:' || ${ticker}))`);
-    const after = (await balanceOf(actor.householdId, ticker, tx)) - (row.coins ?? 0);
+    // A tick that gave nothing takes nothing back, and one whose person is gone has no balance.
+    const ticker = row.completedById;
+    const given = row.coins ?? 0;
     let debt: UndoDebt | undefined;
-    if (after < 0) {
-      const [who] = await tx.select({ name: user.name }).from(user).where(eq(user.id, ticker));
-      debt = { own: ticker === actor.userId, name: (who?.name ?? "").split(" ")[0] ?? "", balance: after };
-      if (!confirmDebt) return { confirm: debt };
+    if (ticker && given > 0) {
+      await tx.execute(sql`select pg_advisory_xact_lock(hashtext('hemmafix:coins:' || ${ticker}))`);
+      const after = (await balanceOf(actor.householdId, ticker, tx)) - given;
+      if (after < 0) {
+        const [who] = await tx.select({ name: user.name }).from(user).where(eq(user.id, ticker));
+        debt = { own: ticker === actor.userId, name: (who?.name ?? "").split(" ")[0] ?? "", balance: after };
+        if (!confirmDebt) return { confirm: debt };
+      }
     }
 
     await tx

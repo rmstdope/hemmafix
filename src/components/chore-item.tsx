@@ -112,7 +112,8 @@ export function ChoreItem({
               className="size-11 shrink-0 rounded-full"
               ref={undoButton}
               aria-label={`${t.title}: ångra klar`}
-              onClick={() => run(() => uncompleteInstance(t.id), () => setHidden(true))}
+              // No optimistic hide: a spent tick asks first, and its row must stay where it is until the answer.
+              onClick={() => run(() => uncompleteInstance(t.id))}
             >
               <RotateCcw />
             </Button>

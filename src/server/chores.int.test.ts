@@ -235,9 +235,20 @@ describe("uncompleteInstance when the coins are spent", () => {
     const a = await tickAs(f.child, "A", 100);
     const b = await tickAs(f.child, "B", 50);
     await buyLook(f.child, "coin", "silver");
-    await uncompleteInstance(f.child, b, { confirmDebt: true });
-    expect(await getCoinTotal(f.child)).toBe(0);
-    expect(await uncompleteInstance(f.child, a)).toEqual({ confirm: { own: true, name: "Bo", balance: -100 } });
+    expect(await uncompleteInstance(f.child, a, { confirmDebt: true })).toEqual({
+      debt: { own: true, name: "Bo", balance: -50 },
+    });
+    expect(await uncompleteInstance(f.child, b)).toEqual({ confirm: { own: true, name: "Bo", balance: -100 } });
+  });
+
+  it("does not ask about a tick that gave no coins, even while below zero", async () => {
+    const a = await tickAs(f.child, "A", 100);
+    await buyLook(f.child, "coin", "silver");
+    const free = await tickAs(f.child, "Gratis", 0);
+    await uncompleteInstance(f.child, a, { confirmDebt: true });
+    expect(await getCoinTotal(f.child)).toBe(-100);
+    expect(await uncompleteInstance(f.child, free)).toBeUndefined();
+    expect(await getCoinTotal(f.child)).toBe(-100);
   });
 
   it("never refuses a confirmed undo, even when the balance has recovered", async () => {
