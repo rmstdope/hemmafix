@@ -44,9 +44,8 @@ describe("verify-app reset", () => {
     await verifyApp("status");
     const sql = postgres(databaseUrl(scratch), { max: 1 });
     try {
-      const [home] = await sql`select id from household limit 1`;
-      const homeId = home?.id ?? (await sql`insert into household (name) values ('Hemma') returning id`)[0]!.id;
-      const [l] = await sql`insert into list (household_id, name) values (${homeId}, 'Ölkväll') returning id`;
+      const [home] = await sql`insert into household (name) values ('Hemma') returning id`;
+      const [l] = await sql`insert into list (household_id, name) values (${home!.id}, 'Ölkväll') returning id`;
       await sql`insert into list_item (list_id, text, rank) values (${l!.id}, 'Chips', 1)`;
       expect(JSON.parse(await verifyApp("status")).lists).toBe("1");
 
