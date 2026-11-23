@@ -32,7 +32,7 @@ export async function getLooks(actor: Actor): Promise<MyLooks> {
 
 type Executor = Pick<typeof db, "select" | "update" | "insert">;
 
-async function use(tx: Executor, actor: Actor, kind: LookKind, key: string) {
+async function selectLook(tx: Executor, actor: Actor, kind: LookKind, key: string) {
   await tx
     .update(membership)
     .set({ [COLUMN[kind]]: key })
@@ -60,7 +60,7 @@ export async function buyLook(actor: Actor, kind: string, key: string) {
     await tx
       .insert(lookPurchase)
       .values({ householdId: actor.householdId, userId: actor.userId, kind: look.kind, key: look.key, price: look.price });
-    await use(tx, actor, look.kind, look.key);
+    await selectLook(tx, actor, look.kind, look.key);
   });
 }
 
@@ -71,5 +71,5 @@ export async function chooseLook(actor: Actor, kind: string, key: string) {
   if (look.price > 0 && (await ownedBy(db, actor, look.kind, look.key)).length === 0) {
     throw new UserError("Du äger inte det utseendet.");
   }
-  await use(db, actor, look.kind, look.key);
+  await selectLook(db, actor, look.kind, look.key);
 }
