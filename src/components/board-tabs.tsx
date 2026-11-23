@@ -67,7 +67,7 @@ export function BoardTabs({
               tabIndex={selected ? 0 : -1}
               onClick={() => choose(t.key)}
               className={cn(
-                "flex min-h-12 min-w-0 flex-1 flex-col items-center justify-center border-b-2 px-0.5 text-sm leading-tight text-muted-foreground outline-none focus-visible:ring-3 focus-visible:ring-ring/50",
+                "flex min-h-12 min-w-0 flex-1 flex-col items-center justify-center border-b-2 px-0 text-[13px] leading-tight text-muted-foreground outline-none focus-visible:ring-3 focus-visible:ring-ring/50",
                 selected ? "border-foreground font-bold text-foreground" : "border-transparent",
               )}
             >

@@ -183,6 +183,11 @@ test("all five tabs fit across a narrow phone", async ({ page, context }) => {
     expect(box.x).toBeGreaterThanOrEqual(0);
     expect(box.x + box.width).toBeLessThanOrEqual(320);
   }
+  // The names are given in full, never cut off with an ellipsis (Imorgon is the widest, and bold when open).
+  await tab(page, /^Imorgon,/).click();
+  for (const name of await tabs(page).getByRole("tab").locator("span:first-child").all()) {
+    expect(await name.evaluate((el) => el.scrollWidth <= el.clientWidth)).toBe(true);
+  }
 });
 
 test("the filter panel: labels, applies at once, badge and chips, Rensa filter, Esc", async ({ page, context }) => {
@@ -290,4 +295,27 @@ test("a task added in the sheet appears in its tab", async ({ page, context }) =
   await expect(tab(page, /^Imorgon,/)).toHaveText("Imorgon1");
   await tab(page, /^Imorgon,/).click();
   await expect(item(page, "Torka bänken")).toBeVisible();
+});
+
+test("in a home without rooms the sheet asks for rooms first, and Avbryt closes it", async ({ page, context }) => {
+  await logIn(context, "anna", "adult");
+  await page.goto("/");
+  const plus = page.getByRole("button", { name: "Ny uppgift" });
+  await plus.click();
+  const dialog = page.getByRole("dialog", { name: "Ny uppgift" });
+  await expect(dialog.getByText("Varje uppgift hör till ett rum. Lägg till hemmets rum först.")).toBeVisible();
+  await dialog.getByRole("button", { name: "Avbryt" }).click();
+  await expect(dialog).toBeHidden();
+  await expect(plus).toBeFocused();
+});
+
+test("Esc closes the filter panel even when focus has moved into the list", async ({ page, context }) => {
+  await logIn(context, "anna", "adult");
+  await seedBoard();
+  await page.goto("/");
+  await page.getByRole("button", { name: "Filtrera" }).click();
+  await expect(page.getByRole("combobox", { name: "Rum" })).toBeVisible();
+  await item(page, "Diska").getByRole("button", { name: "Markera som klar" }).focus();
+  await page.keyboard.press("Escape");
+  await expect(page.getByRole("combobox", { name: "Rum" })).toBeHidden();
 });

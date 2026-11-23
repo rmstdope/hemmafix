@@ -2,7 +2,7 @@
 
 import { ListFilter, X } from "lucide-react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { useId, useRef, useState, useTransition, type KeyboardEvent, type ReactNode } from "react";
+import { useEffect, useId, useRef, useState, useTransition, type ReactNode } from "react";
 import { activeFilters, boardQuery, parseTab } from "@/lib/board-tabs";
 import { cn } from "@/lib/utils";
 import { RoomOptions } from "./room-options";
@@ -51,9 +51,10 @@ function useGo(initial: { place: string; vem: string }) {
   const [current, setCurrent] = useState(initial);
   // ...until the server's answer changes what the filter is (a chip removed it, another change landed).
   const [seen, setSeen] = useState(initial);
+  // While a change of ours is still on its way the props are behind it, so they are not taken as news.
   if (seen.place !== initial.place || seen.vem !== initial.vem) {
     setSeen(initial);
-    setCurrent(initial);
+    if (!pending) setCurrent(initial);
   }
   const go = (patch: Partial<typeof current>) => {
     const next = { ...current, ...patch };
@@ -79,15 +80,18 @@ export function FilterHeader(props: Props & { title: string; subtitle?: string; 
     setOpen(false);
     button.current?.focus();
   };
-  const onKeyDown = (e: KeyboardEvent) => {
-    if (e.key === "Escape" && open) {
-      e.stopPropagation();
-      close();
-    }
-  };
+  // Esc closes the panel wherever focus is.
+  useEffect(() => {
+    if (!open) return;
+    const onKeyDown = (e: globalThis.KeyboardEvent) => {
+      if (e.key === "Escape" && !e.defaultPrevented) close();
+    };
+    document.addEventListener("keydown", onKeyDown);
+    return () => document.removeEventListener("keydown", onKeyDown);
+  }, [open]);
 
   return (
-    <div onKeyDown={onKeyDown}>
+    <div>
       <header className="mb-3 flex items-center justify-between gap-2">
         <div className="min-w-0">
           <h1 className="text-xl font-semibold">{title}</h1>
