@@ -362,3 +362,28 @@ describe("0013: daily chest", () => {
     ).rejects.toThrow();
   });
 });
+
+describe("0014: week recap", () => {
+  beforeEach(reset);
+
+  it("only adds a table, so the previous release's ticks and undos keep working", async () => {
+    await migrateUpTo(sql, "0013_daily_chest");
+    const before = await sql`select table_name from information_schema.tables where table_schema = 'public'`;
+    const [home] = await sql`insert into household (name) values ('Hemma') returning id`;
+    await sql`insert into "user" (id, name, email, email_verified) values ('a', 'Anna', 'a@example.com', true)`;
+    await sql`insert into floor (household_id, name, position) values (${home!.id}, '1', 1)`;
+    const [r] = await sql`insert into room (household_id, floor_id, name)
+      select ${home!.id}, id, 'Kök' from floor returning id`;
+    const [c] = await sql`insert into chore (household_id, room_id, title) values (${home!.id}, ${r!.id}, 'Diska') returning id`;
+    await sql`insert into chore_instance (chore_id, household_id) values (${c!.id}, ${home!.id})`;
+
+    await migrateUpTo(sql, "0014_awesome_frank_castle");
+
+    const after = await sql`select table_name from information_schema.tables where table_schema = 'public'`;
+    const added = after.map((t) => t.table_name).filter((n) => !before.some((b) => b.table_name === n));
+    expect(added).toEqual(["week_recap_seen"]);
+    await sql`update chore_instance set completed_at = now(), completed_by_id = 'a'`;
+    await sql`update chore_instance set completed_at = null, completed_by_id = null`;
+    expect(await sql`select count(*)::int as n from chore_instance where completed_at is null`).toEqual([{ n: 1 }]);
+  });
+});

@@ -497,6 +497,18 @@ export const highFive = pgTable(
 );
 
 /**
+ * The newest week (its Monday) whose "Din vecka" sheet a person has been through, one row each.
+ * The first row is made on their first open, which is why the sheet never shows in the first week.
+ */
+export const weekRecapSeen = pgTable("week_recap_seen", {
+  userId: text("user_id")
+    .primaryKey()
+    .references(() => user.id, { onDelete: "cascade" }),
+  weekStart: date("week_start", { mode: "string" }).notNull(),
+  seenAt: timestamp("seen_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+/**
  * A routine: tasks that are usually done together ("Städa badrum"). A template only: a task in
  * a routine is a name, and changing or removing the routine never touches tasks in the home.
  */

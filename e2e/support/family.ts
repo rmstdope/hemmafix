@@ -179,11 +179,11 @@ export async function seedChore(opts: {
 }
 
 /** Adds a one-off task that `completedById` has already ticked off (now, unless given). */
-export async function seedDone(opts: { title: string; roomId: string; completedById: string; completedAt?: Date }) {
+export async function seedDone(opts: { title: string; roomId: string; completedById: string; completedAt?: Date; coins?: number }) {
   const c = await seedChore({ title: opts.title, roomId: opts.roomId, recurrence: null });
   await db
     .update(schema.choreInstance)
-    .set({ completedById: opts.completedById, completedAt: opts.completedAt ?? new Date() })
+    .set({ completedById: opts.completedById, completedAt: opts.completedAt ?? new Date(), ...(opts.coins === undefined ? {} : { coins: opts.coins }) })
     .where(sql`${schema.choreInstance.choreId} = ${c.id}`);
   return c;
 }

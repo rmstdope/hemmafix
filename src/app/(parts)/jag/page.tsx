@@ -1,10 +1,12 @@
 import { Suspense } from "react";
 import { LevelCard } from "@/components/jag/level-card";
+import { WeekCard } from "@/components/jag/week-card";
 import { JagParts } from "@/components/jag/jag-parts";
 import { LiveUpdates } from "@/components/live-updates";
 import { PageCorner } from "@/components/page-corner";
 import { getHousehold, getLifetimeCoins } from "@/server/chores";
 import { requireMember } from "@/server/dal";
+import { getWeekCard } from "@/server/weeks";
 
 export const metadata = { title: "Jag – Hemmafix" };
 
@@ -20,7 +22,11 @@ export default function JagPage() {
 
 async function Jag() {
   const member = await requireMember();
-  const [home, lifetimeCoins] = await Promise.all([getHousehold(member.householdId), getLifetimeCoins(member)]);
+  const [home, lifetimeCoins, week] = await Promise.all([
+    getHousehold(member.householdId),
+    getLifetimeCoins(member),
+    getWeekCard(member),
+  ]);
   return (
     <>
       <LiveUpdates />
@@ -33,7 +39,14 @@ async function Jag() {
           <PageCorner />
         </div>
       </header>
-      <JagParts framsteg={<LevelCard name={member.name} image={member.image} lifetimeCoins={lifetimeCoins} />} />
+      <JagParts
+        framsteg={
+          <>
+            <WeekCard now={week.now} before={week.before} />
+            <LevelCard name={member.name} image={member.image} lifetimeCoins={lifetimeCoins} />
+          </>
+        }
+      />
     </>
   );
 }
