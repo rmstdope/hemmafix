@@ -89,3 +89,18 @@ export function formatLastUsed(at: Date | null, now: Date): string {
   if (day === addDays(today, -1)) return `i går ${formatTime(at)}`;
   return formatConnectedDate(at);
 }
+
+const tabWeekday = new Intl.DateTimeFormat("sv-SE", { weekday: "long", timeZone: "UTC" });
+const tabDayLong = new Intl.DateTimeFormat("sv-SE", { weekday: "long", day: "numeric", month: "long", timeZone: "UTC" });
+const capitalised = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
+
+/** A day as a tab names it: "Ons 25", "Tor 26" (Intl's own short form of torsdag is "tors"). */
+export function formatTabDay(day: string): string {
+  const date = parse(day);
+  return `${capitalised(tabWeekday.format(date).slice(0, 3))} ${date.getUTCDate()}`;
+}
+
+/** The same day read aloud: "Onsdag 25 november". */
+export function formatTabDayLong(day: string): string {
+  return capitalised(tabDayLong.format(parse(day)));
+}

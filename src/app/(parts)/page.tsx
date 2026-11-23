@@ -1,12 +1,12 @@
-import { Suspense } from "react";
-import { AddChoreForm } from "@/components/add-chore-form";
-import { BoardFilters } from "@/components/board-filters";
+import { Suspense, type ReactNode } from "react";
+import { AddChoreSheet } from "@/components/add-chore-sheet";
+import { BoardTabs } from "@/components/board-tabs";
+import { FilterChips, FilterHeader } from "@/components/board-filters";
 import { ChoreItem } from "@/components/chore-item";
 import { LiveUpdates } from "@/components/live-updates";
-import { DueGroupSection } from "@/components/home/due-group";
 import { PageCorner } from "@/components/page-corner";
+import { boardTabs, parseTab, splitByTab, type TabKey } from "@/lib/board-tabs";
 import { todayIso } from "@/lib/dates";
-import { groupByDue } from "@/lib/due-groups";
 import { can } from "@/lib/permissions";
 import { boardFilter } from "@/lib/validation";
 import { requireMember } from "@/server/dal";
@@ -18,7 +18,7 @@ export const metadata = { title: "Uppgifter – Hemmafix" };
 
 export default function Home({ searchParams }: PageProps<"/">) {
   return (
-    <main className="mx-auto w-full max-w-2xl flex-1 px-4 pt-4 pb-4">
+    <main className="mx-auto w-full max-w-2xl flex flex-1 flex-col px-4 pt-4 pb-4">
       <Suspense fallback={<BoardSkeleton />}>
         <Board searchParams={searchParams} />
       </Suspense>
@@ -52,92 +52,100 @@ async function Board({ searchParams }: { searchParams: PageProps<"/">["searchPar
   const open = await listOpenInstances(member, filter);
   const filtered = Boolean(filter.roomId || filter.floorId || filter.who);
   const showFloors = floors.length > 1;
+  const split = splitByTab(open, today);
+  const tabs = boardTabs(
+    today,
+    { nu: split.nu.length, d1: split.d1.length, d2: split.d2.length, d3: split.d3.length, senare: split.senare.length },
+    split.nu.some((t) => t.dueDate !== null && t.dueDate < today),
+  );
+  const filterProps = {
+    floors,
+    rooms,
+    members,
+    currentUserId: member.userId,
+    roomId: filter.roomId,
+    floorId: filter.floorId,
+    who: filter.who,
+  };
+
+  const emptyText = (key: TabKey) =>
+    filtered
+      ? "Inga uppgifter här."
+      : key === "nu"
+        ? "Inget att göra just nu 🎉"
+        : key === "senare"
+          ? "Inget planerat längre fram."
+          : "Inget att göra den här dagen.";
+  const list = (key: TabKey, items: typeof open, showDue: (dueDate: string | null) => boolean): ReactNode =>
+    items.length === 0 ? (
+      <p className="rounded-xl border border-dashed p-6 text-center text-muted-foreground">{emptyText(key)}</p>
+    ) : (
+      <ul className="space-y-2" aria-label={tabs.find((t) => t.key === key)?.ariaLabel}>
+        {items.map((t) => (
+          <ChoreItem
+            key={t.id}
+            instance={t}
+            members={members}
+            currentUserId={member.userId}
+            today={today}
+            canManage={isAdult}
+            canUndo={false}
+            showDue={showDue(t.dueDate)}
+            showFloors={showFloors}
+            floors={floors}
+            rooms={rooms}
+          />
+        ))}
+      </ul>
+    );
+
+  const panels: Record<TabKey, ReactNode> = {
+    nu: (
+      <>
+        {list("nu", split.nu, (d) => d !== null && d < today)}
+        {completed.length > 0 && (
+          <details className="mt-8">
+            <summary className="cursor-pointer py-2 text-sm text-muted-foreground">
+              Klart senaste veckan ({completed.length})
+            </summary>
+            <ul className="mt-2 space-y-2" aria-label="Klart">
+              {completed.map((t) => (
+                <ChoreItem
+                  key={t.id}
+                  instance={t}
+                  members={members}
+                  currentUserId={member.userId}
+                  today={today}
+                  canManage={false}
+                  canUndo={canUndo(member, t)}
+                  showDue
+                  showFloors={showFloors}
+                  floors={floors}
+                  rooms={rooms}
+                />
+              ))}
+            </ul>
+          </details>
+        )}
+      </>
+    ),
+    imorgon: list("imorgon", split.d1, () => false),
+    d2: list("d2", split.d2, () => false),
+    d3: list("d3", split.d3, () => false),
+    senare: list("senare", split.senare, () => true),
+  };
 
   return (
     <>
       <LiveUpdates />
-      <header className="mb-4 flex items-center justify-between gap-2">
-        <div className="min-w-0 [&>p]:truncate">
-          <h1 className="text-xl font-semibold">Uppgifter</h1>
-          <p className="text-sm text-muted-foreground">{home?.name}</p>
-        </div>
+      <FilterHeader {...filterProps} title="Uppgifter" subtitle={home?.name}>
         <div className="sm:hidden">
           <PageCorner />
         </div>
-      </header>
-
-      {isAdult && <AddChoreForm floors={floors} rooms={rooms} routines={routines} members={members} currentUserId={member.userId} today={today} />}
-
-      <BoardFilters
-        floors={floors}
-        rooms={rooms}
-        members={members}
-        currentUserId={member.userId}
-        roomId={filter.roomId}
-        floorId={filter.floorId}
-        who={filter.who}
-      />
-
-      {open.length === 0 ? (
-        <p className="rounded-xl border border-dashed p-6 text-center text-muted-foreground">
-          {filtered ? "Inga uppgifter här." : "Inget att göra just nu 🎉"}
-        </p>
-      ) : (
-        <div role="group" aria-label="Att göra">
-          {groupByDue(open, today).map((g) => (
-            <DueGroupSection
-              key={g.key}
-              groupKey={g.key}
-              label={g.label}
-              count={g.items.length}
-              overdue={g.overdue}
-              today={today}
-            >
-              <ul className="space-y-2" aria-label={g.label}>
-                {g.items.map((t) => (
-                  <ChoreItem
-                    key={t.id}
-                    instance={t}
-                    members={members}
-                    currentUserId={member.userId}
-                    today={today}
-                    canManage={isAdult}
-                    canUndo={false}
-                    showDue={g.showDate}
-                    showFloors={showFloors}
-                    floors={floors}
-                    rooms={rooms}
-                  />
-                ))}
-              </ul>
-            </DueGroupSection>
-          ))}
-        </div>
-      )}
-
-      {completed.length > 0 && (
-        <details className="mt-8">
-          <summary className="cursor-pointer py-2 text-sm text-muted-foreground">
-            Klart senaste veckan ({completed.length})
-          </summary>
-          <ul className="mt-2 space-y-2" aria-label="Klart">
-            {completed.map((t) => (
-              <ChoreItem
-                key={t.id}
-                instance={t}
-                members={members}
-                currentUserId={member.userId}
-                today={today}
-                canManage={false}
-                canUndo={canUndo(member, t)}
-                showDue
-                showFloors={showFloors}
-                floors={floors}
-                rooms={rooms}
-              />
-            ))}
-          </ul>
-        </details>
+      </FilterHeader>
+      <BoardTabs tabs={tabs} initial={parseTab(first(params.flik))} panels={panels} underTabs={<FilterChips {...filterProps} />} />
+      {isAdult && (
+        <AddChoreSheet floors={floors} rooms={rooms} routines={routines} members={members} currentUserId={member.userId} today={today} />
       )}
     </>
   );
@@ -147,7 +155,7 @@ function BoardSkeleton() {
   return (
     <div className="animate-pulse space-y-3" aria-busy="true" aria-label="Laddar">
       <div className="h-12 rounded-xl bg-muted" />
-      <div className="h-11 rounded-xl bg-muted" />
+      <div className="h-12 border-b" />
       <div className="h-14 rounded-xl bg-muted" />
       <div className="h-14 rounded-xl bg-muted" />
     </div>

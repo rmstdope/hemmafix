@@ -4,7 +4,7 @@ import { household, routine, routineTask } from "../src/db/schema";
 import { db, logIn, seedRooms } from "./support/family";
 import { expect, test } from "./support/test";
 
-const todo = (page: Page) => page.getByRole("group", { name: "Att göra" });
+const todo = (page: Page) => page.getByRole("tabpanel");
 
 async function openForm(page: Page) {
   await page.goto("/");
@@ -38,6 +38,8 @@ test("an adult adds a whole routine to a room as separate tasks", async ({ page,
 
   await expect(page.getByText("5 uppgifter är tillagda")).toBeVisible();
   await expect(page.getByRole("form", { name: "Ny uppgift" })).toHaveCount(0);
+  // Routine tasks have no date, so they are under Senare.
+  await page.getByRole("tab", { name: /^Senare,/ }).click();
   await expect(todo(page).getByRole("listitem")).toHaveCount(5);
   await expect(todo(page).getByRole("listitem").first()).toContainText("Badrum");
 

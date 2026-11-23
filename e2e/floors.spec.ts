@@ -1,3 +1,4 @@
+import { filterSelect } from "./support/board";
 import type { Page } from "@playwright/test";
 import { floors, logIn, seedChore, seedFloor, seedRooms } from "./support/family";
 import { expect, test } from "./support/test";
@@ -68,13 +69,13 @@ test("with several floors, tasks show their floor and can be filtered on a whole
   await seedChore({ title: "Toa uppe", roomId: upper["Badrum"]!.id });
   await seedChore({ title: "Diska", roomId: ground["Kök"]!.id });
   await page.goto("/");
-  const todo = page.getByRole("group", { name: "Att göra" });
+  const todo = page.getByRole("tabpanel");
   const titles = () => todo.getByRole("listitem").locator("p.font-medium");
 
   await expect(todo.getByRole("listitem").filter({ hasText: "Toa uppe" })).toContainText("Badrum · Plan 2");
   await expect(todo.getByRole("listitem").filter({ hasText: "Toa nere" })).toContainText("Badrum · Plan 1");
 
-  const place = page.getByRole("combobox", { name: "Filtrera på rum" });
+  const place = (await filterSelect(page, "Rum"));
   await place.selectOption({ label: "Hela plan 1" });
   await expect(titles()).toHaveText(["Toa nere", "Diska"]);
   await place.selectOption(`room:${upper["Badrum"]!.id}`);
@@ -102,7 +103,7 @@ test("a template leaves the room to the person when the home has two of that roo
   await form.getByRole("combobox", { name: "Fördefinierad uppgift" }).selectOption({ label: "Städa toaletten" });
   await room.selectOption(upper["Badrum"]!.id);
   await form.getByRole("button", { name: "Lägg till" }).click();
-  await expect(page.getByRole("group", { name: "Att göra" })).toContainText("Badrum · Plan 2");
+  await expect(page.getByRole("tabpanel")).toContainText("Badrum · Plan 2");
 });
 
 test("a home with one floor shows rooms without a floor", async ({ page, context }) => {
@@ -111,7 +112,7 @@ test("a home with one floor shows rooms without a floor", async ({ page, context
   await seedChore({ title: "Diska", roomId: rooms["Kök"]!.id });
   expect(await floors()).toHaveLength(1);
   await page.goto("/");
-  const row = page.getByRole("group", { name: "Att göra" }).getByRole("listitem").filter({ hasText: "Diska" });
+  const row = page.getByRole("tabpanel").getByRole("listitem").filter({ hasText: "Diska" });
   await expect(row).toContainText("Kök");
   await expect(row).not.toContainText("Plan");
 });
