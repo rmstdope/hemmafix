@@ -2,21 +2,25 @@ import { pg } from "@/db";
 import { getCurrentMember } from "@/server/dal";
 import { TASKS_CHANNEL } from "@/server/chores";
 
-type Closer = () => void;
+type Closer = (reason?: Error) => void;
 const globalForStreams = globalThis as unknown as { sseClosers?: Set<Closer> };
 
 /**
  * Open event streams never end on their own, so a graceful shutdown would wait
- * for them until the container is killed. On SIGTERM, close them all; browsers
- * reconnect to the next instance (see `retry` below). Next's own handler closes
- * the server alongside this one.
+ * for them until the container is killed. On SIGTERM, end them all with an
+ * abort, which makes Next drop the connection: a stream that merely closed
+ * would leave its connection open for keep-alive, and the browser would
+ * reconnect on it to a server that never finishes closing. Browsers reconnect
+ * to the next instance (see `retry` below). Next's own handler closes the
+ * server alongside this one.
  */
 function openStreams(): Set<Closer> {
   if (!globalForStreams.sseClosers) {
     const closers = new Set<Closer>();
     globalForStreams.sseClosers = closers;
     process.once("SIGTERM", () => {
-      for (const close of closers) close();
+      const shutdown = new DOMException("The server is shutting down", "AbortError");
+      for (const close of closers) close(shutdown);
     });
   }
   return globalForStreams.sseClosers;
@@ -37,14 +41,15 @@ export async function GET(request: Request) {
   let heartbeat: ReturnType<typeof setInterval> | undefined;
   let controllerRef: ReadableStreamDefaultController<Uint8Array> | undefined;
 
-  const close: Closer = () => {
+  const close: Closer = (reason) => {
     if (closed) return;
     closed = true;
     streams.delete(close);
     clearInterval(heartbeat);
     void unlisten?.().catch(() => {});
     try {
-      controllerRef?.close();
+      if (reason) controllerRef?.error(reason);
+      else controllerRef?.close();
     } catch {}
   };
 
@@ -52,7 +57,7 @@ export async function GET(request: Request) {
     async start(controller) {
       controllerRef = controller;
       streams.add(close);
-      request.signal.addEventListener("abort", close);
+      request.signal.addEventListener("abort", () => close());
 
       const send = (chunk: string) => {
         if (closed) return;
@@ -78,7 +83,7 @@ export async function GET(request: Request) {
       heartbeat = setInterval(() => send(": ping\n\n"), 25_000);
       send("retry: 5000\n\n");
     },
-    cancel: close,
+    cancel: () => close(),
   });
 
   return new Response(stream, {
