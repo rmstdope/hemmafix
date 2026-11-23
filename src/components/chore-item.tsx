@@ -1,7 +1,7 @@
 "use client";
 
 import { Check, ChevronDown, Pencil, RotateCcw, Trash2 } from "lucide-react";
-import { useOptimistic, useState, useTransition } from "react";
+import { useOptimistic, useRef, useState, useTransition } from "react";
 import { toast } from "sonner";
 import {
   assignChore,
@@ -13,6 +13,8 @@ import {
   type ActionState,
 } from "@/app/actions";
 import { Button } from "@/components/ui/button";
+import { Modal } from "@/components/lists/modal";
+import { undoDebtText, undoDebtTitle, type UndoDebt } from "@/lib/debt";
 import { joinNames } from "@/lib/high-fives";
 import { DEFAULT_COINS } from "@/lib/coins";
 import { formatDue } from "@/lib/dates";
@@ -65,6 +67,9 @@ export function ChoreItem({
   const [expanded, setExpanded] = useState(false);
   const [editing, setEditing] = useState(false);
   const [showWho, setShowWho] = useState(false);
+  const [asking, setAsking] = useState<UndoDebt | null>(null);
+  const undoButton = useRef<HTMLButtonElement>(null);
+  const cancelUndo = useRef<HTMLButtonElement>(null);
   const [cheered, setCheered] = useOptimistic(highFive?.givenByMe ?? false);
   const completed = t.completedAt !== null;
   const due = completed || !showDue ? null : formatDue(t.dueDate, today);
@@ -84,6 +89,9 @@ export function ChoreItem({
       if (result.error) {
         shower?.failed();
         toast.error(result.error);
+      } else if (result.confirm) {
+        // Nothing was undone: the coins are spent, so the person is asked first.
+        setAsking(result.confirm);
       } else {
         shower?.saved();
         if (result.chestId && result.chestCoins !== undefined) offerChest({ id: result.chestId, coins: result.chestCoins });
@@ -102,6 +110,7 @@ export function ChoreItem({
               variant="secondary"
               size="icon-lg"
               className="size-11 shrink-0 rounded-full"
+              ref={undoButton}
               aria-label={`${t.title}: ångra klar`}
               onClick={() => run(() => uncompleteInstance(t.id), () => setHidden(true))}
             >
@@ -260,6 +269,25 @@ export function ChoreItem({
             <Trash2 /> Ta bort uppgiften
           </Button>
         </div>
+      )}
+      {asking && (
+        <Modal title={undoDebtTitle(asking)} onClose={() => setAsking(null)} focusRef={cancelUndo} returnFocusTo={undoButton}>
+          <p className="mt-2 text-sm text-muted-foreground">{undoDebtText(asking)}</p>
+          <div className="mt-5 flex flex-wrap-reverse justify-end gap-2">
+            <Button ref={cancelUndo} variant="outline" className="min-h-11 grow sm:grow-0" onClick={() => setAsking(null)}>
+              Avbryt
+            </Button>
+            <Button
+              className="min-h-11 grow sm:grow-0"
+              onClick={() => {
+                setAsking(null);
+                run(() => uncompleteInstance(t.id, true), () => setHidden(true));
+              }}
+            >
+              Ångra ändå
+            </Button>
+          </div>
+        </Modal>
       )}
     </li>
   );

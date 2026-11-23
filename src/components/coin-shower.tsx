@@ -20,7 +20,7 @@ import { withStreakBonus } from "@/lib/streak";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { ChestCard } from "./chest-card";
-import { CoinDot, coinPillClass } from "./coin-pill";
+import { CoinDot, pillClassFor } from "./coin-pill";
 import { playClink, unlockSound } from "./coin-sound";
 
 /** What a started shower reports back: whether the tick-off was saved. */
@@ -276,7 +276,7 @@ export function CoinShowerProvider({ children }: { children: ReactNode }) {
         aria-hidden
         data-coin-float={floating ? "" : undefined}
         className={cn(
-          coinPillClass,
+          pillClassFor(total),
           "pointer-events-none fixed right-3.5 z-[55] top-[max(0.75rem,env(safe-area-inset-top))] shadow-lg transition-[opacity,translate] duration-250",
           floating ? "translate-y-0 opacity-100" : "-translate-y-5 opacity-0",
           glow && "ring-3 ring-amber-200",

@@ -10,7 +10,7 @@ import { authClient } from "@/lib/auth-client";
 import { coinsLabel, formatCoins } from "@/lib/coins";
 import { isHemmet, litPart } from "@/lib/parts";
 import { cn } from "@/lib/utils";
-import { coinPillClass, CoinDot } from "./coin-pill";
+import { CoinDot, pillClassFor } from "./coin-pill";
 import { useReportStreakDay, useShownCoins } from "./coin-shower";
 import { setSoundOn, useSoundOn } from "./sound-setting";
 import { unlockSound } from "./coin-sound";
@@ -80,7 +80,7 @@ export function UserMenu({
           aria-label={coinsLabel(coins)}
           data-glow={glow ? "" : undefined}
           className={cn(
-            coinPillClass,
+            pillClassFor(coins),
             "focus-visible:ring-3 focus-visible:ring-ring/50 data-[glow]:ring-3 data-[glow]:ring-amber-200 data-[popup-open]:ring-3 data-[popup-open]:ring-amber-200 dark:data-[glow]:ring-amber-800 dark:data-[popup-open]:ring-amber-800",
           )}
         >

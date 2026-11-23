@@ -324,7 +324,7 @@ describe("the task tools", () => {
   it("names the person when an adult undoes someone else's spent tick", async () => {
     const roomId = await seedKitchen();
     const { instanceId } = await createDiska(roomId);
-    await completeInstance({ userId: "bo", householdId: homeId, role: "child", name: "Bo", image: null }, instanceId);
+    await completeInstance({ userId: "bo", householdId: homeId, role: "child" }, instanceId);
     await db.insert(lookPurchase).values({ householdId: homeId, userId: "bo", kind: "coin", key: "silver", price: 10 });
     expect(said(await taskCall("anna", "angra_avbockning", { instanceId }))).toBe(
       "Diska är inte avbockad längre. Mynten var redan använda, så Bo har nu −10 mynt.",
