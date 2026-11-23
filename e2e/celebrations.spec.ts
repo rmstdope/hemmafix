@@ -143,3 +143,57 @@ test("a badge card fits a 300 px screen", async ({ page, context }) => {
   expect(box.x + box.width).toBeLessThanOrEqual(300);
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth)).toBe(true);
 });
+
+test("two badges at once are two cards, one after the other, and the coins of both arrive", async ({ page, context }) => {
+  await logInWithChestTaken(context, "bo", "child", { badges: "none" });
+  // One room only, so the first tick wins Varje rum as well as Första uppgiften.
+  const rooms = await seedRooms("Kök");
+  await seedChore({ title: "Diska", roomId: rooms["Kök"]!.id, recurrence: null });
+  await page.goto("/");
+  await tick(page, "Diska");
+
+  await expect(badgeCard(page)).toBeVisible({ timeout: 5_000 });
+  await expect(pill(page)).toHaveText("10");
+  const first = await badgeCard(page).locator("p.font-semibold").innerText();
+  await badgeCard(page).getByRole("button", { name: "Fortsätt" }).click();
+  await expect(badgeCard(page)).toBeVisible();
+  await expect(badgeCard(page).locator("p.font-semibold")).not.toHaveText(first);
+  await expect(page.locator("main")).not.toBeFocused();
+  await badgeCard(page).getByRole("button", { name: "Fortsätt" }).click();
+  await expect(badgeCard(page)).toBeHidden();
+  await expect(page.locator("main")).toBeFocused();
+  await expect(pill(page)).toHaveText("60", { timeout: 5_000 });
+});
+
+test("with a filter on, emptying the list is not clearing Nu: no confetti", async ({ page, context }) => {
+  await logInWithChestTaken(context, "bo", "child");
+  const rooms = await seedRooms("Kök", "Badrum");
+  await seedChore({ title: "Diska", roomId: rooms["Kök"]!.id, recurrence: null });
+  await seedChore({ title: "Damma", roomId: rooms["Badrum"]!.id, recurrence: null });
+  await page.goto(`/?rum=${rooms["Kök"]!.id}`);
+  await tick(page, "Diska");
+  await expect(page.getByRole("tabpanel", { name: /^Nu/ }).getByText("Inga uppgifter här.")).toBeVisible();
+  await expect(pill(page)).toHaveText("10", { timeout: 5_000 });
+  await expect(confetti(page)).toHaveCount(0);
+});
+
+test("with less motion a badge still gets its card, without confetti, and its coins still arrive", async ({ page, context }) => {
+  await page.emulateMedia({ reducedMotion: "reduce" });
+  await logInWithChestTaken(context, "bo", "child", { badges: "none" });
+  const rooms = await seedRooms("Kök", "Badrum");
+  await seedChore({ title: "Diska", roomId: rooms["Kök"]!.id, recurrence: null });
+  await page.goto("/");
+  await tick(page, "Diska");
+  await expect(badgeCard(page)).toBeVisible({ timeout: 5_000 });
+  await expect(confetti(page)).toHaveCount(0);
+  await badgeCard(page).getByRole("button", { name: "Fortsätt" }).click();
+  await expect(pill(page)).toHaveText("35", { timeout: 5_000 });
+});
+
+test("two ticks made at once clear Nu once", async ({ page, context }) => {
+  await oneTask(page, context, ["Diska", "Damma"]);
+  await page.getByRole("button", { name: "Diska: markera som klar" }).click();
+  await tick(page, "Damma");
+  await expect(page.getByText("🎉 Allt i Nu är klart!")).toBeVisible();
+  await expect(confetti(page)).toHaveCount(1);
+});

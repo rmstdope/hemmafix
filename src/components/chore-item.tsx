@@ -87,7 +87,9 @@ export function ChoreItem({
   ) =>
     startTransition(async () => {
       // Nu is cleared when this was the last row left in its (unfiltered) Nu list.
+      // Decided when pressed, since a row ticked at the same moment is already gone from the list by the answer.
       const nuList = row?.closest<HTMLElement>("[data-clears-nu]");
+      const lastInNu = nuList !== null && nuList !== undefined && [...nuList.children].every((li) => li === row);
       optimistic?.();
       let result: ActionState;
       try {
@@ -106,7 +108,7 @@ export function ChoreItem({
         shower?.saved();
         if (result.chestId && result.chestCoins !== undefined) offerChest({ id: result.chestId, coins: result.chestCoins });
         if (result.badges || result.levelUp) offerCelebrations({ badges: result.badges ?? [], levelUp: result.levelUp });
-        if (nuList && [...nuList.children].every((li) => li === row)) celebrateNuCleared();
+        if (lastInNu) celebrateNuCleared();
         if (success) toast.success(success);
       }
     });

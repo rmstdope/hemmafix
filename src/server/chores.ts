@@ -248,10 +248,6 @@ export async function deleteChore(actor: Actor, id: string) {
 // Ticking off (everyone)
 // ---------------------------------------------------------------------------
 
-/**
- * Ticks off an open instance. For a recurring task the next instance is created at once,
- * due one interval after today, and assigned to whoever does the task every time.
- */
 /** What a tick-off offers to celebrate: the day's chest, badges just won and a level just reached. */
 export type CompleteReport = {
   chestId: string | null;
@@ -260,6 +256,10 @@ export type CompleteReport = {
   levelUp: { level: number; title: string } | null;
 };
 
+/**
+ * Ticks off an open instance. For a recurring task the next instance is created at once,
+ * due one interval after today, and assigned to whoever does the task every time.
+ */
 export async function completeInstance(
   actor: Actor,
   id: string,
