@@ -1,0 +1,95 @@
+<!doctype html><html lang="sv"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>hf-dll.3 · A shower of coins flies to your total · agreed</title><style>
+body{margin:0;background:#f4f4f5;font-family:system-ui,-apple-system,sans-serif;color:#18181b}
+h1{font-size:18px;margin:16px 20px 0}.sub{margin:4px 20px;color:#555;font-size:14px;max-width:900px}
+.wrap{display:flex;gap:28px;flex-wrap:wrap;padding:20px;align-items:flex-start}
+.cap{font-size:13px;color:#555;margin:6px 0 0;max-width:360px}
+.phone{width:360px;height:600px;background:#fff;border:10px solid #222;border-radius:34px;position:relative;overflow:hidden}
+.desk{width:820px;min-height:420px;background:#fff;border:1px solid #ccc;border-radius:8px;overflow:hidden;position:relative}
+.content{padding:16px;height:100%;box-sizing:border-box;overflow-y:auto}.desk .content{height:auto}
+.float{position:absolute;right:14px;top:12px;z-index:8;box-shadow:0 4px 14px rgba(0,0,0,.18);opacity:0;transform:translateY(-20px);transition:opacity .25s,transform .25s}.float.show{opacity:1;transform:none}
+.toast{position:absolute;left:12px;right:12px;bottom:12px;background:#fff;border:1px solid #fecaca;color:#b91c1c;border-radius:10px;padding:10px 12px;font-size:14px;z-index:9;box-shadow:0 4px 14px rgba(0,0,0,.12)}.desk .content{width:600px;margin:0 auto;padding:16px 0}
+.hdr{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px}
+.hdr .t{font-size:20px;font-weight:600}.hdr .h{font-size:13px;color:#71717a}
+.dtop{display:flex;align-items:center;border-bottom:1px solid #e4e4e7;padding:10px 40px}
+.dtop .t{font-size:18px;font-weight:600}.dtop .sp{flex:1}
+.dtabs{display:flex;gap:4px;margin-left:24px}.dtab{padding:6px 12px;border-radius:8px;font-size:14px;color:#71717a}.dtab.on{background:#f4f4f5;color:#18181b;font-weight:600}
+.right{display:flex;align-items:center;gap:8px}
+.av{width:34px;height:34px;border-radius:50%;background:#a5b4fc;display:flex;align-items:center;justify-content:center;font-size:13px;color:#fff}
+.coin{width:18px;height:18px;border-radius:50%;background:radial-gradient(circle at 35% 35%,#fde68a,#f59e0b 70%,#b45309);box-shadow:inset 0 0 0 1.5px #d97706;display:inline-block;flex:none}
+.pill{display:flex;align-items:center;gap:5px;font-weight:600;font-size:14px;font-variant-numeric:tabular-nums;background:#fef3c7;border:1px solid #fcd34d;border-radius:999px;padding:3px 10px 3px 4px;transition:transform .15s,box-shadow .3s}
+.pill.bump{transform:scale(1.12)}.pill.glow{box-shadow:0 0 0 4px #fde68a}
+.grp{font-size:12px;font-weight:600;color:#71717a;margin:10px 0 6px;text-transform:uppercase;letter-spacing:.03em}
+.row{border:1px solid #e4e4e7;border-radius:12px;padding:10px 12px;margin-bottom:8px;display:flex;gap:10px;align-items:center;font-size:14px;transition:opacity .35s,max-height .35s .2s,padding .35s .2s,margin .35s .2s,border-width .35s .2s;max-height:60px;overflow:hidden;background:#fff}
+.row.gone{opacity:0;max-height:0;padding-top:0;padding-bottom:0;margin:0;border-width:0}
+.box{width:22px;height:22px;border:2px solid #a1a1aa;border-radius:50%;cursor:pointer;flex:none;display:flex;align-items:center;justify-content:center;font-size:12px;color:#fff}
+.box.on{background:#16a34a;border-color:#16a34a}
+.meta{font-size:12px;color:#71717a;margin-left:auto}
+.done .box{background:#e4e4e7;border-color:#e4e4e7;color:#52525b;cursor:pointer}
+.fly{position:absolute;width:16px;height:16px;border-radius:50%;background:radial-gradient(circle at 35% 35%,#fde68a,#f59e0b 70%,#b45309);box-shadow:inset 0 0 0 1.5px #d97706,0 1px 3px rgba(0,0,0,.2);pointer-events:none;z-index:9}
+.ctl{margin:0 20px;display:flex;gap:10px;align-items:center;font-size:14px}
+button{font:inherit;padding:6px 12px;border-radius:8px;border:1px solid #d4d4d8;background:#fff;cursor:pointer}
+.note{background:#fff7d6;border:1px solid #e8d27a;border-radius:8px;padding:8px 10px;font-size:13px;max-width:820px;margin:10px 20px}
+</style></head><body>
+<h1>hf-dll.3 · A shower of coins flies to your total · agreed</h1><p class="sub">Ticking a task off sends five coins from the row to the gold pill. Each one clinks and the number climbs as it lands. On a phone scrolled down, a copy of the pill slides in to catch them. Undoing is quiet. Turn on the sound to hear the clinks.</p>
+<div class="ctl"><button onclick="reset()">Reset</button><label><input type="checkbox" onchange="CFG.reduced=this.checked"> Reduce motion</label><label><input type="checkbox" onchange="CFG.fail=this.checked"> Saving fails (try “Dammsuga vardagsrummet”)</label><span>Tap a round box to tick that task off. </span></div>
+<div class="note">The phone starts scrolled down so the pill is out of sight; scroll up to tick a task with the pill in view. Desktop shows the ordinary case. A task worth 0 coins sends nothing: no coins, no sound, no announcement. ↺ under “Klart senaste veckan” takes the coins back with no animation. The tick-boxes show the agreed behaviour; the rest of the row is drawn only roughly, and the "N mynt" on each row is there only to make the drawing readable (showing it is not part of this work).</div>
+<p id="sr" class="sub" style="font-style:italic;min-height:18px"></p><div class="wrap">
+<div><div class="phone" id="P"><div class="content"><div class="hdr"><div><div class="t">Uppgifter</div><div class="h">Familjen K</div></div><div class="right"><div class="pill"><span class="coin"></span><span class="n">40</span></div><div class="av">HK</div></div></div><div class="list"></div></div></div><p class="cap">Phone</p></div>
+<div><div class="desk" id="D"><div class="dtop"><div class="t">Hemmafix</div><div class="dtabs"><div class="dtab on">Uppgifter</div><div class="dtab">Listor</div></div><div class="sp"></div><div class="right"><div class="pill"><span class="coin"></span><span class="n">40</span></div><div class="av">HK</div></div></div><div class="content"><div class="list"></div></div></div><p class="cap">Desktop: the coins cross the page to the top strip.</p></div>
+</div>
+<script>
+const CFG={dur:650,tally:'each',reduced:false,reducedGlow:true,undo:'quiet',count:c=>5,scrolled:'float',fail:false};
+const TASKS=CFG.scrolled?[["Torka av köksbänken","Kök",10],["Byta handdukar","Badrum",10],["Plocka undan leksaker","Barnrum",10],["Mata katten","Kök",10],["Sortera tvätten","Tvättstuga",10],["Bära ut soporna","Kök",10],["Dammsuga vardagsrummet","Vardagsrum",30],["Vattna blommorna","Hall",0],["Tömma diskmaskinen","Kök",10],["Putsa speglarna","Badrum",10]]:[["Bära ut soporna","Kök",10],["Dammsuga vardagsrummet","Vardagsrum",30],["Vattna blommorna","Hall",0],["Tömma diskmaskinen","Kök",10]];
+const fmt=n=>n.toLocaleString('sv-SE');
+function build(root){
+  const L=root.querySelector('.list');L.innerHTML='<div class="grp">Idag</div>';
+  TASKS.forEach(([t,r,c])=>{const d=document.createElement('div');d.className='row';d.innerHTML=`<div class="box"></div><div>${t}<div class="meta" style="margin:0">${r}</div></div><div class="meta">${c} mynt</div>`;d.dataset.c=c;d.querySelector('.box').onclick=e=>tick(root,d,e.target);L.appendChild(d);});
+  if(CFG.undo){const g=document.createElement('div');g.innerHTML='<div class="grp">Klart senaste veckan</div>';L.appendChild(g);
+    const d=document.createElement('div');d.className='row done';d.innerHTML='<div class="box">↺</div><div style="color:#71717a">Bädda sängen</div><div class="meta">10 mynt</div>';d.querySelector('.box').onclick=e=>undo(root,d,e.target);L.appendChild(d);}
+  if(CFG.scrolled&&root.id==='P'){setTimeout(()=>{root.querySelector('.content').scrollTop=330;},50);}
+  root._n=40;root.querySelectorAll('.n').forEach(x=>x.textContent=fmt(40));
+}
+let AC;function clink(){try{AC=AC||new AudioContext();const o=AC.createOscillator(),v=AC.createGain();o.type='triangle';o.frequency.setValueAtTime(1760,AC.currentTime);o.frequency.exponentialRampToValueAtTime(2637,AC.currentTime+.05);v.gain.setValueAtTime(.12,AC.currentTime);v.gain.exponentialRampToValueAtTime(.001,AC.currentTime+.18);o.connect(v);v.connect(AC.destination);o.start();o.stop(AC.currentTime+.2);}catch(e){}}
+function say(root,c){const l=document.getElementById('sr');l.textContent='Screen reader hears: “Du fick '+c+' mynt”';}
+function setN(root,n){root._n=n;root.querySelector('.n').textContent=fmt(n);}
+function center(root,el){const a=root.getBoundingClientRect(),b=el.getBoundingClientRect();return [b.left-a.left+b.width/2,b.top-a.top+b.height/2];}
+function count(c){return CFG.count(c);}
+function tick(root,row,box){
+  box.classList.add('on');box.textContent='✓';
+  const c=+row.dataset.c, pill=root.querySelector('.pill'), coinEl=pill.querySelector('.coin');
+  setTimeout(()=>row.classList.add('gone'),150);
+  if(CFG.reduced){ if(c>0){setN(root,root._n+c); clink();say(root,c);if(CFG.reducedGlow){pill.classList.add('glow');setTimeout(()=>pill.classList.remove('glow'),600);}} return;}
+  const k=c>0?count(c):0; if(!k)return;
+  if(CFG.wait&&!row._w){row._w=1;if(!(CFG.fail&&c===30))setTimeout(()=>{CFG.reduced=false;tickCoins(root,row,box);},700);else setTimeout(()=>{row.classList.remove('gone');box.classList.remove('on');box.textContent='';const t=document.createElement('div');t.className='toast';t.textContent='Det gick inte att bocka av uppgiften. Försök igen.';root.appendChild(t);setTimeout(()=>t.remove(),2600);},1500);return;}
+  tickCoins(root,row,box);}
+function tickCoins(root,row,box){const c=+row.dataset.c, pill=root.querySelector('.pill'), coinEl=pill.querySelector('.coin'); const k=count(c); say(root,c);
+  let target=coinEl, fl=null; const off=root.id==='P'&&CFG.scrolled&&coinEl.getBoundingClientRect().bottom<root.getBoundingClientRect().top+10;
+  if(off&&CFG.scrolled==='none'){setN(root,root._n+c);return;}
+  if(off&&CFG.scrolled==='float'){fl=root.querySelector('.float');if(!fl){fl=pill.cloneNode(true);fl.classList.add('float');root.appendChild(fl);}fl.querySelector('.n').textContent=fmt(root._n);requestAnimationFrame(()=>fl.classList.add('show'));target=fl.querySelector('.coin');}
+  const [x0,y0]=center(root,box);let [x1,y1]=center(root,target); if(off&&CFG.scrolled==='edge'){y1=-12;}
+  const realSet=setN; const setNN=(r,n)=>{realSet(r,n);if(fl)fl.querySelector('.n').textContent=fmt(n);};
+  if(CFG.fail&&!CFG.wait&&row.dataset.c==='30'){setTimeout(()=>{setN(root,root._n-c);row.classList.remove('gone');box.classList.remove('on');box.textContent='';const t=document.createElement('div');t.className='toast';t.textContent='Det gick inte att bocka av uppgiften. Försök igen.';root.appendChild(t);setTimeout(()=>t.remove(),2600);},1500);} const start=root._n; let landed=0;
+  for(let i=0;i<k;i++){
+    const f=document.createElement('div');f.className='fly';root.appendChild(f);
+    const dx=(Math.random()-.5)*30, delay=i*90, dur=CFG.dur;
+    const cx=(x0+x1)/2+dx-60, cy=Math.min(y0,y1)-40;
+    f.style.left=x0-8+'px';f.style.top=y0-8+'px';
+    const t0=performance.now()+delay;
+    (function step(now){const t=Math.min(1,Math.max(0,(now-t0)/dur));const e=t<.5?2*t*t:1-Math.pow(-2*t+2,2)/2;
+      const x=(1-e)*(1-e)*x0+2*(1-e)*e*cx+e*e*x1, y=(1-e)*(1-e)*y0+2*(1-e)*e*cy+e*e*y1;
+      f.style.left=x-8+'px';f.style.top=y-8+'px';f.style.transform=`scale(${1-.25*e})`;
+      if(t<1)requestAnimationFrame(step);else{f.remove();landed++;clink();(fl||pill).classList.add('bump');setTimeout(()=>pill.classList.remove('bump'),120);
+        if(CFG.tally==='each')setNN(root,start+Math.round(c*landed/k)); else if(landed===k)setNN(root,start+c);
+        if(landed===k&&fl)setTimeout(()=>fl.classList.remove('show'),900);}})(performance.now());
+  }
+}
+function undo(root,row,box){
+  const pill=root.querySelector('.pill');
+  if(CFG.undo==='quiet'){setN(root,Math.max(0,root._n-10));row.classList.add('gone');return;}
+  const [x0,y0]=center(root,pill.querySelector('.coin')),[x1,y1]=center(root,box);setN(root,Math.max(0,root._n-10));
+  const f=document.createElement('div');f.className='fly';root.appendChild(f);const t0=performance.now();
+  (function step(now){const t=Math.min(1,(now-t0)/600);f.style.left=x0+(x1-x0)*t-8+'px';f.style.top=y0+(y1-y0)*t-8+'px';f.style.opacity=1-t*.6;if(t<1)requestAnimationFrame(step);else{f.remove();row.classList.add('gone');}})(t0);
+}
+function reset(){build(P);build(D);}
+reset();
+</script></body></html>
