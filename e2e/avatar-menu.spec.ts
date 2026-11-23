@@ -34,6 +34,9 @@ test("Esc and a press outside close the menu; Esc gives focus back to the pictur
   await expect(page.getByRole("menu")).toHaveCount(0);
   await expect(menuButton(page)).toBeFocused();
   await menuButton(page).click();
+  // Press outside only once the menu is open, as a person would; pressed a few milliseconds after the
+  // tap, the press can land before the menu listens for it (a slow CI runner showed this).
+  await expect(page.getByRole("menu")).toBeVisible();
   await page.mouse.click(5, 300);
   await expect(page.getByRole("menu")).toHaveCount(0);
   await expect(page).toHaveURL(/\/$/);
