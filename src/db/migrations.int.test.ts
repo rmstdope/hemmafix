@@ -255,3 +255,27 @@ describe("0009: shared lists", () => {
     expect(await sql`select count(*)::int as n from list`).toEqual([{ n: 0 }]);
   });
 });
+
+describe("0010: coins", () => {
+  beforeEach(reset);
+
+  it("only adds a nullable column, so the previous release keeps working and old ticks earn nothing", async () => {
+    await migrateUpTo(sql, "0009_lists");
+    const [home] = await sql`insert into household (name) values ('Hemma') returning id`;
+    await sql`insert into "user" (id, name, email, email_verified) values ('a', 'Anna', 'a@example.com', true)`;
+    await sql`insert into floor (household_id, name, position) values (${home!.id}, '1', 1)`;
+    const [r] = await sql`insert into room (household_id, floor_id, name)
+      select ${home!.id}, id, 'Kök' from floor returning id`;
+    const [c] = await sql`insert into chore (household_id, room_id, title) values (${home!.id}, ${r!.id}, 'Diska') returning id`;
+    await sql`insert into chore_instance (chore_id, household_id, completed_at, completed_by_id)
+      values (${c!.id}, ${home!.id}, now(), 'a')`;
+
+    await migrateUpTo(sql, "0010_coins");
+
+    expect(await sql`select coins from chore_instance`).toEqual([{ coins: null }]);
+    // The previous release's tick, which does not know the column, still works.
+    await sql`insert into chore_instance (chore_id, household_id) values (${c!.id}, ${home!.id})`;
+    await sql`update chore_instance set completed_at = now(), completed_by_id = 'a' where completed_at is null`;
+    expect(await sql`select count(*)::int as n from chore_instance where coins is null`).toEqual([{ n: 2 }]);
+  });
+});

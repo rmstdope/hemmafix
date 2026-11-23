@@ -93,7 +93,7 @@ export function FilterHeader(props: Props & { title: string; subtitle?: string; 
   return (
     <div>
       <header className="mb-3 flex items-center justify-between gap-2">
-        <div className="min-w-0">
+        <div className="min-w-0 [&>p]:truncate">
           <h1 className="text-xl font-semibold">{title}</h1>
           {subtitle ? <p className="truncate text-sm text-muted-foreground">{subtitle}</p> : null}
         </div>
