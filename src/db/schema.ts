@@ -478,6 +478,25 @@ export const choreInstance = pgTable(
 );
 
 /**
+ * A family member's high five for one tick (a done `chore_instance`). One per person per tick;
+ * `closedAt` is set when the doer closes the note about it, so a new high five brings a new note.
+ */
+export const highFive = pgTable(
+  "high_five",
+  {
+    instanceId: uuid("instance_id")
+      .notNull()
+      .references(() => choreInstance.id, { onDelete: "cascade" }),
+    userId: text("user_id")
+      .notNull()
+      .references(() => user.id, { onDelete: "cascade" }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    closedAt: timestamp("closed_at", { withTimezone: true }),
+  },
+  (t) => [primaryKey({ columns: [t.instanceId, t.userId] })],
+);
+
+/**
  * A routine: tasks that are usually done together ("Städa badrum"). A template only: a task in
  * a routine is a name, and changing or removing the routine never touches tasks in the home.
  */

@@ -2,7 +2,7 @@ import "server-only";
 import { cache } from "react";
 import { aliasedTable, and, asc, desc, eq, gt, gte, isNotNull, isNull, ne, sql, type SQL } from "drizzle-orm";
 import { db, pg } from "@/db";
-import { chore, choreInstance, floor, household, membership, room, user } from "@/db/schema";
+import { chore, choreInstance, floor, highFive, household, membership, room, user } from "@/db/schema";
 import { addDays, HOME_TIME_ZONE, todayIso } from "@/lib/dates";
 import { UserError } from "@/lib/errors";
 import { assertCan, can, type Role } from "@/lib/permissions";
@@ -343,6 +343,8 @@ export async function uncompleteInstance(actor: Actor, id: string) {
     await tx
       .delete(choreInstance)
       .where(and(eq(choreInstance.choreId, row.choreId), isNull(choreInstance.completedAt)));
+    // The tick is taken back, so the cheers for it go too (the instance is reused by the next tick).
+    await tx.delete(highFive).where(eq(highFive.instanceId, target));
     await tx
       .update(choreInstance)
       .set({ completedAt: null, completedById: null, doneTitle: null, doneRoomId: null, coins: null })

@@ -3,6 +3,7 @@ import { AddChoreSheet } from "@/components/add-chore-sheet";
 import { BoardTabs } from "@/components/board-tabs";
 import { FilterChips, FilterHeader } from "@/components/board-filters";
 import { ChoreItem } from "@/components/chore-item";
+import { HighFiveNotes } from "@/components/high-five-notes";
 import { LiveUpdates } from "@/components/live-updates";
 import { PageCorner } from "@/components/page-corner";
 import { boardTabs, parseTab, splitByTab, type TabKey } from "@/lib/board-tabs";
@@ -12,6 +13,7 @@ import { boardFilter } from "@/lib/validation";
 import { requireMember } from "@/server/dal";
 import { canUndo, getHousehold, listMembers, listOpenInstances, listRecentlyCompleted } from "@/server/chores";
 import { listFloors, listRooms } from "@/server/household";
+import { listHighFiveNotes, listHighFives } from "@/server/high-fives";
 import { listRoutinesWithTasks } from "@/server/routines";
 
 export const metadata = { title: "Uppgifter – Hemmafix" };
@@ -35,14 +37,19 @@ async function Board({ searchParams }: { searchParams: PageProps<"/">["searchPar
   const today = todayIso();
   const isAdult = can(member.role, "task:create");
 
-  const [home, members, floors, rooms, completed, routines] = await Promise.all([
+  const [home, members, floors, rooms, completed, routines, notes] = await Promise.all([
     getHousehold(member.householdId),
     listMembers(member.householdId),
     listFloors(member.householdId),
     listRooms(member.householdId),
     listRecentlyCompleted(member),
     isAdult ? listRoutinesWithTasks(member) : [],
+    listHighFiveNotes(member),
   ]);
+  const highFives = await listHighFives(
+    member,
+    completed.map((t) => t.id),
+  );
   // A room or floor that has since been removed (or is not this home's) means no filter.
   const filter = {
     ...requested,
@@ -118,6 +125,11 @@ async function Board({ searchParams }: { searchParams: PageProps<"/">["searchPar
                   today={today}
                   canManage={false}
                   canUndo={canUndo(member, t)}
+                  highFive={{
+                    canGive: can(member.role, "history:view-anyone"),
+                    givenByMe: highFives.get(t.id)?.givenByMe ?? false,
+                    names: highFives.get(t.id)?.names ?? [],
+                  }}
                   showDue
                   showFloors={showFloors}
                   floors={floors}
@@ -143,6 +155,7 @@ async function Board({ searchParams }: { searchParams: PageProps<"/">["searchPar
           <PageCorner />
         </div>
       </FilterHeader>
+      <HighFiveNotes notes={notes} />
       <BoardTabs tabs={tabs} initial={parseTab(first(params.flik))} panels={panels} underTabs={<FilterChips {...filterProps} />} />
       {isAdult && (
         <AddChoreSheet floors={floors} rooms={rooms} routines={routines} members={members} currentUserId={member.userId} today={today} />
