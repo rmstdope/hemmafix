@@ -1,12 +1,10 @@
-import { History, Settings } from "lucide-react";
-import Link from "next/link";
 import { Suspense } from "react";
 import { AddChoreForm } from "@/components/add-chore-form";
 import { BoardFilters } from "@/components/board-filters";
 import { ChoreItem } from "@/components/chore-item";
 import { LiveUpdates } from "@/components/live-updates";
 import { DueGroupSection } from "@/components/home/due-group";
-import { UserMenu } from "@/components/user-menu";
+import { PageCorner } from "@/components/page-corner";
 import { todayIso } from "@/lib/dates";
 import { groupByDue } from "@/lib/due-groups";
 import { can } from "@/lib/permissions";
@@ -16,9 +14,11 @@ import { canUndo, getHousehold, listMembers, listOpenInstances, listRecentlyComp
 import { listFloors, listRooms } from "@/server/household";
 import { listRoutinesWithTasks } from "@/server/routines";
 
+export const metadata = { title: "Uppgifter – Hemmafix" };
+
 export default function Home({ searchParams }: PageProps<"/">) {
   return (
-    <main className="mx-auto w-full max-w-2xl flex-1 px-4 pt-4 pb-[max(1rem,env(safe-area-inset-bottom))]">
+    <main className="mx-auto w-full max-w-2xl flex-1 px-4 pt-4 pb-4">
       <Suspense fallback={<BoardSkeleton />}>
         <Board searchParams={searchParams} />
       </Suspense>
@@ -58,27 +58,11 @@ async function Board({ searchParams }: { searchParams: PageProps<"/">["searchPar
       <LiveUpdates />
       <header className="mb-4 flex items-center justify-between gap-2">
         <div>
-          <h1 className="text-xl font-semibold">Hemmafix</h1>
+          <h1 className="text-xl font-semibold">Uppgifter</h1>
           <p className="text-sm text-muted-foreground">{home?.name}</p>
         </div>
-        <div className="flex items-center gap-1">
-          <Link
-            href="/gjort"
-            aria-label="Gjort"
-            className="flex size-11 items-center justify-center rounded-lg text-muted-foreground"
-          >
-            <History className="size-5" />
-          </Link>
-          {isAdult && (
-            <Link
-              href="/hemmet"
-              aria-label="Hemmet"
-              className="flex size-11 items-center justify-center rounded-lg text-muted-foreground"
-            >
-              <Settings className="size-5" />
-            </Link>
-          )}
-          <UserMenu name={member.name} image={member.image} />
+        <div className="sm:hidden">
+          <PageCorner />
         </div>
       </header>
 

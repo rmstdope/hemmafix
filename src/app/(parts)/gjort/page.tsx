@@ -14,7 +14,7 @@ export const metadata = { title: "Gjort – Hemmafix" };
 
 export default function HistoryPage({ searchParams }: PageProps<"/gjort">) {
   return (
-    <main className="mx-auto w-full max-w-2xl flex-1 px-4 pt-4 pb-[max(1rem,env(safe-area-inset-bottom))]">
+    <main className="mx-auto w-full max-w-2xl flex-1 px-4 pt-4 pb-4">
       <Suspense fallback={<div className="h-40 animate-pulse rounded-xl bg-muted" aria-busy="true" />}>
         <History searchParams={searchParams} />
       </Suspense>

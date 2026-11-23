@@ -133,3 +133,12 @@
     @apply font-sans;
   }
 }
+/* Height of the bottom tab bar where there is one (phone widths, on the parts of Hemmafix only). */
+:root {
+  --parts-bar-h: 0px;
+}
+@media (max-width: 639.98px) {
+  body:has([data-parts-bar]) {
+    --parts-bar-h: 4rem;
+  }
+}

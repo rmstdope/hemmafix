@@ -1,7 +1,6 @@
-import { ArrowLeft } from "lucide-react";
-import Link from "next/link";
 import { redirect } from "next/navigation";
 import { Suspense } from "react";
+import { BackToPart } from "@/components/part-links";
 import { LiveUpdates } from "@/components/live-updates";
 import { ScrollToHash } from "@/components/scroll-to-hash";
 import { MemberRoles } from "@/components/home/member-roles";
@@ -48,13 +47,7 @@ async function HomeSettings() {
     <>
       <LiveUpdates />
       <header className="mb-6 flex items-center gap-2">
-        <Link
-          href="/"
-          aria-label="Tillbaka"
-          className="-ml-3 flex size-11 items-center justify-center rounded-lg text-muted-foreground"
-        >
-          <ArrowLeft className="size-5" />
-        </Link>
+        <BackToPart />
         <h1 className="text-xl font-semibold">Hemmet</h1>
       </header>
 
