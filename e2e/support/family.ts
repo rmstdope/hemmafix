@@ -10,7 +10,7 @@ import { sql } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/postgres-js";
 import type { BrowserContext } from "@playwright/test";
 import postgres from "postgres";
-import { todayIso } from "../../src/lib/dates";
+import { addDays, todayIso } from "../../src/lib/dates";
 import * as schema from "../../src/db/schema";
 import { databaseUrl } from "../../test/database.mjs";
 import { E2E_AUTH_SECRET, E2E_BASE_URL, E2E_DB, PEOPLE, type Person } from "./env";
@@ -179,13 +179,39 @@ export async function seedChore(opts: {
 }
 
 /** Adds a one-off task that `completedById` has already ticked off (now, unless given). */
-export async function seedDone(opts: { title: string; roomId: string; completedById: string; completedAt?: Date; coins?: number }) {
+export async function seedDone(opts: {
+  title: string;
+  roomId: string;
+  completedById: string;
+  completedAt?: Date;
+  coins?: number;
+  tickedOn?: string;
+}) {
   const c = await seedChore({ title: opts.title, roomId: opts.roomId, recurrence: null });
   await db
     .update(schema.choreInstance)
-    .set({ completedById: opts.completedById, completedAt: opts.completedAt ?? new Date(), ...(opts.coins === undefined ? {} : { coins: opts.coins }) })
+    .set({
+      completedById: opts.completedById,
+      completedAt: opts.completedAt ?? new Date(),
+      ...(opts.tickedOn && { tickedOn: opts.tickedOn, coins: 10 }),
+      ...(opts.coins === undefined ? {} : { coins: opts.coins }),
+    })
     .where(sql`${schema.choreInstance.choreId} = ${c.id}`);
   return c;
+}
+
+/** Gives `completedById` a streak: a task ticked off on each of the `days` days before `from` days ago. */
+export async function seedStreak(opts: { roomId: string; completedById: string; days: number; from?: number }) {
+  for (let i = 0; i < opts.days; i++) {
+    const day = addDays(todayIso(), -((opts.from ?? 1) + i));
+    await seedDone({
+      title: `Streak ${day}`,
+      roomId: opts.roomId,
+      completedById: opts.completedById,
+      completedAt: new Date(`${day}T10:00:00Z`),
+      tickedOn: day,
+    });
+  }
 }
 
 /**

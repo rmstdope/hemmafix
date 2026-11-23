@@ -10,6 +10,7 @@ import { assertCan, can, type Role } from "@/lib/permissions";
 import { rollChestCoins } from "@/lib/chest";
 import { findTemplate } from "@/lib/chore-templates";
 import { nextDueDate, type Recurrence } from "@/lib/recurrence";
+import { STREAK_CAP, streakOf, tickDay, withStreakBonus } from "@/lib/streak";
 import {
   assigneeIdInput,
   choreId as choreIdInput,
@@ -283,6 +284,11 @@ export async function completeInstance(
 
     // Only if still open: correct even without the lock above, which just makes the loser
     // of a race wait for a clean answer.
+    // The streak day this tick falls on gives the task's own coins an extra, kept in the tick so
+    // that undoing it takes back exactly what it gave.
+    const today = todayIso();
+    const days = await tickedDays(tx, actor);
+    const coins = withStreakBonus(row.coins, tickDay(streakOf(days, today)));
     const ticked = await tx
       .update(choreInstance)
       .set({
@@ -290,7 +296,8 @@ export async function completeInstance(
         completedById: actor.userId,
         doneTitle: row.title,
         doneRoomId: row.roomId,
-        coins: row.coins,
+        coins,
+        tickedOn: today,
       })
       .where(and(eq(choreInstance.id, target), isNull(choreInstance.completedAt)))
       .returning({ id: choreInstance.id });
@@ -378,7 +385,7 @@ export async function uncompleteInstance(actor: Actor, id: string) {
     await tx.delete(highFive).where(eq(highFive.instanceId, target));
     await tx
       .update(choreInstance)
-      .set({ completedAt: null, completedById: null, doneTitle: null, doneRoomId: null, coins: null })
+      .set({ completedAt: null, completedById: null, doneTitle: null, doneRoomId: null, coins: null, tickedOn: null })
       .where(eq(choreInstance.id, target));
   });
 }
@@ -411,6 +418,31 @@ async function sumCoins(householdId: string, userId: string): Promise<number> {
     );
   return (ticks?.total ?? 0) + (chests?.total ?? 0);
 }
+
+/** The person's latest streak days, newest first: all that the 7+ cap needs. */
+async function tickedDays(runner: Pick<typeof db, "selectDistinct">, actor: Pick<Actor, "householdId" | "userId">) {
+  // Nothing older than a week matters to the cap, so the lookup stays small however long they have ticked.
+  const since = addDays(todayIso(), -STREAK_CAP);
+  const rows = await runner
+    .selectDistinct({ day: choreInstance.tickedOn })
+    .from(choreInstance)
+    .where(
+      and(
+        eq(choreInstance.householdId, actor.householdId),
+        eq(choreInstance.completedById, actor.userId),
+        gte(choreInstance.tickedOn, since),
+      ),
+    )
+    .orderBy(desc(choreInstance.tickedOn))
+    .limit(STREAK_CAP + 1);
+  return rows.map((r) => r.day!);
+}
+
+/** The actor's streak as of today, once per request like the coin total. */
+const streakCache = cache(async (householdId: string, userId: string) =>
+  streakOf(await tickedDays(db, { householdId, userId }), todayIso()),
+);
+export const getStreak = (actor: Actor) => streakCache(actor.householdId, actor.userId);
 
 /** Once per request, though the corner is rendered by both the desktop strip and the phone header. */
 const coinTotalOf = cache(sumCoins);
