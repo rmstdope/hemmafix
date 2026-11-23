@@ -4,8 +4,9 @@ import { List, ListChecks } from "lucide-react";
 import Link from "next/link";
 import { usePathname, useSearchParams } from "next/navigation";
 import { useState } from "react";
-import { PARTS, partOf } from "@/lib/parts";
+import { PARTS, litPart } from "@/lib/parts";
 import { cn } from "@/lib/utils";
+import { useRememberedPart } from "./part-links";
 
 const ICONS = { uppgifter: ListChecks, listor: List };
 
@@ -16,7 +17,7 @@ const ICONS = { uppgifter: ListChecks, listor: List };
 export function PartsNav({ variant }: { variant: "top" | "bottom" }) {
   const pathname = usePathname();
   const search = useSearchParams().toString();
-  const current = partOf(pathname);
+  const current = litPart(pathname, useRememberedPart());
   // The board's filter, remembered while another part is open (the layout never remounts).
   const [boardSearch, setBoardSearch] = useState("");
   if (pathname === "/" && boardSearch !== search) setBoardSearch(search);

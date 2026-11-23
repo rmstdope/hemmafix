@@ -1,6 +1,7 @@
 import type { Page } from "@playwright/test";
 import { E2E_BASE_URL } from "./support/env";
 import { logIn, seedList } from "./support/family";
+import { menuItem } from "./support/menu";
 import { expect, test } from "./support/test";
 
 const parts = (page: Page) => page.getByRole("navigation", { name: "Delar" });
@@ -43,7 +44,6 @@ test("an adult sees no lists at first, makes one and lands in it ready to add", 
     page.getByText("Gör en lista för inköp, packning eller annat ni vill bocka av tillsammans."),
   ).toBeVisible();
   await expect(sortButton(page, "Alfabetiskt")).toHaveText("⇅ A–Ö");
-  await expect(page.getByRole("link", { name: "Gjort" })).toHaveCount(0);
 
   // Avbryt, Esc and an empty name create nothing.
   await newList(page).click();
@@ -329,7 +329,9 @@ test("a save that fails is undone, says so, and keeps what was typed", async ({ 
 test("a child does everything an adult does, apart from Hemmet", async ({ page, context }) => {
   await logIn(context, "bo", "child");
   await go(page, "/listor");
-  await expect(page.getByRole("link", { name: "Hemmet" })).toHaveCount(0);
+  await expect(await menuItem(page, "Gjort")).toBeVisible();
+  await expect(page.getByRole("menuitem", { name: "Hemmet" })).toHaveCount(0);
+  await page.keyboard.press("Escape");
   await makeList(page, "Packning");
   await field(page).fill("Tandborste");
   await field(page).press("Enter");

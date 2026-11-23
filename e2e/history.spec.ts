@@ -1,6 +1,7 @@
 import type { Page } from "@playwright/test";
 import { E2E_BASE_URL } from "./support/env";
 import { logIn, seedChore, seedDone, seedRooms } from "./support/family";
+import { chooseFromMenu } from "./support/menu";
 import { expect, test } from "./support/test";
 
 const DAY = 86_400_000;
@@ -17,7 +18,7 @@ test("a child sees what they have done, and only that", async ({ context }) => {
   await seedDone({ title: "Annas uppgift", roomId: rooms["Kök"]!.id, completedById: anna.id });
 
   await page.goto("/");
-  await page.getByRole("link", { name: "Gjort" }).click();
+  await chooseFromMenu(page, "Gjort");
   await expect(page.getByRole("heading", { name: "Gjort" })).toBeVisible();
   await expect(page.getByText("Du har gjort 2 uppgifter senaste månaden.")).toBeVisible();
   await expect(page.getByRole("region", { name: "Idag" })).toContainText("Bädda sängen");
@@ -64,13 +65,13 @@ test("a tick shows up in the history, and an undone tick goes away", async ({ pa
   await page.goto("/");
   await page.getByRole("button", { name: "Markera som klar" }).click();
   await expect(page.getByText("Inget att göra just nu")).toBeVisible();
-  await page.getByRole("link", { name: "Gjort" }).click();
+  await chooseFromMenu(page, "Gjort");
   await expect(entries(page)).toHaveText(["Diska"]);
 
   await page.getByRole("link", { name: "Tillbaka" }).click();
   await page.getByText(/Klart senaste veckan/).click();
   await page.getByRole("button", { name: "Ångra klar" }).click();
   await expect(page.getByRole("group", { name: "Att göra" })).toContainText("Diska");
-  await page.getByRole("link", { name: "Gjort" }).click();
+  await chooseFromMenu(page, "Gjort");
   await expect(page.getByText("Du har inte bockat av något senaste månaden.")).toBeVisible();
 });

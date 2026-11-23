@@ -12,3 +12,13 @@ export function partOf(pathname: string): PartKey | null {
   if (pathname === "/listor" || pathname.startsWith("/listor/")) return "listor";
   return null;
 }
+
+/** The part Gjort or Hemmet was opened from, as stored in the session; Uppgifter when unknown. */
+export function rememberedPart(raw: string | null): PartKey {
+  return raw === "listor" ? "listor" : "uppgifter";
+}
+
+/** The part whose tab is lit: Gjort lights the part it was opened from. */
+export function litPart(pathname: string, remembered: PartKey): PartKey | null {
+  return pathname === "/gjort" ? remembered : partOf(pathname);
+}

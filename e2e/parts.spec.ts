@@ -1,5 +1,6 @@
 import type { Page } from "@playwright/test";
 import { logIn, seedChore, seedRooms } from "./support/family";
+import { chooseFromMenu, menuItem } from "./support/menu";
 import { expect, test } from "./support/test";
 
 const parts = (page: Page) => page.getByRole("navigation", { name: "Delar" });
@@ -25,10 +26,9 @@ test("an adult moves between Uppgifter and Listor, and the filter is kept", asyn
   await expect(page.getByRole("heading", { name: "Listor" })).toBeVisible();
   await expect(page.getByText("Inga listor ännu.")).toBeVisible();
   await expect(parts(page).getByRole("link", { name: "Listor" })).toHaveAttribute("aria-current", "page");
-  // Gjort belongs to the tasks; Hemmet and Logga ut are on every part.
-  await expect(page.getByRole("link", { name: "Gjort" })).toHaveCount(0);
-  await expect(page.getByRole("link", { name: "Hemmet" })).toBeVisible();
-  await expect(page.getByRole("button", { name: "Logga ut" })).toBeVisible();
+  // The menu is the same on every part: Gjort, Hemmet and Logga ut.
+  for (const name of ["Gjort", "Hemmet", "Logga ut"] as const) await expect(await menuItem(page, name)).toBeVisible();
+  await page.keyboard.press("Escape");
 
   await parts(page).getByRole("link", { name: "Uppgifter" }).click();
   await expect(page.getByRole("heading", { name: "Uppgifter" })).toBeVisible();
@@ -52,13 +52,13 @@ test("the bar is at the bottom on a phone and in the top strip on a desktop", as
 test("Gjort keeps the bar, Hemmet and login have none, and ← from Hemmet comes back", async ({ page, context }) => {
   await logIn(context, "anna", "adult");
   await page.goto("/");
-  await page.getByRole("link", { name: "Gjort" }).click();
+  await chooseFromMenu(page, "Gjort");
   await expect(page.getByRole("heading", { name: "Gjort" })).toBeVisible();
   await expect(parts(page).getByRole("link", { name: "Uppgifter" })).toHaveAttribute("aria-current", "page");
   await page.getByRole("link", { name: "Tillbaka" }).click();
   await expect(page.getByRole("heading", { name: "Uppgifter" })).toBeVisible();
 
-  await page.getByRole("link", { name: "Hemmet" }).click();
+  await chooseFromMenu(page, "Hemmet");
   await expect(page.getByRole("heading", { name: "Hemmet" })).toBeVisible();
   await expect(parts(page)).toHaveCount(0);
 
@@ -66,7 +66,7 @@ test("Gjort keeps the bar, Hemmet and login have none, and ← from Hemmet comes
   await expect(page.getByRole("heading", { name: "Uppgifter" })).toBeVisible();
   await parts(page).getByRole("link", { name: "Listor" }).click();
   await expect(page.getByRole("heading", { name: "Listor" })).toBeVisible();
-  await page.getByRole("link", { name: "Hemmet" }).click();
+  await chooseFromMenu(page, "Hemmet");
   await page.getByRole("link", { name: "Tillbaka" }).click();
   await expect(page.getByRole("heading", { name: "Listor" })).toBeVisible();
 });
@@ -75,7 +75,9 @@ test("a child gets the same tabs and no Hemmet", async ({ page, context }) => {
   await logIn(context, "bo", "child");
   await page.goto("/listor");
   await expect(parts(page).getByRole("link")).toHaveText(["Uppgifter", "Listor"]);
-  await expect(page.getByRole("link", { name: "Hemmet" })).toHaveCount(0);
+  await expect(await menuItem(page, "Gjort")).toBeVisible();
+  await expect(page.getByRole("menuitem", { name: "Hemmet" })).toHaveCount(0);
+  await expect(page.getByRole("menuitem", { name: "Logga ut" })).toBeVisible();
 });
 
 test("a notice sits above the bar on a phone", async ({ page, context }) => {
@@ -102,7 +104,7 @@ test("a notice sits above the bar on a phone", async ({ page, context }) => {
 test("← from Hemmet still returns to Listor after a visit to a routine page", async ({ page, context }) => {
   await logIn(context, "anna", "adult");
   await page.goto("/listor");
-  await page.getByRole("link", { name: "Hemmet" }).click();
+  await chooseFromMenu(page, "Hemmet");
   await expect(page.getByRole("heading", { name: "Hemmet" })).toBeVisible();
   await page.goto("/hemmet/rutiner/6f1c3b0e-5f8a-4c7e-9d2a-1b3c4d5e6f70");
   await page.getByRole("link", { name: "Tillbaka till Hemmet" }).click();
@@ -156,4 +158,21 @@ test("tapping the lit tab takes you to the top", async ({ page, context }) => {
   expect(await page.evaluate(() => window.scrollY)).toBeGreaterThan(100);
   await parts(page).getByRole("link", { name: "Uppgifter" }).click();
   await expect.poll(() => page.evaluate(() => window.scrollY)).toBe(0);
+});
+
+test("Gjort opened from Listor goes back to Listor and lights it, also after a reload", async ({ page, context }) => {
+  await logIn(context, "anna", "adult");
+  await page.goto("/listor");
+  await chooseFromMenu(page, "Gjort");
+  await expect(page.getByRole("heading", { name: "Gjort" })).toBeVisible();
+  await expect(parts(page).getByRole("link", { name: "Listor" })).toHaveAttribute("aria-current", "page");
+  await page.reload();
+  await expect(parts(page).getByRole("link", { name: "Listor" })).toHaveAttribute("aria-current", "page");
+  await page.getByRole("link", { name: "Tillbaka" }).click();
+  await expect(page.getByRole("heading", { name: "Listor" })).toBeVisible();
+
+  await parts(page).getByRole("link", { name: "Uppgifter" }).click();
+  await expect(page.getByRole("heading", { name: "Uppgifter" })).toBeVisible();
+  await chooseFromMenu(page, "Gjort");
+  await expect(parts(page).getByRole("link", { name: "Uppgifter" })).toHaveAttribute("aria-current", "page");
 });

@@ -4,6 +4,7 @@ import { chore, household, room } from "../src/db/schema";
 import { formatDue, todayIso } from "../src/lib/dates";
 import { E2E_BASE_URL } from "./support/env";
 import { db, logIn, seedChore, seedRooms } from "./support/family";
+import { chooseFromMenu } from "./support/menu";
 import { expect, test } from "./support/test";
 
 const item = (page: Page, title: string) =>
@@ -51,7 +52,7 @@ test("a task ticked off before an edit keeps its old name in the history", async
   await page.getByRole("form", { name: "Ändra Diska" }).getByRole("button", { name: "Spara" }).click();
   await expect(item(page, "Handdiska")).toBeVisible();
 
-  await page.getByRole("link", { name: "Gjort" }).click();
+  await chooseFromMenu(page, "Gjort");
   await expect(page.getByRole("main").getByRole("listitem").locator("p.font-medium")).toHaveText(["Diska"]);
 });
 

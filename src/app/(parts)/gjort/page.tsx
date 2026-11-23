@@ -1,7 +1,7 @@
-import { ArrowLeft, Check } from "lucide-react";
-import Link from "next/link";
+import { Check } from "lucide-react";
 import { Suspense } from "react";
 import { HistoryFilters } from "@/components/history-filters";
+import { BackToPart } from "@/components/part-links";
 import { LiveUpdates } from "@/components/live-updates";
 import { formatDay, formatTime, todayIso } from "@/lib/dates";
 import { roomLabel } from "@/lib/floors";
@@ -52,13 +52,7 @@ async function History({ searchParams }: { searchParams: PageProps<"/gjort">["se
     <>
       <LiveUpdates />
       <header className="mb-4 flex items-center gap-2">
-        <Link
-          href="/"
-          aria-label="Tillbaka"
-          className="-ml-3 flex size-11 items-center justify-center rounded-lg text-muted-foreground"
-        >
-          <ArrowLeft className="size-5" />
-        </Link>
+        <BackToPart />
         <h1 className="text-xl font-semibold">Gjort</h1>
       </header>
 
