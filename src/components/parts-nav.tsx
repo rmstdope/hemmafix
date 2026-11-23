@@ -24,6 +24,7 @@ export function PartsNav({ variant }: { variant: "top" | "bottom" }) {
   return (
     <nav
       aria-label="Delar"
+      data-parts-bar={variant === "bottom" ? "" : undefined}
       className={cn(
         variant === "bottom"
           ? "fixed inset-x-0 bottom-0 z-40 flex h-[calc(var(--parts-bar-h)+env(safe-area-inset-bottom))] border-t bg-background pb-[env(safe-area-inset-bottom)] sm:hidden"

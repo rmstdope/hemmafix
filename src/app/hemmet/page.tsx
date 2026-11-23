@@ -1,7 +1,6 @@
-import { ArrowLeft } from "lucide-react";
-import Link from "next/link";
 import { redirect } from "next/navigation";
 import { Suspense } from "react";
+import { BackToPart } from "@/components/part-links";
 import { LiveUpdates } from "@/components/live-updates";
 import { ScrollToHash } from "@/components/scroll-to-hash";
 import { MemberRoles } from "@/components/home/member-roles";
@@ -19,18 +18,17 @@ import { listRoutines } from "@/server/routines";
 
 export const metadata = { title: "Hemmet – Hemmafix" };
 
-export default function HomeSettingsPage({ searchParams }: PageProps<"/hemmet">) {
+export default function HomeSettingsPage() {
   return (
     <main className="mx-auto w-full max-w-2xl flex-1 px-4 pt-4 pb-[max(1rem,env(safe-area-inset-bottom))]">
       <Suspense fallback={<div className="h-40 animate-pulse rounded-xl bg-muted" aria-busy="true" />}>
-        <HomeSettings searchParams={searchParams} />
+        <HomeSettings />
       </Suspense>
     </main>
   );
 }
 
-async function HomeSettings({ searchParams }: { searchParams: PageProps<"/hemmet">["searchParams"] }) {
-  const { fran } = await searchParams;
+async function HomeSettings() {
   const member = await requireMember();
   // Only adults manage the home; the actions refuse children as well.
   if (!can(member.role, "household:rename")) redirect("/");
@@ -49,13 +47,7 @@ async function HomeSettings({ searchParams }: { searchParams: PageProps<"/hemmet
     <>
       <LiveUpdates />
       <header className="mb-6 flex items-center gap-2">
-        <Link
-          href={fran === "listor" ? "/listor" : "/"}
-          aria-label="Tillbaka"
-          className="-ml-3 flex size-11 items-center justify-center rounded-lg text-muted-foreground"
-        >
-          <ArrowLeft className="size-5" />
-        </Link>
+        <BackToPart />
         <h1 className="text-xl font-semibold">Hemmet</h1>
       </header>
 

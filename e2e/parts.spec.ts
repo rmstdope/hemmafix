@@ -99,3 +99,62 @@ test("a notice sits above the bar on a phone", async ({ page, context }) => {
       .toBeLessThanOrEqual(bar.y + 1);
   }
 });
+
+test("← from Hemmet still returns to Listor after a visit to a routine page", async ({ page, context }) => {
+  await logIn(context, "anna", "adult");
+  await page.goto("/listor");
+  await page.getByRole("link", { name: "Hemmet" }).click();
+  await expect(page.getByRole("heading", { name: "Hemmet" })).toBeVisible();
+  await page.goto("/hemmet/rutiner/6f1c3b0e-5f8a-4c7e-9d2a-1b3c4d5e6f70");
+  await page.getByRole("link", { name: "Tillbaka till Hemmet" }).click();
+  await expect(page.getByRole("heading", { name: "Hemmet" })).toBeVisible();
+  await page.getByRole("link", { name: "Tillbaka", exact: true }).click();
+  await expect(page.getByRole("heading", { name: "Listor" })).toBeVisible();
+});
+
+test("the bar is only on the parts: not on login", async ({ page }) => {
+  await page.goto("/login");
+  await expect(parts(page)).toHaveCount(0);
+});
+
+test("at 320px the two tabs share the bar and nothing overflows", async ({ page, context }) => {
+  await logIn(context, "anna", "adult");
+  await page.setViewportSize({ width: 320, height: 640 });
+  await page.goto("/");
+  const [a, b] = await parts(page).getByRole("link").all();
+  const [ba, bb] = [(await a!.boundingBox())!, (await b!.boundingBox())!];
+  expect(Math.abs(ba.width - bb.width)).toBeLessThan(2);
+  expect(ba.height).toBeLessThan(80);
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth)).toBe(true);
+});
+
+test("a notice sits above the bar at 620px, where sonner's own phone mode is off", async ({ page, context }) => {
+  await logIn(context, "anna", "adult");
+  const { Kök } = await seedRooms("Kök");
+  await seedChore({ title: "Diska", roomId: Kök!.id });
+  await page.setViewportSize({ width: 620, height: 800 });
+  await page.goto("/");
+  await page.getByRole("button", { name: "Mer" }).click();
+  await page.getByRole("button", { name: "Ta bort uppgiften" }).click();
+  const notice = page.locator("[data-sonner-toast]").first();
+  await expect(notice).toBeVisible();
+  const bar = (await parts(page).boundingBox())!;
+  await expect
+    .poll(async () => {
+      const n = (await notice.boundingBox())!;
+      return n.y + n.height;
+    })
+    .toBeLessThanOrEqual(bar.y + 1);
+});
+
+test("tapping the lit tab takes you to the top", async ({ page, context }) => {
+  await logIn(context, "anna", "adult");
+  const { Kök } = await seedRooms("Kök");
+  for (let i = 0; i < 25; i++) await seedChore({ title: `Syssla ${i}`, roomId: Kök!.id });
+  await page.goto("/");
+  await expect(page.getByText("Syssla 0", { exact: true })).toBeVisible();
+  await page.evaluate(() => window.scrollTo(0, document.body.scrollHeight));
+  expect(await page.evaluate(() => window.scrollY)).toBeGreaterThan(100);
+  await parts(page).getByRole("link", { name: "Uppgifter" }).click();
+  await expect.poll(() => page.evaluate(() => window.scrollY)).toBe(0);
+});
