@@ -10,6 +10,7 @@ import { sql } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/postgres-js";
 import type { BrowserContext } from "@playwright/test";
 import postgres from "postgres";
+import { BADGE_KEYS } from "../../src/lib/badges";
 import { addDays, todayIso } from "../../src/lib/dates";
 import * as schema from "../../src/db/schema";
 import { databaseUrl } from "../../test/database.mjs";
@@ -53,11 +54,12 @@ export async function resetDatabase() {
       if ((err as { cause?: { code?: string } }).cause?.code !== "40P01" || attempt >= 3) throw err;
     }
   }
+  // badge_epoch is kept too: its one row is made by the migration, not by a test.
   const rows = (await db.execute(sql`
     select string_agg(t.tablename, ', ') as leftovers
     from pg_tables t
     where t.schemaname = 'public'
-      and t.tablename <> 'jwks'
+      and t.tablename not in ('jwks', 'badge_epoch')
       and (xpath('/row/n/text()', query_to_xml(format('select count(*) as n from %I.%I', t.schemaname, t.tablename), false, true, '')))[1]::text::int > 0
   `)) as unknown as { leftovers: string | null }[];
   if (rows[0]?.leftovers) {
@@ -78,8 +80,13 @@ async function homeId() {
  * nothing), so ticking a task off shows no chest card and the coin tests count only the task's
  * own coins.
  */
-export async function logInWithChestTaken(context: BrowserContext, person: Person, role: schema.MemberRole = "child") {
-  const user = await logIn(context, person, role);
+export async function logInWithChestTaken(
+  context: BrowserContext,
+  person: Person,
+  role: schema.MemberRole = "child",
+  options: { badges?: "won" | "none" } = {},
+) {
+  const user = await logIn(context, person, role, options);
   await db
     .insert(schema.dailyChest)
     .values({ householdId: await homeId(), userId: user.id, day: todayIso(), coins: 5 });
@@ -94,11 +101,20 @@ export async function logIn(
   context: BrowserContext,
   person: Person,
   role: schema.MemberRole = "child",
+  { badges = "won" }: { badges?: "won" | "none" } = {},
 ) {
   const { test } = await testAuth.$context;
   const { name, email } = PEOPLE[person];
   const user = await test.saveUser(test.createUser({ name, email, emailVerified: true }));
-  await db.insert(schema.membership).values({ userId: user.id, householdId: await homeId(), role });
+  const householdId = await homeId();
+  await db.insert(schema.membership).values({ userId: user.id, householdId, role });
+  // Everyone starts with every badge won, worth no coins, so ticks and purchases in other tests win
+  // none and move no balance; the badge tests ask for `badges: "none"`.
+  if (badges === "won") {
+    await db
+      .insert(schema.badgeAward)
+      .values(BADGE_KEYS.map((key) => ({ householdId, userId: user.id, key, coins: 0, wonAt: new Date("2000-01-01T00:00:00Z") })));
+  }
   await context.addCookies(await test.getCookies({ userId: user.id, domain: "localhost" }));
   return user;
 }

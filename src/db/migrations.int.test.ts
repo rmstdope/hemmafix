@@ -473,3 +473,34 @@ describe("0017: rewards", () => {
     expect(await sql`select status from reward_purchase`).toEqual([{ status: "waiting" }]);
   });
 });
+
+describe("0018: badges", () => {
+  beforeEach(reset);
+
+  it("only adds tables, so the previous release keeps working; one badge per person and home, one epoch row made by the migration", async () => {
+    await migrateUpTo(sql, "0017_rewards");
+    const [home] = await sql`insert into household (name) values ('Hemma') returning id`;
+    await sql`insert into "user" (id, name, email, email_verified) values ('a', 'Anna', 'a@example.com', true)`;
+    await sql`insert into floor (household_id, name, position) values (${home!.id}, '1', 1)`;
+    const [r] = await sql`insert into room (household_id, floor_id, name)
+      select ${home!.id}, id, 'Kök' from floor returning id`;
+    const [c] = await sql`insert into chore (household_id, room_id, title) values (${home!.id}, ${r!.id}, 'Diska') returning id`;
+    const before = await sql`select table_name from information_schema.tables where table_schema = 'public'`;
+
+    await migrateUpTo(sql, "0018_badges");
+
+    const after = await sql`select table_name from information_schema.tables where table_schema = 'public'`;
+    const added = after.map((t) => t.table_name).filter((n) => !before.some((b) => b.table_name === n));
+    expect(added.sort()).toEqual(["badge_award", "badge_epoch"]);
+    // The previous release, which does not know the tables, still ticks.
+    await sql`insert into chore_instance (chore_id, household_id) values (${c!.id}, ${home!.id})`;
+    await sql`update chore_instance set completed_at = now(), completed_by_id = 'a', coins = 10`;
+
+    expect(await sql`select id from badge_epoch`).toEqual([{ id: true }]);
+    await expect(sql`insert into badge_epoch (id) values (false)`).rejects.toThrow();
+    await sql`insert into badge_award (household_id, user_id, key, coins) values (${home!.id}, 'a', 'first-task', 25)`;
+    await expect(
+      sql`insert into badge_award (household_id, user_id, key, coins) values (${home!.id}, 'a', 'first-task', 25)`,
+    ).rejects.toThrow();
+  });
+});

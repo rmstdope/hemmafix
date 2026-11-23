@@ -2,7 +2,7 @@ import "server-only";
 import { cache } from "react";
 import { z } from "zod";
 import { aliasedTable, and, asc, desc, eq, gt, gte, isNotNull, isNull, ne, sql, type SQL } from "drizzle-orm";
-import { db, pg } from "@/db";
+import { db } from "@/db";
 import { chore, choreInstance, dailyChest, floor, highFive, household, lookPurchase, membership, rewardPurchase, room, user } from "@/db/schema";
 import { addDays, HOME_TIME_ZONE, todayIso } from "@/lib/dates";
 import { UserError } from "@/lib/errors";
@@ -21,14 +21,11 @@ import {
   memberId as memberIdInput,
   type BoardFilter,
 } from "@/lib/validation";
+import { awardBadges } from "./badges";
+import { sumEarned, type Reader } from "./earned";
 import type { Actor } from "./household";
 
-export const TASKS_CHANNEL = "hemmafix_tasks";
-
-/** Tell every open browser in the household that something changed. */
-export async function notifyHouseholdChanged(householdId: string) {
-  await pg.notify(TASKS_CHANNEL, householdId);
-}
+export { TASKS_CHANNEL, notifyHouseholdChanged } from "./notify";
 
 export type Member = { id: string; name: string; image: string | null };
 
@@ -313,6 +310,8 @@ export async function completeInstance(
       });
     }
 
+    await awardBadges(tx, actor);
+
     // The first tick of the day that gives coins offers the day's chest; later ticks, and an
     // undone and repeated tick, find it taken. Undo never takes a chest back.
     if (row.coins <= 0 || !offerChest) return null;
@@ -390,9 +389,6 @@ export async function uncompleteInstance(actor: Actor, id: string) {
   });
 }
 
-/** Where a balance is read: the pool, or a transaction that already holds the person's coins lock. */
-type Reader = Pick<typeof db, "select">;
-
 /**
  * The actor's coins in hand: what they earned (`sumEarned`) less what they spent on looks and on rewards.
  * Derived, so a purchase is a row and nothing is stored twice.
@@ -417,35 +413,6 @@ export async function balanceOf(householdId: string, userId: string, ex: Reader 
       ),
   ]);
   return earned - (spent?.total ?? 0) - (rewards?.total ?? 0);
-}
-
-/**
- * Every coin the actor earned: what the ticks they hold are worth, and their chests. Derived, so
- * Ångra takes coins back by clearing the tick, and a tick from before coins existed (null) earns nothing.
- */
-async function sumEarned(householdId: string, userId: string, ex: Reader = db): Promise<number> {
-  const [ticks] = await ex
-    .select({ total: sql<number>`coalesce(sum(${choreInstance.coins}), 0)::int` })
-    .from(choreInstance)
-    .where(
-      and(
-        eq(choreInstance.householdId, householdId),
-        eq(choreInstance.completedById, userId),
-        isNotNull(choreInstance.completedAt),
-      ),
-    );
-  // A chest counts once opened, or once its day is over, so an unopened one is never lost.
-  const [chests] = await ex
-    .select({ total: sql<number>`coalesce(sum(${dailyChest.coins}), 0)::int` })
-    .from(dailyChest)
-    .where(
-      and(
-        eq(dailyChest.householdId, householdId),
-        eq(dailyChest.userId, userId),
-        sql`(${dailyChest.openedAt} is not null or ${dailyChest.day} < ${todayIso()})`,
-      ),
-    );
-  return (ticks?.total ?? 0) + (chests?.total ?? 0);
 }
 
 /** The person's latest streak days, newest first: all that the 7+ cap needs. */

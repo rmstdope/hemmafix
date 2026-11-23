@@ -691,3 +691,40 @@ export const rewardPurchase = pgTable(
     check("reward_purchase_status_check", sql`${t.status} in ('waiting', 'given', 'declined')`),
   ],
 );
+
+/**
+ * A badge a person has won (src/lib/badges.ts), once each. The coins are kept as paid (25, or 0 for
+ * a badge that was only marked won) and count in earned coins; a badge is never taken back. Per person and home, like their coins.
+ */
+export const badgeAward = pgTable(
+  "badge_award",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    householdId: uuid("household_id")
+      .notNull()
+      .references(() => household.id, { onDelete: "cascade" }),
+    userId: text("user_id")
+      .notNull()
+      .references(() => user.id, { onDelete: "cascade" }),
+    key: text("key").notNull(),
+    coins: integer("coins").notNull(),
+    wonAt: timestamp("won_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    unique("badge_award_user_household_key_unique").on(t.userId, t.householdId, t.key),
+    check("badge_award_coins_check", sql`${t.coins} >= 0`),
+  ],
+);
+
+/**
+ * The moment badges began: one row, made by the migration that added them. Ticks, days and weeks
+ * before it count for nothing, so everybody starts fresh.
+ */
+export const badgeEpoch = pgTable(
+  "badge_epoch",
+  {
+    id: boolean("id").primaryKey().default(true),
+    startedAt: timestamp("started_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [check("badge_epoch_single_check", sql`${t.id}`)],
+);
