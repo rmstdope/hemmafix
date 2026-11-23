@@ -78,7 +78,7 @@ describe("lists", () => {
       () => editItem(f.neighbour, id, item, "Skräp"),
       () => setItemDone(f.neighbour, id, item, true),
       () => removeItem(f.neighbour, id, item),
-      () => clearDone(f.neighbour, id),
+      () => clearDone(f.neighbour, id, []),
       () => restoreItems(f.neighbour, id, []),
     ]) {
       await expect(attempt()).rejects.toThrow("Listan finns inte längre.");
@@ -156,11 +156,23 @@ describe("items", () => {
     await setItemDone(f.adult, id, a, true);
     await setItemDone(f.adult, id, b, true);
     const cleared = (await getList(f.adult, id))!.items.filter((i) => i.doneAt);
-    expect(await clearDone(f.adult, id)).toBe(2);
+    expect(await clearDone(f.adult, id, cleared.map((i) => i.id))).toBe(2);
     expect(await done(id)).toEqual([]);
     expect(await open(id)).toEqual(["Ägg"]);
     await restoreItems(f.adult, id, cleared);
     expect((await done(id)).sort()).toEqual(["Bröd", "Mjölk"]);
+  });
+
+  it("clear only the ticked items asked for, so one ticked meanwhile is not lost", async () => {
+    const { id } = await createList(f.adult, "Inköp");
+    const a = await add(id, "Mjölk");
+    const b = await add(id, "Bröd");
+    const open = await add(id, "Ägg");
+    await setItemDone(f.adult, id, a, true);
+    await setItemDone(f.adult, id, b, true);
+    expect(await clearDone(f.adult, id, [a, open])).toBe(1);
+    expect(await done(id)).toEqual(["Bröd"]);
+    expect(await getList(f.adult, id).then((l) => l!.items.length)).toBe(2);
   });
 
   it("refuse an item of another list, and say the item is gone for one that is", async () => {
@@ -191,7 +203,7 @@ describe("last changed", () => {
         const b = await add(id, "Ägg");
         await setItemDone(f.adult, id, b, true);
         await tick();
-        await clearDone(f.adult, id);
+        await clearDone(f.adult, id, [b]);
       }],
       ["rename", () => renameList(f.adult, id, "Matinköp")],
     ];

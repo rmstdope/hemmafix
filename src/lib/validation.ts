@@ -164,5 +164,5 @@ export const listItemId = z.uuid();
 export const listOrder = z.enum(["alfabetiskt", "andrad", "skapad"]);
 /** What Ångra puts back after × or Rensa: the items as they were, in their old places. */
 export const restoredItems = z
-  .array(z.object({ id: listItemId, text: listItemText, rank: z.number().int(), doneAt: z.date().nullable() }))
+  .array(z.object({ id: listItemId, text: listItemText, rank: z.number().int().min(0).max(1_000_000_000), doneAt: z.date().nullable() }))
   .max(1000);

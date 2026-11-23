@@ -118,6 +118,13 @@ export function ListView({
       await attempt(() => restoreListItems(list.id, restored));
     });
 
+  /** Ticks or unticks, and moves focus on to where the item went or the next open one. */
+  const tick = (item: ItemView, done: boolean) => {
+    const next = openItems[openItems.indexOf(item) + 1];
+    focusNext.current = done ? (next ? { box: next.id } : "field") : { box: item.id };
+    run({ type: "done", id: item.id, done }, () => setListItemDone(list.id, item.id, done));
+  };
+
   const remove = (item: ItemView) => {
     const next = openItems[openItems.indexOf(item) + 1];
     focusNext.current = next ? { box: next.id } : "field";
@@ -127,8 +134,17 @@ export function ListView({
 
   const clear = () => {
     const cleared = done;
-    run({ type: "clear" }, () => clearListDone(list.id));
-    toast(clearedNotice(cleared.length), { action: { label: "Ångra", onClick: () => restore(cleared) } });
+    focusNext.current = "field";
+    run({ type: "clear" }, () => clearListDone(list.id, cleared.map((i) => i.id)));
+    toast(clearedNotice(cleared.length), {
+      action: {
+        label: "Ångra",
+        onClick: () => {
+          focusNext.current = "field";
+          restore(cleared);
+        },
+      },
+    });
   };
 
   const toggleKlart = () => {
@@ -191,7 +207,7 @@ export function ListView({
             <OpenRow
               key={item.id}
               item={item}
-              onTick={() => run({ type: "done", id: item.id, done: true }, () => setListItemDone(list.id, item.id, true))}
+              onTick={() => tick(item, true)}
               onEdit={(value) => run({ type: "edit", id: item.id, text: value }, () => editListItem(list.id, item.id, value))}
               onRemove={() => remove(item)}
             />
@@ -226,7 +242,7 @@ export function ListView({
                     type="button"
                     data-box={item.id}
                     aria-label={`${item.text}: ångra avbockad`}
-                    onClick={() => run({ type: "done", id: item.id, done: false }, () => setListItemDone(list.id, item.id, false))}
+                    onClick={() => tick(item, false)}
                     className="flex size-11 shrink-0 items-center justify-center rounded-full text-muted-foreground"
                   >
                     <RotateCcw className="size-4" />

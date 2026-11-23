@@ -175,8 +175,8 @@ export async function removeListItem(listId: string, itemId: string) {
   return act((m) => lists.removeItem(m, listId, itemId));
 }
 
-export async function clearListDone(listId: string) {
-  return act((m) => lists.clearDone(m, listId));
+export async function clearListDone(listId: string, itemIds: string[]) {
+  return act((m) => lists.clearDone(m, listId, itemIds));
 }
 
 /** Ångra after × or Rensa: puts the items back where they were. */

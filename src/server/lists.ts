@@ -1,5 +1,5 @@
 import "server-only";
-import { and, count, desc, eq, sql } from "drizzle-orm";
+import { and, count, desc, eq, inArray, sql } from "drizzle-orm";
 import { db } from "@/db";
 import { list, listItem, membership } from "@/db/schema";
 import { UserError } from "@/lib/errors";
@@ -169,12 +169,17 @@ export async function removeItem(actor: Actor, id: string, itemId: string) {
   });
 }
 
-/** Removes every ticked item; resolves with how many went. */
-export async function clearDone(actor: Actor, id: string): Promise<number> {
+/**
+ * Removes the ticked items among `itemIds` (the ones the person was looking at, so what Rensa
+ * says and Ångra restores is what went); resolves with how many went.
+ */
+export async function clearDone(actor: Actor, id: string, itemIds: string[]): Promise<number> {
+  const ids = listItemId.array().max(1000).parse(itemIds);
   return change(actor, id, async (tx, target) => {
+    if (ids.length === 0) return 0;
     const gone = await tx
       .delete(listItem)
-      .where(and(eq(listItem.listId, target), sql`${listItem.doneAt} is not null`))
+      .where(and(eq(listItem.listId, target), inArray(listItem.id, ids), sql`${listItem.doneAt} is not null`))
       .returning({ id: listItem.id });
     return gone.length;
   });

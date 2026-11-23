@@ -168,6 +168,7 @@ describe("lists", () => {
     const one = { id: ROOM, text: "Ost", rank: 3, doneAt: null };
     expect(restoredItems.safeParse([one]).success).toBe(true);
     expect(restoredItems.safeParse([{ ...one, id: "x" }]).success).toBe(false);
+    expect(restoredItems.safeParse([{ ...one, rank: 3_000_000_000 }]).success).toBe(false);
     expect(restoredItems.safeParse(Array.from({ length: 1001 }, () => one)).success).toBe(false);
   });
 });

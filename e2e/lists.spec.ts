@@ -114,6 +114,7 @@ test("items are added first, ticked into Klart, unticked and cleared with Ångra
   await page.getByRole("button", { name: "Ångra" }).click();
   await expect(toggle(page, 1)).toBeVisible();
   await expect(klart(page)).toHaveText([/Mjölk/]);
+  await expect(field(page)).toBeFocused();
 
   // Everything ticked; unticking sends an item back to the top of the open ones.
   await page.getByRole("button", { name: "Bröd: bocka av" }).first().click();
@@ -122,6 +123,7 @@ test("items are added first, ticked into Klart, unticked and cleared with Ångra
   await expect(toggle(page, 3)).toBeVisible();
   await page.getByRole("button", { name: "Mjölk: ångra avbockad" }).click();
   await expect(open(page)).toHaveText([/Mjölk/]);
+  await expect(page.getByRole("button", { name: "Mjölk: bocka av" })).toBeFocused();
   await expect(page.getByText("Allt är avbockat.")).toHaveCount(0);
 
   // Klart stays folded or open as left, also after a reload.
