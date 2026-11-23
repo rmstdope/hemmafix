@@ -78,7 +78,7 @@ so they log in once and every look after reuses it.
 - **Start every look with `verify-app reset`**, then `verify-app status`: whatever an earlier look,
   or a review of an outside pull request, left in the home is gone, and the home is named
   **Familjen (verifiering)**. `status` shows every member with their role, whether they can log in,
-  until when their login lasts, and how many floors, rooms, chores, routines, registered clients and
+  until when their login lasts, and how many floors, rooms, chores, routines, lists, registered clients and
   connections there are. Put its output in each report. If the helper refuses because the database
   holds a migration this tree does not know, that is a blocker: ask the navigator, and never drop the
   database yourself.
@@ -259,7 +259,7 @@ away and the pass ends with beads pending.
 
 1. Stop the server you started (*Launching*), the Inspector and any `docs/ui` server you started,
    and only those.
-2. `verify-app reset`: it empties the home (floors, rooms, chores, history, connected apps and the
+2. `verify-app reset`: it empties the home (floors, rooms, chores, history, lists, connected apps and the
    members the helper added), sets every role back to adult and keeps the logins. Never drop the
    database: that would cost the navigator their login.
 3. `git -C .cerebro/worktrees/psylocke status --porcelain` shows nothing: the look writes only to the

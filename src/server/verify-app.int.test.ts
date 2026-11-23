@@ -39,4 +39,22 @@ describe("verify-app reset", () => {
       await sql.end();
     }
   });
+
+  it("clears the lists and their items, and status counts them", { timeout: 30_000 }, async () => {
+    await verifyApp("status");
+    const sql = postgres(databaseUrl(scratch), { max: 1 });
+    try {
+      const [home] = await sql`insert into household (name) values ('Hemma') returning id`;
+      const [l] = await sql`insert into list (household_id, name) values (${home!.id}, 'Ölkväll') returning id`;
+      await sql`insert into list_item (list_id, text, rank) values (${l!.id}, 'Chips', 1)`;
+      expect(JSON.parse(await verifyApp("status")).lists).toBe("1");
+
+      await verifyApp("reset");
+
+      expect(JSON.parse(await verifyApp("status")).lists).toBe("0");
+      expect(await sql`select 1 from list_item`).toHaveLength(0);
+    } finally {
+      await sql.end();
+    }
+  });
 });
