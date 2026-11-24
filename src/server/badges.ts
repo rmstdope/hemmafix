@@ -13,6 +13,7 @@ import {
   type BadgeKey,
 } from "@/lib/badges";
 import { addDays, todayIso } from "@/lib/dates";
+import { levelFor } from "@/lib/levels";
 import { STREAK_CAP, streakOf } from "@/lib/streak";
 import { weekStart } from "@/lib/weeks";
 import { sumEarned } from "./earned";
@@ -191,4 +192,16 @@ export async function getBadges(actor: Actor): Promise<BadgeView[]> {
       progress: at || !facts ? null : progressLine(b.key, facts),
     };
   });
+}
+
+/** What a change just won: badges, and the level its coins (a badge's 25 included) reached. */
+export type Won = { badges: BadgeKey[]; levelUp: { level: number; title: string } | null };
+
+/** Runs `change`, then awards what it earned, reporting the badges and the level it won. Inside the caller's transaction. */
+export async function changeAndAward(tx: Tx, actor: Actor, change: () => Promise<void>): Promise<Won> {
+  const before = levelFor(await sumEarned(actor.householdId, actor.userId, tx));
+  await change();
+  const badges = await awardBadges(tx, actor);
+  const after = levelFor(await sumEarned(actor.householdId, actor.userId, tx));
+  return { badges, levelUp: after.level > before.level ? { level: after.level, title: after.title } : null };
 }
