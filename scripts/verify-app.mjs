@@ -80,7 +80,7 @@ async function ensureDatabase(quiet = false) {
 }
 
 async function serve() {
-  if (!existsSync(".next/standalone/server.js")) fail("no build: run `pnpm build` first (the verifier's prewarm)");
+  if (!existsSync(".next/standalone/server.js")) fail("no build: run `pnpm build:fresh` first (the verifier's prewarm)");
   const url = await ensureDatabase();
   // As the production image and the e2e server do: the standalone server serves these from its own folder.
   cpSync("public", ".next/standalone/public", { recursive: true });
