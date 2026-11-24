@@ -1,6 +1,4 @@
-ARG NODE_VERSION=24-alpine
-
-FROM node:${NODE_VERSION} AS base
+FROM node:24-alpine AS base
 RUN corepack enable
 WORKDIR /app
 
@@ -16,7 +14,7 @@ RUN pnpm build \
  && pnpm exec esbuild scripts/migrate.ts --bundle --platform=node --format=esm \
       --target=node24 --outfile=dist/migrate.mjs
 
-FROM node:${NODE_VERSION} AS runtime
+FROM node:24-alpine AS runtime
 # tzdata: due dates are calendar days in Swedish time.
 RUN apk add --no-cache tzdata
 WORKDIR /app

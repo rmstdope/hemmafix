@@ -4,6 +4,9 @@ updates:
     directory: /
     schedule:
       interval: daily
+    # pnpm's default minimumReleaseAge is one day; younger versions would fail to resolve.
+    cooldown:
+      default-days: 1
     open-pull-requests-limit: 10
   - package-ecosystem: github-actions
     directory: /
