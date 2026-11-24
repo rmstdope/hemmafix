@@ -8,7 +8,7 @@ import { ForbiddenError, assertCan } from "@/lib/permissions";
 import { giveRecipients, rewardInput, type RewardInput } from "@/lib/rewards";
 import { balanceOf, listFamily } from "./chores";
 import type { Actor } from "./household";
-import { awardBadges } from "./badges";
+import { changeAndAward, type Won } from "./badges";
 
 const GONE_REWARD = "Belöningen finns inte längre.";
 const GONE_PURCHASE = "Köpet finns inte längre.";
@@ -69,9 +69,9 @@ export async function deleteReward(actor: Actor, id: string) {
 // ---------------------------------------------------------------------------
 
 /** Spends the actor's coins on a reward; an adult is asked to give it. Exactly enough is enough. */
-export async function buyReward(actor: Actor, id: string) {
+export async function buyReward(actor: Actor, id: string): Promise<Won> {
   const target = idOrGone(id, GONE_REWARD);
-  await db.transaction(async (tx) => {
+  return db.transaction(async (tx) => {
     // One spend at a time per person, whatever it buys (looks take the same lock, src/server/looks.ts).
     await tx.execute(sql`select pg_advisory_xact_lock(hashtext('hemmafix:coins:' || ${actor.userId}))`);
     const [r] = await tx
@@ -80,10 +80,11 @@ export async function buyReward(actor: Actor, id: string) {
       .where(and(eq(reward.id, target), eq(reward.householdId, actor.householdId)));
     if (!r) throw new UserError(GONE_REWARD);
     if ((await balanceOf(actor.householdId, actor.userId, tx)) < r.price) throw new UserError(NOT_ENOUGH);
-    await tx
-      .insert(rewardPurchase)
-      .values({ householdId: actor.householdId, buyerId: actor.userId, name: r.name, price: r.price });
-    await awardBadges(tx, actor);
+    return changeAndAward(tx, actor, async () => {
+      await tx
+        .insert(rewardPurchase)
+        .values({ householdId: actor.householdId, buyerId: actor.userId, name: r.name, price: r.price });
+    });
   });
 }
 

@@ -7,7 +7,7 @@ import { UserError } from "@/lib/errors";
 import { chooseLookInput, defaultLook, findLook, LOOK_KINDS, type LookKind } from "@/lib/looks";
 import { balanceOf } from "./chores";
 import type { Actor } from "./household";
-import { awardBadges } from "./badges";
+import { changeAndAward, type Won } from "./badges";
 
 const COLUMN = { frame: "frame", theme: "theme", coin: "coinLook" } as const;
 
@@ -52,11 +52,11 @@ const ownedBy = (tx: Executor, actor: Actor, kind: string, key: string) =>
     .where(and(eq(lookPurchase.userId, actor.userId), eq(lookPurchase.kind, kind), eq(lookPurchase.key, key)));
 
 /** Buys a look with the actor's coins, exactly enough being enough, and starts using it. */
-export async function buyLook(actor: Actor, kind: string, key: string) {
+export async function buyLook(actor: Actor, kind: string, key: string): Promise<Won> {
   const input = chooseLookInput.parse({ kind, key });
   const look = findLook(input.kind, input.key)!;
   if (look.price === 0) throw new UserError("Utseendet är gratis.");
-  await db.transaction(async (tx) => {
+  return db.transaction(async (tx) => {
     // One spend at a time per person, whatever it buys (rewards take the same lock), so two
     // devices cannot spend the same coins twice.
     await tx.execute(sql`select pg_advisory_xact_lock(hashtext('hemmafix:coins:' || ${actor.userId}))`);
@@ -64,11 +64,12 @@ export async function buyLook(actor: Actor, kind: string, key: string) {
     if ((await balanceOf(actor.householdId, actor.userId, tx)) < look.price) {
       throw new UserError("Du har inte tillräckligt med mynt.");
     }
-    await tx
-      .insert(lookPurchase)
-      .values({ householdId: actor.householdId, userId: actor.userId, kind: look.kind, key: look.key, price: look.price });
-    await selectLook(tx, actor, look.kind, look.key);
-    await awardBadges(tx, actor);
+    return changeAndAward(tx, actor, async () => {
+      await tx
+        .insert(lookPurchase)
+        .values({ householdId: actor.householdId, userId: actor.userId, kind: look.kind, key: look.key, price: look.price });
+      await selectLook(tx, actor, look.kind, look.key);
+    });
   });
 }
 
