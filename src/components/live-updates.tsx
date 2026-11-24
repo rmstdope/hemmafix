@@ -2,6 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { useEffect } from "react";
+import { todayIso } from "@/lib/dates";
 
 /**
  * Whether the server answers right now. A refresh that cannot reach the server makes Next's router
@@ -60,12 +61,21 @@ export function LiveUpdates() {
     };
     connect();
 
+    // A screen left open over midnight: the day the rows were worked out for is over, so ask again.
+    let shownDay = todayIso();
+    const midnight = setInterval(() => {
+      if (todayIso() === shownDay) return;
+      shownDay = todayIso();
+      refreshSoon();
+    }, 30_000);
+
     const onVisible = () => document.visibilityState === "visible" && refreshSoon();
     document.addEventListener("visibilitychange", onVisible);
 
     return () => {
       clearTimeout(timer);
       clearTimeout(reconnect);
+      clearInterval(midnight);
       source?.close();
       document.removeEventListener("visibilitychange", onVisible);
     };

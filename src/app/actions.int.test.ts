@@ -29,8 +29,8 @@ const FORBIDDEN = { ok: false, error: "Det här får bara vuxna göra." };
 const OK = { ok: true };
 
 /** A weekly kitchen task created by the adult, and its open instance. */
-async function weeklyTask(title = "Diska") {
-  const { id } = await chores.createChore(f.adult, { title, roomId: f.kitchen.id, interval: "1", unit: "week" });
+async function weeklyTask(title = "Diska", kind = "once") {
+  const { id } = await chores.createChore(f.adult, { title, roomId: f.kitchen.id, interval: "1", unit: "week", kind });
   const [instance] = await db.select().from(choreInstance).where(eq(choreInstance.choreId, id));
   return { choreId: id, instanceId: instance!.id };
 }
@@ -89,6 +89,16 @@ describe("as a child", () => {
     expect(await actions.uncompleteInstance(annas.instanceId)).toEqual(FORBIDDEN);
   });
 
+  it("is refused a repeating task before its day, whatever the screen showed", async () => {
+    const t = await weeklyTask("Diska", "recurring");
+    as(f.adult);
+    await actions.completeInstance(t.instanceId);
+    as(f.child);
+    const next = await openInstance(t.choreId);
+    expect(await actions.completeInstance(next!.id)).toEqual({ ok: false, error: expect.stringMatching(/^Diska kan bockas av .+\.$/) });
+    expect((await openInstance(t.choreId))!.id).toBe(next!.id);
+  });
+
   it("is asked before an undo that takes spent coins, and the undo goes ahead once confirmed", async () => {
     const mine = await weeklyTask("Diska");
     await actions.completeInstance(mine.instanceId);
@@ -108,6 +118,16 @@ describe("as a child", () => {
 
 describe("as an adult", () => {
   beforeEach(() => as(f.adult));
+
+  it("tells an adult who ticks a repeating task early that it gave no coins", async () => {
+    const t = await weeklyTask("Diska", "recurring");
+    expect((await actions.completeInstance(t.instanceId)).ok).toBe(true);
+    const next = await openInstance(t.choreId);
+    expect(await actions.completeInstance(next!.id)).toEqual({
+      ok: true,
+      notice: expect.stringMatching(/^Diska är klar\. Inga mynt, eftersom den inte är dags förrän .+\.$/),
+    });
+  });
 
   it("can rename the home, add rooms and change roles", async () => {
     expect(await actions.renameHousehold({ ok: false }, form({ name: "Villa Kulla" }))).toEqual(OK);

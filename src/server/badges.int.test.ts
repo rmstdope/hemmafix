@@ -3,7 +3,7 @@ import { beforeEach, describe, expect, it } from "vitest";
 import { db } from "@/db";
 import { badgeAward, badgeEpoch, choreInstance, household, room } from "@/db/schema";
 import { addDays, todayIso } from "@/lib/dates";
-import { createFamily } from "../../test/integration/factories";
+import { bringDueToday, createFamily } from "../../test/integration/factories";
 import { completeInstance, createChore, getCoinTotal, getLifetimeCoins, listOpenInstances, uncompleteInstance } from "./chores";
 import { getBadges } from "./badges";
 import { buyLook } from "./looks";
@@ -116,6 +116,7 @@ describe("winning badges", () => {
     for (let i = 0; i < 9; i++) {
       const [t] = (await listOpenInstances(f.adult, {})).filter((x) => x.title === "Diska");
       await completeInstance(f.child, t!.id);
+      await bringDueToday(f.adult.householdId);
     }
     expect(await won()).toEqual(["first-task"]);
     const view = (await getBadges(f.child)).find((b) => b.key === "ten-same")!;

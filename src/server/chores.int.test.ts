@@ -7,7 +7,7 @@ import { UserError } from "@/lib/errors";
 import { DEFAULT_COINS } from "@/lib/coins";
 import { ForbiddenError } from "@/lib/permissions";
 import { nextDueDate } from "@/lib/recurrence";
-import { createFamily } from "../../test/integration/factories";
+import { bringDueToday, createFamily } from "../../test/integration/factories";
 import {
   assignChore,
   assignInstance,
@@ -175,6 +175,81 @@ describe("completeInstance", () => {
     const [theirs] = await listOpenInstances(f.neighbour, {});
     await expect(completeInstance(f.adult, theirs!.id)).rejects.toThrow("finns inte längre");
     expect(await listOpenInstances(f.neighbour, {})).toHaveLength(1);
+  });
+});
+
+describe("completeInstance before a repeating chore's day", () => {
+  const daily = (title: string, extra: Record<string, string> = {}) => weekly(title, { unit: "day", ...extra });
+  /** A daily chore ticked today, which leaves tomorrow's instance open. */
+  const tomorrows = async (title = "Diska", extra: Record<string, string> = {}) => {
+    await createChore(f.adult, daily(title, extra));
+    const [first] = await openOf(title);
+    await completeInstance(f.adult, first!.id, { offerChest: false });
+    const [next] = await openOf(title);
+    expect(next!.dueDate).toBe(addDays(todayIso(), 1));
+    return next!;
+  };
+
+  it("refuses a child, with the day it opens, and writes nothing", async () => {
+    const next = await tomorrows();
+    const before = await getCoinTotal(f.child);
+
+    await expect(completeInstance(f.child, next.id)).rejects.toThrow(new UserError("Diska kan bockas av imorgon."));
+
+    expect((await openOf("Diska")).map((i) => i.id)).toEqual([next.id]);
+    expect(await getCoinTotal(f.child)).toBe(before);
+  });
+
+  it("names the day when it is further ahead", async () => {
+    await createChore(f.adult, daily("Diska", { startDate: addDays(todayIso(), 3) }));
+    const [far] = await openOf("Diska");
+    await expect(completeInstance(f.child, far!.id)).rejects.toThrow(/^Diska kan bockas av \S{3} \d+ \S+\.$/);
+  });
+
+  it("lets an adult tick it for 0 coins, no chest and no bonus, and says so", async () => {
+    const next = await tomorrows();
+    const before = await getCoinTotal(f.adult);
+
+    const report = await completeInstance(f.adult, next.id);
+
+    expect(report.notice).toBe("Diska är klar. Inga mynt, eftersom den inte är dags förrän imorgon.");
+    expect(report.chestId).toBeNull();
+    expect(await getCoinTotal(f.adult)).toBe(before);
+    const [done] = await db.select().from(choreInstance).where(eq(choreInstance.id, next.id));
+    expect(done!.coins).toBe(0);
+    const [after] = await openOf("Diska");
+    expect(after!.dueDate).toBe(addDays(todayIso(), 1));
+  });
+
+  it("undoes an early tick with no question and no change of balance", async () => {
+    const next = await tomorrows();
+    await completeInstance(f.adult, next.id);
+    const before = await getCoinTotal(f.adult);
+    expect(await uncompleteInstance(f.adult, next.id)).toBeUndefined();
+    expect(await getCoinTotal(f.adult)).toBe(before);
+  });
+
+  it("leaves a one-off chore with a future day unchanged: full coins, for a child too", async () => {
+    await createChore(f.adult, once("Köp mjölk", { dueDate: addDays(todayIso(), 2) }));
+    const [t] = await openOf("Köp mjölk");
+    const before = await getCoinTotal(f.child);
+    const report = await completeInstance(f.child, t!.id, { offerChest: false });
+    expect(report.notice).toBeNull();
+    expect(await getCoinTotal(f.child)).toBe(before + DEFAULT_COINS);
+  });
+
+  it("pays in full once its day has come", async () => {
+    const next = await tomorrows();
+    vi.useFakeTimers({ toFake: ["Date"] });
+    try {
+      vi.setSystemTime(new Date(`${next.dueDate}T12:00:00Z`));
+      const before = await getCoinTotal(f.child);
+      const report = await completeInstance(f.child, next.id, { offerChest: false });
+      expect(report.notice).toBeNull();
+      expect(await getCoinTotal(f.child)).toBe(before + DEFAULT_COINS);
+    } finally {
+      vi.useRealTimers();
+    }
   });
 });
 
@@ -553,6 +628,7 @@ describe("listCompletedBy", () => {
     await createChore(f.adult, weekly("Diska"));
     const [first] = await openOf("Diska");
     await completeInstance(f.child, first!.id);
+    await bringDueToday(f.adult.householdId);
     const [second] = await openOf("Diska");
     await completeInstance(f.child, second!.id);
 
@@ -765,6 +841,7 @@ describe("coins", () => {
   it("is earned every time a recurring task is ticked", async () => {
     await createChore(f.adult, weekly("Dammsuga"));
     await completeInstance(f.child, (await open())[0]!.id);
+    await bringDueToday(f.adult.householdId);
     await completeInstance(f.child, (await open())[0]!.id);
     expect(await total(f.child)).toBe(2 * DEFAULT_COINS);
   });
@@ -888,8 +965,10 @@ describe("what a task gives", () => {
     expect((await open())[0]!.coins).toBe(45);
     expect(await total(f.child)).toBe(20);
 
+    await bringDueToday(f.adult.householdId);
     await completeInstance(f.child, (await open())[0]!.id);
     expect(await total(f.child)).toBe(65);
+    await bringDueToday(f.adult.householdId);
     await completeInstance(f.child, (await open())[0]!.id);
     expect(await total(f.child)).toBe(110);
 
