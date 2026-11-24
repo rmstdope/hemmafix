@@ -59,3 +59,13 @@ test("on a 300 px phone Gjort's two filters show their whole choice", async ({ p
   expect(await showsWholeText(person)).toEqual({ text: "Anna Andersson (jag)", fits: true });
   expect(await showsWholeText(period)).toEqual({ text: "Senaste månaden", fits: true });
 });
+
+test("on a wider screen the Uppgifter header stays one row", async ({ page, context }) => {
+  // The project's own width: a Pixel 7 on mobile, a desktop window on desktop.
+  await logIn(context, "anna", "adult");
+  await page.goto("/");
+  const heading = (await page.getByRole("heading", { level: 1, name: "Uppgifter" }).boundingBox())!;
+  const filter = (await page.getByRole("button", { name: "Filtrera" }).boundingBox())!;
+  expect(filter.y).toBeLessThan(heading.y + heading.height);
+  expect(filter.x).toBeGreaterThanOrEqual(heading.x + heading.width);
+});
