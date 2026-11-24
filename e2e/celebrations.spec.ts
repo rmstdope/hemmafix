@@ -256,11 +256,13 @@ test("scrolled down on a phone, no pill shows the badge's coins while its card i
   await expect(pill(page)).toHaveText("0");
   await page.evaluate(() => window.scrollTo(0, document.body.scrollHeight));
   await expect(pill(page)).not.toBeInViewport();
+  const saved = page.waitForResponse((r) => r.request().method() === "POST" && r.request().headers()["next-action"] !== undefined);
   await tick(page, "Syssla 14");
 
   await expect(badgeCard(page)).toBeVisible({ timeout: 5_000 });
-  // Long enough for the tick's save to answer and the shower to hand back to the server's total.
-  await page.waitForTimeout(2_500);
+  // Once the tick is saved the shower hands back to the server's total, at once or after SETTLE_MS (1.5 s).
+  await saved;
+  await page.waitForTimeout(2_000);
   const duringCard = await page.evaluate(() => (window as unknown as { duringCard: string[] }).duringCard);
   expect(duringCard).toContain("10");
   expect(duringCard).not.toContain("35");
