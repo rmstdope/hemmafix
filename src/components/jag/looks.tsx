@@ -1,7 +1,8 @@
 "use client";
 
 import { useRef, useState } from "react";
-import { buyLook, chooseLook } from "@/app/actions";
+import { buyLook, chooseLook, type ActionState } from "@/app/actions";
+import { useOfferCelebrations } from "@/components/coin-shower";
 import { formatCoins } from "@/lib/coins";
 import { buyLookLabel, coinsLeft, LOOKS_TITLES, LOOK_KINDS, looksOf, previewText, type Look } from "@/lib/looks";
 import { cn } from "@/lib/utils";
@@ -46,6 +47,7 @@ export function Looks({ name, image, coins, owned, chosen }: Props) {
   const setPreview = (look: Look | null) => setOpen(look ? { look, coins } : null);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const offerCelebrations = useOfferCelebrations();
   const opener = useRef<HTMLElement | null>(null);
   const focus = useRef<HTMLButtonElement>(null);
 
@@ -63,10 +65,12 @@ export function Looks({ name, image, coins, owned, chosen }: Props) {
 
   const buy = async (look: Look) => {
     setBusy(true);
-    const result = await buyLook(look.kind, look.key).catch(() => ({ ok: false, error: "Det gick inte att spara. Försök igen." }));
+    const result: ActionState = await buyLook(look.kind, look.key).catch(() => ({ ok: false, error: "Det gick inte att spara. Försök igen." }));
     setBusy(false);
-    if (result.ok) setPreview(null);
-    else setError(result.error ?? null);
+    if (result.ok) {
+      setPreview(null);
+      if (result.badges || result.levelUp) offerCelebrations({ badges: result.badges ?? [], levelUp: result.levelUp });
+    } else setError(result.error ?? null);
   };
 
   const openedWith = open?.coins ?? coins;
