@@ -1,6 +1,7 @@
 FROM node:26-alpine AS base
 # Node 25+ no longer bundles corepack; install it so pnpm still comes from
-# package.json's packageManager.
+# package.json's packageManager. Dependabot cannot see this pin: bump it by hand
+# when a corepack release is needed (e.g. after a registry signing-key rotation).
 RUN npm install -g corepack@0.36.0 && corepack enable
 WORKDIR /app
 
@@ -14,7 +15,7 @@ COPY . .
 ENV NEXT_TELEMETRY_DISABLED=1
 RUN pnpm build \
  && pnpm exec esbuild scripts/migrate.ts --bundle --platform=node --format=esm \
-      --target=node24 --outfile=dist/migrate.mjs
+      --target=node26 --outfile=dist/migrate.mjs
 
 FROM node:26-alpine AS runtime
 # tzdata: due dates are calendar days in Swedish time.
