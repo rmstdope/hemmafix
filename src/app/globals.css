@@ -60,6 +60,7 @@
   --card-foreground: oklch(0.145 0 0);
   --popover: oklch(1 0 0);
   --popover-foreground: oklch(0.145 0 0);
+  /* The Svart theme preview below restates --primary, --primary-foreground and --ring: change both. */
   --primary: oklch(0.205 0 0);
   --primary-foreground: oklch(0.985 0 0);
   --secondary: oklch(0.97 0 0);
@@ -95,6 +96,7 @@
   --card-foreground: oklch(0.985 0 0);
   --popover: oklch(0.205 0 0);
   --popover-foreground: oklch(0.985 0 0);
+  /* The Svart theme preview below restates --primary, --primary-foreground and --ring: change both. */
   --primary: oklch(0.922 0 0);
   --primary-foreground: oklch(0.205 0 0);
   --secondary: oklch(0.269 0 0);
@@ -146,8 +148,19 @@
 /*
  * A bought theme (src/lib/looks.ts) recolours the person's own screens: buttons, the lit tab and
  * switch, focus rings. LookScope marks the page with data-look-own; `data-look-theme` draws a theme
- * on its own, for the preview. "svart" is the app's own look and sets nothing.
+ * on its own, for the preview. "svart" is the app's own look: the page sets nothing for it, but its
+ * preview restates the defaults so it never inherits the theme the person uses.
  */
+[data-look-theme="svart"] {
+  --primary: oklch(0.205 0 0);
+  --primary-foreground: oklch(0.985 0 0);
+  --ring: oklch(0.708 0 0);
+}
+.dark [data-look-theme="svart"] {
+  --primary: oklch(0.922 0 0);
+  --primary-foreground: oklch(0.205 0 0);
+  --ring: oklch(0.556 0 0);
+}
 :root:has([data-look-own="lila"]),
 [data-look-theme="lila"] {
   --primary: #7c3aed;
