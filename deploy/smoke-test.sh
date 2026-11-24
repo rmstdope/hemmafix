@@ -52,9 +52,11 @@ start_web() {
 start_web
 [ "$(curl -fsS "$base/healthz" | jq -r .status)" = ok ] || fail "/healthz"
 [ "$(curl -fsS "$base/release.json" | jq -r .revision)" = "$REVISION" ] || fail "baked revision"
-curl -fsSI "$base/release.json" | grep -qi 'cache-control: no-cache' || fail "release.json cache policy"
-# Into a variable, not piped to grep -q: grep stops at the first match and, with pipefail, curl's
-# "Failed writing body" would fail a login page that is streamed in several chunks.
+# Output is checked from a variable, never piped to grep -q: grep stops at the first match and,
+# with pipefail, the writer's SIGPIPE (curl's "Failed writing body", docker logs' exit 141) fails a
+# check whose text was there.
+headers="$(curl -fsSI "$base/release.json")"
+grep -qi 'cache-control: no-cache' <<<"$headers" || fail "release.json cache policy"
 login="$(curl -fsS "$base/login")"
 [[ "$login" == *Hemmafix* ]] || fail "/login did not render"
 curl -fsS "$base/manifest.webmanifest" | jq -e '.name == "Hemmafix"' >/dev/null || fail "manifest"
@@ -67,7 +69,8 @@ tables="$(docker exec "$id-db" psql -U hemmafix -d hemmafix -tAc \
 # A second start must find the schema current and come up again (migrations are idempotent).
 docker rm -f "$id-web" >/dev/null
 start_web
-docker logs "$id-web" 2>&1 | grep -q "migrate: database is up to date" || fail "migration on restart"
+restart_log="$(docker logs "$id-web" 2>&1)"
+[[ "$restart_log" == *"migrate: database is up to date"* ]] || fail "migration on restart"
 
 # Graceful stop must be quick (SIGTERM closes event streams; nothing waits for the kill timeout).
 started=$(date +%s)

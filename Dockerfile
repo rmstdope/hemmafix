@@ -1,5 +1,7 @@
 FROM node:26-alpine AS base
-RUN corepack enable
+# Node 25+ no longer bundles corepack; install it so pnpm still comes from
+# package.json's packageManager.
+RUN npm install -g corepack@0.36.0 && corepack enable
 WORKDIR /app
 
 FROM base AS deps
