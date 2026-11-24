@@ -636,6 +636,8 @@ export type DoneView = {
   roomName: string | null;
   floorName: string | null;
   completedAt: Date;
+  /** What that tick gave; null for a tick from before coins existed. */
+  coins: number | null;
 };
 
 /** At most this many entries are shown; the page says so when the list is cut. */
@@ -660,6 +662,7 @@ export async function listCompletedBy(actor: Actor, personId: string, days: Hist
       roomName: room.name,
       floorName: floor.name,
       completedAt: choreInstance.completedAt,
+      coins: choreInstance.coins,
     })
     .from(choreInstance)
     .innerJoin(chore, eq(chore.id, choreInstance.choreId))

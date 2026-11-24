@@ -37,9 +37,9 @@ jobs:
     env:
       DATABASE_URL: postgres://hemmafix:hemmafix@localhost:5432/hemmafix
     steps:
-      - uses: actions/checkout@v5
-      - uses: pnpm/action-setup@v5
-      - uses: actions/setup-node@v6
+      - uses: actions/checkout@v7
+      - uses: pnpm/action-setup@v6
+      - uses: actions/setup-node@v7
         with:
           node-version-file: .nvmrc
           cache: pnpm
@@ -78,9 +78,9 @@ jobs:
     env:
       TEST_DATABASE_URL: postgres://hemmafix:hemmafix@localhost:5432/hemmafix
     steps:
-      - uses: actions/checkout@v5
-      - uses: pnpm/action-setup@v5
-      - uses: actions/setup-node@v6
+      - uses: actions/checkout@v7
+      - uses: pnpm/action-setup@v6
+      - uses: actions/setup-node@v7
         with:
           node-version-file: .nvmrc
           cache: pnpm
@@ -90,7 +90,7 @@ jobs:
       - run: pnpm run build
       - name: End-to-end tests (production build, mobile and desktop)
         run: pnpm run test:e2e
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         if: failure()
         with:
           name: playwright-report
@@ -106,7 +106,7 @@ jobs:
       REVISION: ${{ github.sha }}
       IMAGE: ghcr.io/rmstdope/hemmafix:${{ github.sha }}
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v7
       - name: Build the production image
         run: docker build --build-arg "GIT_SHA=$REVISION" -t "$IMAGE" .
       - name: Smoke test the exact image with the bundle's database image
@@ -114,7 +114,7 @@ jobs:
       - name: Export the tested image
         if: github.event_name == 'push' && github.ref == 'refs/heads/main'
         run: mkdir -p publication && docker save "$IMAGE" -o publication/image.tar
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         if: github.event_name == 'push' && github.ref == 'refs/heads/main'
         with:
           name: tested-image
@@ -137,11 +137,11 @@ jobs:
       REVISION: ${{ github.sha }}
       IMAGE: ghcr.io/rmstdope/hemmafix:${{ github.sha }}
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v7
       - name: Preserve a manifest already published for this revision
         id: existing
         run: deploy/preserve-manifest.sh
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v8
         if: steps.existing.outputs.preserved != 'true'
         with:
           name: tested-image
@@ -167,7 +167,7 @@ jobs:
           cat publication/deployment.json
       - name: Publish deployment manifest
         if: steps.existing.outputs.artifact_exists != 'true'
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: deployment-manifest
           path: publication/deployment.json

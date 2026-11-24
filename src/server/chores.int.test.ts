@@ -504,6 +504,21 @@ describe("listCompletedBy", () => {
     ]);
   });
 
+  it("gives each tick-off the coins that tick gave, and none for a tick from before coins existed", async () => {
+    const diska = await tick("Diska", f.child);
+    const old = await tick("Gammal", f.child);
+    await setDoneAt(diska.instanceId, new Date(Date.now() - 60_000));
+    await db.update(choreInstance).set({ coins: null }).where(eq(choreInstance.id, old.instanceId));
+    await setDoneAt(old.instanceId, new Date(Date.now() - 2 * 60_000));
+    await db.update(choreInstance).set({ coins: 7 }).where(eq(choreInstance.id, diska.instanceId));
+
+    const rows = await listCompletedBy(f.child, f.child.userId, 30);
+    expect(rows.map((d) => [d.title, d.coins])).toEqual([
+      ["Diska", 7],
+      ["Gammal", null],
+    ]);
+  });
+
   it("lets everyone see their own, and only adults see someone else's", async () => {
     await tick("Diska", f.child);
     await tick("Annas", f.adult);

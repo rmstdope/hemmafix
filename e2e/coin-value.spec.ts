@@ -71,7 +71,7 @@ test("picking a ready-made task leaves the amount at 10", async ({ page, context
   await expect(form.getByRole("spinbutton", { name: "Mynt" })).toHaveValue("10");
 });
 
-test("a child sees the badge before the name of who has the task, and no control", async ({ page, context }) => {
+test("a child sees who has the task in the details, with the badge on the right, and no control", async ({ page, context }) => {
   const bo = await logIn(context, "bo", "child");
   const rooms = await seedRooms("Kök");
   await seedChore({ title: "Diska", roomId: rooms["Kök"]!.id, coins: 30, recurrence: null, assigneeId: bo.id });
@@ -80,7 +80,7 @@ test("a child sees the badge before the name of who has the task, and no control
   await expect(row.getByText("30 mynt")).toBeAttached();
   const badge = await row.getByText("30", { exact: true }).boundingBox();
   const who = await row.getByText("Jag", { exact: true }).boundingBox();
-  expect(badge!.x).toBeLessThan(who!.x);
+  expect(who!.x).toBeLessThan(badge!.x);
   await expect(page.getByRole("button", { name: "Fler mynt" })).toHaveCount(0);
 });
 

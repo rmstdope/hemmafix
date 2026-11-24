@@ -96,7 +96,7 @@ test("an adult adds a one-off task of their own; once done it is gone", async ({
   await expect(task).toContainText("Kök");
   await expect(task).toContainText(dueLabel("2030-06-01"));
   await expect(task).not.toContainText("Varje");
-  await expect(task.getByRole("combobox", { name: "Tilldela den här gången" }).locator("option:checked")).toHaveText("Jag");
+  await expect(task).toContainText("Jag");
 
   await task.getByRole("button", { name: "Markera som klar" }).click();
   await expect(todo(page).getByText("Inget planerat längre fram.")).toBeVisible();
@@ -170,20 +170,30 @@ test("an adult gives a recurring task to someone every time, or just this time",
   await page.goto("/");
 
   const task = item(page, "Diska");
-  const thisTime = task.getByRole("combobox", { name: "Tilldela den här gången" });
+  await expect(task).not.toContainText("Bo");
   await task.getByRole("button", { name: "Mer" }).click();
-  await task.getByRole("combobox", { name: "Tilldela alla gånger" }).selectOption({ label: "Bo Andersson" });
+  const group = task.getByRole("group", { name: /gäller/ });
+  const who = task.getByRole("combobox", { name: "vem gör den?" });
+  await expect(group.getByRole("button", { name: "Den här gången" })).toHaveAttribute("aria-pressed", "true");
+
+  await group.getByRole("button", { name: "Alla gånger" }).click();
+  await who.selectOption({ label: "Bo" });
   await expect(page.getByText('Bo gör "Diska" alla gånger')).toBeVisible();
-  await expect(thisTime.locator("option:checked")).toHaveText("Bo");
+  await expect(task).toContainText("Bo");
+
+  // The switch is not remembered: closed and opened again it is on "Den här gången".
+  await task.getByRole("button", { name: "Mer" }).click();
+  await task.getByRole("button", { name: "Mer" }).click();
+  await expect(group.getByRole("button", { name: "Den här gången" })).toHaveAttribute("aria-pressed", "true");
 
   // This time Anna does it; the next time it is Bo's again.
-  await thisTime.selectOption({ label: "Jag" });
-  await expect(thisTime.locator("option:checked")).toHaveText("Jag");
+  await who.selectOption({ label: "Jag" });
+  await expect(task).toContainText("Jag");
   await task.getByRole("button", { name: "Markera som klar" }).click();
   await page.getByRole("tab", { name: /^Senare,/ }).click();
   const next = item(page, "Diska");
   await expect(next).toContainText(dueLabel(nextDueDate(today(), { unit: "week", interval: 1 })));
-  await expect(next.getByRole("combobox", { name: "Tilldela den här gången" }).locator("option:checked")).toHaveText("Bo");
+  await expect(next).toContainText("Bo");
 });
 
 test("an adult deletes a task", async ({ page, context }) => {

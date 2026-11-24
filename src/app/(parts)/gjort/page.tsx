@@ -2,6 +2,7 @@ import { Check } from "lucide-react";
 import { Suspense } from "react";
 import { HistoryFilters } from "@/components/history-filters";
 import { BackToPart } from "@/components/part-links";
+import { TaskRowBody } from "@/components/task-row";
 import { LiveUpdates } from "@/components/live-updates";
 import { formatDay, formatTime, todayIso } from "@/lib/dates";
 import { roomLabel } from "@/lib/floors";
@@ -77,19 +78,21 @@ async function History({ searchParams }: { searchParams: PageProps<"/gjort">["se
             <h2 className="mb-2 text-sm font-medium text-muted-foreground">{formatDay(day, today)}</h2>
             <ul className="divide-y rounded-xl border bg-card">
               {items.map((d) => (
-                <li key={d.id} className="flex items-center gap-3 px-3 py-2.5">
+                <li key={d.id} className="flex items-start gap-3 px-3 py-2.5">
                   <span className="flex size-8 shrink-0 items-center justify-center rounded-full bg-secondary" aria-hidden>
                     <Check className="size-4" />
                   </span>
-                  <div className="min-w-0 flex-1">
-                    <p className="truncate font-medium">{d.title}</p>
-                    {d.roomName && (
-                      <p className="text-xs text-muted-foreground">{roomLabel(d.roomName, d.floorName, showFloors)}</p>
-                    )}
-                  </div>
-                  <time dateTime={d.completedAt.toISOString()} className="shrink-0 text-sm text-muted-foreground">
-                    {formatTime(d.completedAt)}
-                  </time>
+                  <TaskRowBody
+                    title={d.title}
+                    details={d.roomName ? roomLabel(d.roomName, d.floorName, showFloors) : null}
+                    coins={d.coins}
+                    faded
+                    trailing={
+                      <time dateTime={d.completedAt.toISOString()} className="shrink-0 pt-0.5 text-sm text-muted-foreground">
+                        {formatTime(d.completedAt)}
+                      </time>
+                    }
+                  />
                 </li>
               ))}
             </ul>
