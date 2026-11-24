@@ -14,6 +14,7 @@ const RULES: Record<Action, "V" | "V+B"> = {
   "task:delete": "V",
   "task:complete": "V+B",
   "task:uncomplete-others": "V",
+  "task:tick-early": "V",
   "task:view": "V+B",
   "history:view-own": "V+B",
   "history:view-anyone": "V",

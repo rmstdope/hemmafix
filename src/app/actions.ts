@@ -32,6 +32,8 @@ export type ActionState = {
   /** Badges the tick-off just won, and the level it reached (completeInstance only). */
   badges?: string[];
   levelUp?: { level: number; title: string; name: string; image: string | null };
+  /** Said to the person after a tick that gave no coins because the chore was not yet due (completeInstance only). */
+  notice?: string;
 };
 
 const LOGGED_OUT = "Du är utloggad – ladda om sidan och logga in igen.";
@@ -54,13 +56,15 @@ async function act(
     if (out && typeof out === "object" && "confirm" in out) return { ok: true, confirm: out.confirm as UndoDebt };
     // Only what a tick-off reports (its chest, badges and level) goes back; other results stay on the server.
     if (out && typeof out === "object") {
-      const { chestId, chestCoins, badges, levelUp } = out as {
+      const { chestId, chestCoins, badges, levelUp, notice } = out as {
         chestId?: string;
         chestCoins?: number;
         badges?: string[];
         levelUp?: { level: number; title: string } | null;
+        notice?: string | null;
       };
-      if (chestId && chestCoins !== undefined) extra = { chestId, chestCoins };
+      if (notice) extra = { notice };
+      if (chestId && chestCoins !== undefined) extra = { ...extra, chestId, chestCoins };
       if (badges?.length) extra = { ...extra, badges };
       if (levelUp) extra = { ...extra, levelUp: { ...levelUp, name: member.name, image: member.image } };
     }

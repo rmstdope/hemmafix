@@ -1,6 +1,8 @@
 import { randomUUID } from "node:crypto";
 import { db } from "@/db";
-import { badgeAward, floor, household, membership, room, user } from "@/db/schema";
+import { and, eq, gt, isNull } from "drizzle-orm";
+import { badgeAward, choreInstance, floor, household, membership, room, user } from "@/db/schema";
+import { todayIso } from "@/lib/dates";
 import { BADGE_KEYS } from "@/lib/badges";
 import type { Role } from "@/lib/permissions";
 
@@ -70,4 +72,15 @@ export async function createFamily({ badges = "won" }: { badges?: "won" | "none"
     bathroom: bathroom!,
     garage: garage!,
   };
+}
+
+/**
+ * Lets the day come for every open instance with a day ahead (a repeating chore comes back one
+ * interval after it is ticked, and pays only from its day), so a test can tick it again at once.
+ */
+export async function bringDueToday(householdId: string) {
+  await db
+    .update(choreInstance)
+    .set({ dueDate: todayIso() })
+    .where(and(eq(choreInstance.householdId, householdId), isNull(choreInstance.completedAt), gt(choreInstance.dueDate, todayIso())));
 }

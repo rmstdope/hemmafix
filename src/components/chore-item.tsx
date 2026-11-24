@@ -1,6 +1,6 @@
 "use client";
 
-import { Check, ChevronDown, Pencil, RotateCcw, Trash2 } from "lucide-react";
+import { Check, ChevronDown, Lock, Pencil, RotateCcw, Trash2 } from "lucide-react";
 import { useOptimistic, useRef, useState, useTransition } from "react";
 import { toast } from "sonner";
 import {
@@ -18,6 +18,7 @@ import { undoDebtText, undoDebtTitle, type UndoDebt } from "@/lib/debt";
 import { joinNames } from "@/lib/high-fives";
 import { DEFAULT_COINS } from "@/lib/coins";
 import { formatDue } from "@/lib/dates";
+import { earlyDetail, isNotYetDue, lockedDetail, lockedLabel, lockedMessage } from "@/lib/early-tick";
 import { roomLabel } from "@/lib/floors";
 import { useCelebrateNuCleared, useCoinShower, useOfferChest, useOfferCelebrations, type Shower } from "./coin-shower";
 import { TaskRowBody } from "./task-row";
@@ -81,7 +82,11 @@ export function ChoreItem({
   const cancelUndo = useRef<HTMLButtonElement>(null);
   const [cheered, setCheered] = useOptimistic(highFive?.givenByMe ?? false);
   const completed = t.completedAt !== null;
-  const due = completed || !showDue ? null : formatDue(t.dueDate, today);
+  // A repeating chore whose day is ahead pays no coins yet: a child's tick is locked, an adult's gives none.
+  const notYet = !completed && t.dueDate !== null && isNotYetDue({ dueDate: t.dueDate, recurrence: t.recurrence }, today);
+  const locked = notYet && !canManage;
+  const noCoinsYet = notYet && canManage;
+  const due = completed || notYet || !showDue ? null : formatDue(t.dueDate, today);
   const firstName = (id: string | null) =>
     id === currentUserId ? "Jag" : (members.find((m) => m.id === id)?.name.split(" ")[0] ?? "");
 
@@ -116,6 +121,7 @@ export function ChoreItem({
         if (result.chestId && result.chestCoins !== undefined) offerChest({ id: result.chestId, coins: result.chestCoins });
         if (result.badges || result.levelUp) offerCelebrations({ badges: result.badges ?? [], levelUp: result.levelUp });
         if (lastInNu) celebrateNuCleared();
+        if (result.notice) toast.success(result.notice);
         if (success) toast.success(success);
       }
     });
@@ -143,6 +149,18 @@ export function ChoreItem({
               <Check className="size-4" />
             </span>
           )
+        ) : locked ? (
+          <Button
+            variant="outline"
+            size="icon-lg"
+            className="size-11 shrink-0 rounded-full border-dashed bg-muted/40 text-muted-foreground"
+            // Not `disabled`: the circle stays reachable by keyboard and a screen reader, and explains itself when pressed.
+            aria-disabled
+            aria-label={lockedLabel(t.title, t.dueDate!, today)}
+            onClick={() => toast(lockedMessage(t.title, t.dueDate!, today))}
+          >
+            <Lock />
+          </Button>
         ) : (
           <Button
             variant="outline"
@@ -154,7 +172,7 @@ export function ChoreItem({
                 () => completeInstance(t.id),
                 () => setHidden(true),
                 undefined,
-                startShower(e.currentTarget.getBoundingClientRect(), t.coins ?? DEFAULT_COINS),
+                noCoinsYet ? undefined : startShower(e.currentTarget.getBoundingClientRect(), t.coins ?? DEFAULT_COINS),
                 e.currentTarget.closest("li"),
               )
             }
@@ -167,10 +185,16 @@ export function ChoreItem({
           title={t.title}
           struck={completed}
           coins={t.coins}
-          faded={completed}
+          faded={completed || noCoinsYet}
           details={
             <>
               {t.roomName && <span>{roomLabel(t.roomName, t.floorName, showFloors)}</span>}
+              {(locked || noCoinsYet) && (
+                <>
+                  {t.roomName && <span aria-hidden> · </span>}
+                  <span>{locked ? lockedDetail(t.dueDate!, today) : earlyDetail(t.dueDate!, today)}</span>
+                </>
+              )}
               {due && (
                 <>
                   {t.roomName && <span aria-hidden> · </span>}

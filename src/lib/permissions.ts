@@ -20,6 +20,7 @@ const ADULTS_ONLY = new Set<Action>([
   "task:assign",
   "task:delete",
   "task:uncomplete-others",
+  "task:tick-early",
   "history:view-anyone",
   "reward:manage",
   "reward:give",
@@ -40,6 +41,8 @@ export type Action =
   | "task:complete"
   /** Undo someone else's tick; anyone may undo their own. */
   | "task:uncomplete-others"
+  /** Tick a repeating chore before its day, for no coins. */
+  | "task:tick-early"
   | "task:view"
   | "history:view-own"
   | "history:view-anyone"

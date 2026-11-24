@@ -253,8 +253,8 @@ export function registerTaskTools(server: McpServer, userId: string): void {
         assertIds(instanceId);
         const title = await titleOf(actor, { instanceId });
         // The chest is offered by a card in the app; a tick made here must not use up the day's chest unseen.
-        await chores.completeInstance(actor, instanceId, { offerChest: false });
-        return taskTickedText(title);
+        const report = await chores.completeInstance(actor, instanceId, { offerChest: false });
+        return report.notice ?? taskTickedText(title);
       }),
   );
 

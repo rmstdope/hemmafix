@@ -1,3 +1,4 @@
+import { earlyDay } from "../src/lib/early-tick";
 import { filterSelect } from "./support/board";
 import type { Page } from "@playwright/test";
 import { formatDue, todayIso } from "../src/lib/dates";
@@ -64,7 +65,7 @@ test("an adult adds a recurring task from a template; ticking it off brings the 
   await task.getByRole("button", { name: "Markera som klar" }).click();
   // The next one is a week on, under Senare.
   await page.getByRole("tab", { name: /^Senare,/ }).click();
-  await expect(item(page, "Dammsuga")).toContainText(dueLabel(nextDueDate(today(), { unit: "week", interval: 1 })));
+  await expect(item(page, "Dammsuga")).toContainText(`Inga mynt förrän ${earlyDay(nextDueDate(today(), { unit: "week", interval: 1 }), today())}`);
   await expect(item(page, "Dammsuga")).toHaveCount(1);
 
   // Undoing the tick removes the next one again.
@@ -192,7 +193,7 @@ test("an adult gives a recurring task to someone every time, or just this time",
   await task.getByRole("button", { name: "Markera som klar" }).click();
   await page.getByRole("tab", { name: /^Senare,/ }).click();
   const next = item(page, "Diska");
-  await expect(next).toContainText(dueLabel(nextDueDate(today(), { unit: "week", interval: 1 })));
+  await expect(next).toContainText(`Inga mynt förrän ${earlyDay(nextDueDate(today(), { unit: "week", interval: 1 }), today())}`);
   await expect(next).toContainText("Bo");
 });
 

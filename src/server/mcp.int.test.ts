@@ -334,6 +334,20 @@ describe("the task tools", () => {
     );
   });
 
+  it("ticks the comeback of a repeating task for no coins", async () => {
+    const roomId = await seedKitchen();
+    const { choreId, instanceId } = await createDiska(roomId);
+    await taskCall("anna", "bocka_av_syssla", { instanceId });
+    const [next] = await openOf(choreId);
+    const anna = { userId: "anna", householdId: homeId, role: "adult" as const, name: "Anna", image: null };
+
+    const before = await getCoinTotal(anna);
+    expect(said(await taskCall("anna", "bocka_av_syssla", { instanceId: next!.id }))).toBe(
+      "Diska är klar. Inga mynt, eftersom den inte är dags förrän imorgon.",
+    );
+    expect(await getCoinTotal(anna)).toBe(before);
+  });
+
   it("ticking off twice says so", async () => {
     const roomId = await seedKitchen();
     const { instanceId } = await createDiska(roomId);
