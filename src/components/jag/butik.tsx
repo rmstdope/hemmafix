@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import { useRef, useState, useTransition, type RefObject } from "react";
 import { toast } from "sonner";
 import { addReward, buyReward, cancelPurchase, deleteReward, updateReward } from "@/app/actions";
+import { useOfferCelebrations } from "@/components/coin-shower";
 import { Sheet } from "@/components/sheet";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -187,6 +188,7 @@ function BuySheet({
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
   const router = useRouter();
+  const offerCelebrations = useOfferCelebrations();
   const short = balance < reward.price;
   return (
     <Sheet title={`Köpa ${reward.name}?`} onClose={onClose} returnFocusTo={returnFocusTo} focusRef={buy}>
@@ -204,7 +206,10 @@ function BuySheet({
           onClick={() =>
             startTransition(async () => {
               const result = await buyReward(reward.id);
-              if (result.ok) return onClose();
+              if (result.ok) {
+                if (result.badges || result.levelUp) offerCelebrations({ badges: result.badges ?? [], levelUp: result.levelUp });
+                return onClose();
+              }
               if (result.error === NOT_ENOUGH) return setError(NOT_ENOUGH);
               // The reward is gone: say so, close, and refresh since an error skips the action's refresh.
               toast.error(result.error ?? "Något gick fel");

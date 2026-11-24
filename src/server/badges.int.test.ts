@@ -296,3 +296,26 @@ describe("what a tick-off reports to celebrate", () => {
     expect((await completeInstance(f.child, again!.id)).badges).toEqual([]);
   });
 });
+
+describe("buying reports what it won", () => {
+  it("a reward bought reports Första köpet, and the level its 25 coins reach", async () => {
+    await tick(f.child, f.kitchen.id, 60); // 60 + Första uppgiften 25 = 85: just under level 2
+    await addReward(f.adult, { name: "Glass", price: 50 });
+    const [r] = await listRewards(f.adult);
+    expect(await buyReward(f.child, r!.id)).toEqual({ badges: ["first-buy"], levelUp: { level: 2, title: "Hjälpreda" } });
+  });
+
+  it("a second purchase reports nothing", async () => {
+    await tick(f.child, f.kitchen.id, 100);
+    await addReward(f.adult, { name: "Glass", price: 10 });
+    const [r] = await listRewards(f.adult);
+    await buyReward(f.child, r!.id);
+    expect(await buyReward(f.child, r!.id)).toEqual({ badges: [], levelUp: null });
+  });
+
+  it("a look bought reports Första köpet", async () => {
+    for (let i = 0; i < 3; i++) await tick(f.child, f.kitchen.id, 100);
+    expect(await buyLook(f.child, "frame", "guld")).toMatchObject({ badges: ["first-buy"] });
+    expect(await buyLook(f.child, "coin", "silver")).toEqual({ badges: [], levelUp: null });
+  });
+});

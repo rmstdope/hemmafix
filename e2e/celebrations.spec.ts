@@ -1,8 +1,9 @@
 import type { Page } from "@playwright/test";
-import { logIn, logInWithChestTaken, seedChore, seedDone, seedRooms } from "./support/family";
+import { reward } from "../src/db/schema";
+import { db, logIn, logInWithChestTaken, seedChore, seedDone, seedRooms } from "./support/family";
 import { expect, test } from "./support/test";
 
-const pill = (page: Page) => page.getByRole("button", { name: /mynt$/ });
+const pill = (page: Page) => page.getByRole("button", { name: /^[\d\s\u00a0]+ mynt$/ });
 const tick = (page: Page, title: string) => page.getByRole("button", { name: `${title}: markera som klar` }).click();
 const badgeCard = (page: Page) => page.getByRole("dialog", { name: "Nytt märke!" });
 const levelCard = (page: Page, level: number) => page.getByRole("dialog", { name: `Nivå ${level}!` });
@@ -196,4 +197,39 @@ test("two ticks made at once clear Nu once", async ({ page, context }) => {
   await tick(page, "Damma");
   await expect(page.getByText("🎉 Allt i Nu är klart!")).toBeVisible();
   await expect(confetti(page)).toHaveCount(1);
+});
+
+test("buying a reward wins Första köpet and reaches a level: badge card, then level card, then the coins arrive", async ({ page, context }) => {
+  const bo = await logIn(context, "bo", "child", { badges: "none" });
+  const rooms = await seedRooms("Kök");
+  // Long before badges began: counts towards the level, wins no badge by itself (80 + 25 = 105 reaches level 2).
+  await seedDone({ title: "Gammal", roomId: rooms["Kök"]!.id, completedById: bo.id, coins: 80, completedAt: new Date("2001-01-01T10:00:00Z") });
+  const home = await db.query.membership.findFirst({ where: (t, { eq }) => eq(t.userId, bo.id) });
+  await db.insert(reward).values({ householdId: home!.householdId, name: "Glass", price: 50 });
+  await page.goto("/jag");
+  await page.getByRole("group", { name: "Visa" }).getByRole("button", { name: "Butik" }).click();
+  await page.getByRole("button", { name: "Köp Glass för 50 mynt" }).click();
+  await page.getByRole("dialog", { name: "Köpa Glass?" }).getByRole("button", { name: "Köp för 50 mynt" }).click();
+
+  const card = badgeCard(page);
+  await expect(card).toBeVisible({ timeout: 5_000 });
+  await expect(card.getByText("Första köpet", { exact: true })).toBeVisible();
+  // The 25 coins wait for the card: 80 - 50 = 30.
+  await expect(pill(page)).toHaveText("30");
+  await card.getByRole("button", { name: "Fortsätt" }).click();
+  const level = levelCard(page, 2);
+  await expect(level).toBeVisible();
+  await level.getByRole("button", { name: "Fortsätt" }).click();
+  await expect(pill(page)).toHaveText("55", { timeout: 5_000 });
+});
+
+test("buying a look that wins Första köpet gets its badge card", async ({ page, context }) => {
+  const bo = await logIn(context, "bo", "child", { badges: "none" });
+  const rooms = await seedRooms("Kök");
+  await seedDone({ title: "Gammal", roomId: rooms["Kök"]!.id, completedById: bo.id, coins: 200, completedAt: new Date("2001-01-01T10:00:00Z") });
+  await page.goto("/jag");
+  await page.getByRole("group", { name: "Visa" }).getByRole("button", { name: "Butik" }).click();
+  await page.getByRole("button", { name: "Guldram, 150 mynt" }).click();
+  await page.getByRole("dialog").getByRole("button", { name: "Köp för 150 mynt" }).click();
+  await expect(badgeCard(page).getByText("Första köpet", { exact: true })).toBeVisible({ timeout: 5_000 });
 });
