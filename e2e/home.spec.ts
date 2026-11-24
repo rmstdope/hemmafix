@@ -65,7 +65,7 @@ test("a child sees the tasks and ticks them off, but cannot manage anything", as
   await expect(childPage.getByRole("menuitem", { name: "Hemmet" })).toHaveCount(0);
   await childPage.keyboard.press("Escape");
   await expect(childPage.getByRole("button", { name: "Mer" })).toHaveCount(0);
-  await expect(childPage.getByRole("combobox", { name: "Tilldela den här gången" })).toHaveCount(0);
+  await expect(childPage.getByRole("combobox", { name: "vem gör den?" })).toHaveCount(0);
   // Children can filter too.
   await (await filterSelect(childPage, "Person")).selectOption({ label: "Mina" });
   await expect(todo.getByRole("listitem")).toHaveCount(1);

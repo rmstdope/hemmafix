@@ -15,7 +15,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { attempt } from "@/components/attempt";
-import { CoinBadge } from "@/components/coin-badge";
+import { TaskRowBody } from "@/components/task-row";
 import { CoinStepper } from "@/components/coin-stepper";
 import { removeRoutineNotice } from "@/lib/routine-texts";
 
@@ -60,7 +60,7 @@ export function RoutineEditor({ routine, suggestions }: { routine: Routine; sugg
             <Button
               variant="ghost"
               size="icon-lg"
-              className="size-11 shrink-0 text-muted-foreground"
+              className="h-8 w-11 shrink-0 text-muted-foreground"
               aria-label={`Byt namn på ${routine.name}`}
               onClick={() => setRenaming(true)}
             >
@@ -93,29 +93,35 @@ export function RoutineEditor({ routine, suggestions }: { routine: Routine; sugg
                   />
                 </li>
               ) : (
-                <li key={t.id} className="flex items-center gap-1 py-1 pr-1 pl-3">
-                  <span className="min-w-0 flex-1 break-words">{t.title}</span>
-                  <CoinBadge coins={t.coins} />
-                  <Button
-                    variant="ghost"
-                    size="icon-lg"
-                    className="size-11 shrink-0 text-muted-foreground"
-                    aria-label={`Ändra ${t.title}`}
-                    disabled={pending}
-                    onClick={() => setEditingId(t.id)}
-                  >
-                    <Pencil />
-                  </Button>
-                  <Button
-                    variant="ghost"
-                    size="icon-lg"
-                    className="size-11 shrink-0 text-muted-foreground"
-                    aria-label={`Ta bort ${t.title}`}
-                    disabled={pending}
-                    onClick={() => removeTask(t)}
-                  >
-                    <Trash2 />
-                  </Button>
+                <li key={t.id} className="flex py-1 pr-1 pl-3">
+                  <TaskRowBody
+                    title={t.title}
+                    coins={t.coins}
+                    trailing={
+                      <>
+                        <Button
+                          variant="ghost"
+                          size="icon-lg"
+                          className="h-8 w-11 shrink-0 text-muted-foreground"
+                          aria-label={`Ändra ${t.title}`}
+                          disabled={pending}
+                          onClick={() => setEditingId(t.id)}
+                        >
+                          <Pencil />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon-lg"
+                          className="h-8 w-11 shrink-0 text-muted-foreground"
+                          aria-label={`Ta bort ${t.title}`}
+                          disabled={pending}
+                          onClick={() => removeTask(t)}
+                        >
+                          <Trash2 />
+                        </Button>
+                      </>
+                    }
+                  />
                 </li>
               ),
             )}
