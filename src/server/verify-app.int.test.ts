@@ -57,4 +57,30 @@ describe("verify-app reset", () => {
       await sql.end();
     }
   });
+  it("clears coins, purchases, badges, chests and recap marks, and keeps the logins", { timeout: 30_000 }, async () => {
+    await verifyApp("status");
+    const sql = postgres(databaseUrl(scratch), { max: 1 });
+    try {
+      const [home] = await sql`insert into household (name) values ('Hemma') returning id`;
+      const [u] = await sql`insert into "user" (id, name, email) values ('u-coins', 'Mia', 'mia@example.com') returning id`;
+      await sql`insert into account (id, account_id, provider_id, user_id) values ('a-coins', 'g1', 'google', ${u!.id})`;
+      await sql`insert into membership (user_id, household_id, role) values (${u!.id}, ${home!.id}, 'adult')`;
+      await sql`insert into look_purchase (household_id, user_id, kind, key, price) values (${home!.id}, ${u!.id}, 'theme', 'x', 169)`;
+      await sql`insert into reward (household_id, name, price) values (${home!.id}, 'Glass', 10)`;
+      await sql`insert into reward_purchase (household_id, buyer_id, name, price) values (${home!.id}, ${u!.id}, 'Glass', 10)`;
+      await sql`insert into badge_award (household_id, user_id, key, coins) values (${home!.id}, ${u!.id}, 'first', 25)`;
+      await sql`insert into daily_chest (household_id, user_id, day, coins) values (${home!.id}, ${u!.id}, '2026-11-24', 5)`;
+      await sql`insert into week_recap_seen (user_id, week_start) values (${u!.id}, '2026-11-23')`;
+
+      await verifyApp("reset");
+
+      for (const table of ["look_purchase", "reward", "reward_purchase", "badge_award", "daily_chest", "week_recap_seen"]) {
+        expect(await sql`select 1 from ${sql(table)}`, table).toHaveLength(0);
+      }
+      expect(await sql`select 1 from "user" where id = 'u-coins'`).toHaveLength(1);
+      expect(await sql`select 1 from account where id = 'a-coins'`).toHaveLength(1);
+    } finally {
+      await sql.end();
+    }
+  });
 });

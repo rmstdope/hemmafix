@@ -143,8 +143,9 @@ async function member(name, newRole) {
 async function reset() {
   await withSql(await ensureDatabase(true), async (sql) => {
     await sql.begin(async (tx) => {
-      // The home's contents and every connected app go (and the ready-made routines stay away: the home counts as seeded); users, accounts, sessions and the home stay.
-      await tx`truncate chore_instance, chore, room, floor, routine, list, app_connection_use, app_token, oauth_consent,
+      // The home's contents, everyone's coins, purchases and badges, and every connected app go (and the ready-made routines stay away: the home counts as seeded); users, accounts, sessions and the home stay.
+      await tx`truncate chore_instance, chore, room, floor, routine, list,
+        look_purchase, reward_purchase, reward, badge_award, daily_chest, week_recap_seen, app_connection_use, app_token, oauth_consent,
         oauth_access_token, oauth_refresh_token, oauth_client_assertion, oauth_client_resource, oauth_client cascade`;
       await tx`delete from "user" u where not exists (select 1 from account a where a.user_id = u.id)`;
       await tx`update membership set role = 'adult', updated_at = now()`;
