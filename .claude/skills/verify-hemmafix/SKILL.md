@@ -101,7 +101,7 @@ so they log in once and every look after reuses it.
 `launch_web` is `node --env-file=.env scripts/verify-app.mjs serve`, from the tree. It migrates the
 verify database to the tree, copies the static assets into the standalone build, and serves the
 merged production build on port **3000**, the one local address Google sends a login back to. The
-build itself is the verifier's `prewarm` (`pnpm build`), run by `prepare-worktree --prewarm`. Run it
+build itself is the verifier's `prewarm` (`pnpm build:fresh`, a build from a clean `.next`: a kept Turbopack cache served stale CSS), run by `prepare-worktree --prewarm`. Run it
 exactly as declared, in the background, and wait for `/healthz` to answer 200.
 
 Port 3000 is often the navigator's own dev server: the port refusal in verify-bead stands. Name the
