@@ -68,7 +68,7 @@ export function BoardTabs({
               onClick={() => choose(t.key)}
               className={cn(
                 "flex min-h-12 min-w-0 flex-1 flex-col items-center justify-center border-b-2 px-0 text-[13px] leading-tight text-muted-foreground outline-none focus-visible:ring-3 focus-visible:ring-ring/50",
-                selected ? "border-foreground font-bold text-foreground" : "border-transparent",
+                selected ? "border-primary font-bold text-foreground" : "border-transparent",
               )}
             >
               <span className="max-w-full truncate">{t.name}</span>

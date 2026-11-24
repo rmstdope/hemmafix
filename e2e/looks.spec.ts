@@ -154,3 +154,20 @@ test("on a 300px phone the rows scroll sideways and the sheet fits", async ({ pa
   expect(box.x).toBeGreaterThanOrEqual(0);
   expect(box.x + box.width).toBeLessThanOrEqual(300);
 });
+
+test("under a bought theme every theme tile keeps its own colour, and the lit day tab takes the theme", async ({ page, context }) => {
+  const bo = await logIn(context, "bo", "child");
+  await grant(bo.id, 200);
+  await openButik(page);
+  await tile(page, "Lila, 200 mynt").click();
+  await sheet(page).getByRole("button", { name: "Köp för 200 mynt" }).click();
+  await expect(tile(page, "Lila, används")).toBeVisible();
+  const swatch = (name: string | RegExp) => tile(page, name).locator(".bg-primary");
+  await expect(swatch("Lila, används")).toHaveCSS("background-color", "rgb(124, 58, 237)");
+  // The app's own near-black --primary, oklch(0.205 0 0) in globals.css, as the build compiles it.
+  await expect(swatch("Svart")).toHaveCSS("background-color", /^lab\(7\.78/);
+  await expect(swatch("Skog, 200 mynt")).toHaveCSS("background-color", "rgb(5, 150, 105)");
+
+  await page.goto("/");
+  await expect(page.getByRole("tab", { selected: true })).toHaveCSS("border-bottom-color", "rgb(124, 58, 237)");
+});
