@@ -19,8 +19,8 @@ import { joinNames } from "@/lib/high-fives";
 import { DEFAULT_COINS } from "@/lib/coins";
 import { formatDue } from "@/lib/dates";
 import { roomLabel } from "@/lib/floors";
-import { CoinBadge } from "./coin-badge";
 import { useCelebrateNuCleared, useCoinShower, useOfferChest, useOfferCelebrations, type Shower } from "./coin-shower";
+import { TaskRowBody } from "./task-row";
 import { EditChoreForm } from "./edit-chore-form";
 import { cn } from "@/lib/utils";
 import type { InstanceView, Member } from "@/server/chores";
@@ -66,7 +66,14 @@ export function ChoreItem({
   const [pending, startTransition] = useTransition();
   const [assigneeId, setOptimisticAssignee] = useOptimistic(t.assigneeId);
   const [hidden, setHidden] = useOptimistic(false);
-  const [expanded, setExpanded] = useState(false);
+  const [seriesId, setOptimisticSeries] = useOptimistic(t.seriesAssigneeId);
+  const [expanded, setExpandedRaw] = useState(false);
+  // Which choice the panel's picker edits; it starts on "Den här gången" every time the panel opens.
+  const [scope, setScope] = useState<"once" | "all">("once");
+  const setExpanded = (open: boolean) => {
+    setScope("once");
+    setExpandedRaw(open);
+  };
   const [editing, setEditing] = useState(false);
   const [showWho, setShowWho] = useState(false);
   const [asking, setAsking] = useState<UndoDebt | null>(null);
@@ -117,7 +124,7 @@ export function ChoreItem({
 
   return (
     <li className={cn("rounded-xl border bg-card transition-opacity", pending && "opacity-60")}>
-      <div className="flex items-center gap-3 px-3 py-2">
+      <div className="flex items-start gap-3 px-3 py-2">
         {completed ? (
           canUndo ? (
             <Button
@@ -156,85 +163,71 @@ export function ChoreItem({
           </Button>
         )}
 
-        <div className="min-w-0 flex-1">
-          <p className={cn("truncate font-medium", completed && "text-muted-foreground line-through")}>{t.title}</p>
-          <p className="flex flex-wrap items-center gap-x-1 text-xs text-muted-foreground">
-            {t.roomName && <span>{roomLabel(t.roomName, t.floorName, showFloors)}</span>}
-            {due && (
-              <>
-                <span aria-hidden>·</span>
-                <span className={cn(due.overdue && "font-medium text-destructive")}>{due.label}</span>
-              </>
-            )}
-            {completed && t.completedByName && (
-              <>
-                <span aria-hidden>·</span>
-                <span>Klar av {t.completedById === currentUserId ? "mig" : t.completedByName.split(" ")[0]}</span>
-              </>
-            )}
-          </p>
-        </div>
-
-        {completed && highFive && t.completedById === currentUserId && highFive.names.length > 0 && (
-          <Button
-            variant="ghost"
-            className="h-10 shrink-0 px-2"
-            aria-expanded={showWho}
-            onClick={() => setShowWho((v) => !v)}
-          >
-            👏 {highFive.names.length}
-          </Button>
-        )}
-
-        {completed && highFive?.canGive && t.completedById !== currentUserId && (
-          <Button
-            variant={cheered ? "secondary" : "ghost"}
-            size="icon-lg"
-            className="size-11 shrink-0"
-            aria-label={cheered ? "Ta tillbaka high five" : "Ge high five"}
-            aria-pressed={cheered}
-            onClick={() => run(() => setHighFive(t.id, !cheered), () => setCheered(!cheered))}
-          >
-            <span aria-hidden>👏</span>
-          </Button>
-        )}
-
-        {t.coins !== null && <CoinBadge coins={t.coins} faded={completed} />}
-
-        {!completed && !canManage && assigneeId && (
-          <span className="shrink-0 text-sm text-muted-foreground">{firstName(assigneeId)}</span>
-        )}
-
-        {!completed && canManage && (
-          <>
-            <select
-              aria-label={`${t.title}: tilldela den här gången`}
-              value={assigneeId ?? ""}
-              onChange={(e) => {
-                const next = e.target.value || null;
-                run(() => assignInstance(t.id, next), () => setOptimisticAssignee(next));
-              }}
-              className={cn(selectClass, "max-w-24")}
-            >
-              <option value="">Ingen</option>
-              {members.map((m) => (
-                <option key={m.id} value={m.id}>
-                  {firstName(m.id)}
-                </option>
-              ))}
-            </select>
-            <Button
-              variant="ghost"
-              size="icon-lg"
-              className="size-11 shrink-0 text-muted-foreground"
-              aria-label={`${t.title}: mer`}
-              aria-expanded={expanded}
-              onClick={() => setExpanded((v) => !v)}
-            >
-              <ChevronDown className={cn("transition-transform", expanded && "rotate-180")} />
-            </Button>
-          </>
-        )}
+        <TaskRowBody
+          title={t.title}
+          struck={completed}
+          coins={t.coins}
+          faded={completed}
+          details={
+            <>
+              {t.roomName && <span>{roomLabel(t.roomName, t.floorName, showFloors)}</span>}
+              {due && (
+                <>
+                  {t.roomName && <span aria-hidden> · </span>}
+                  <span className={cn(due.overdue && "font-medium text-destructive")}>{due.label}</span>
+                </>
+              )}
+              {completed && t.completedByName && (
+                <>
+                  {t.roomName && <span aria-hidden> · </span>}
+                  <span>Klar av {t.completedById === currentUserId ? "mig" : t.completedByName.split(" ")[0]}</span>
+                </>
+              )}
+              {!completed && assigneeId && (
+                <>
+                  {(t.roomName || due) && <span aria-hidden> · </span>}
+                  <span>{firstName(assigneeId)}</span>
+                </>
+              )}
+            </>
+          }
+          trailing={
+            <>
+              {completed && highFive && t.completedById === currentUserId && highFive.names.length > 0 && (
+                <Button
+                  variant="ghost"
+                  className="h-7 shrink-0 px-2"
+                  aria-expanded={showWho}
+                  onClick={() => setShowWho((v) => !v)}
+                >
+                  👏 {highFive.names.length}
+                </Button>
+              )}
+              {completed && highFive?.canGive && t.completedById !== currentUserId && (
+                <Button
+                  variant={cheered ? "secondary" : "ghost"}
+                  className="h-7 w-10 shrink-0 px-0"
+                  aria-label={cheered ? "Ta tillbaka high five" : "Ge high five"}
+                  aria-pressed={cheered}
+                  onClick={() => run(() => setHighFive(t.id, !cheered), () => setCheered(!cheered))}
+                >
+                  <span aria-hidden>👏</span>
+                </Button>
+              )}
+              {!completed && canManage && (
+                <Button
+                  variant="ghost"
+                  className="h-7 w-10 shrink-0 px-0 text-muted-foreground"
+                  aria-label={`${t.title}: mer`}
+                  aria-expanded={expanded}
+                  onClick={() => setExpanded(!expanded)}
+                >
+                  <ChevronDown className={cn("transition-transform", expanded && "rotate-180")} />
+                </Button>
+              )}
+            </>
+          }
+        />
       </div>
 
       {showWho && highFive && highFive.names.length > 0 && (
@@ -248,42 +241,67 @@ export function ChoreItem({
       )}
 
       {expanded && canManage && !completed && !editing && (
-        <div className="flex flex-wrap items-center gap-2 border-t px-3 py-2">
+        <div className="space-y-3 border-t px-3 py-3">
           {t.recurrence && (
-            <label className="flex flex-1 items-center gap-2 text-sm text-muted-foreground">
-              <span className="whitespace-nowrap">Alla gånger</span>
-              <select
-                aria-label={`${t.title}: tilldela alla gånger`}
-                value={t.seriesAssigneeId ?? ""}
-                onChange={(e) => {
-                  const next = e.target.value || null;
+            <div role="group" aria-label={`${t.title}: gäller`} className="grid grid-cols-2 gap-1 rounded-lg bg-muted p-1 text-sm">
+              {(["once", "all"] as const).map((s) => (
+                <button
+                  key={s}
+                  type="button"
+                  aria-pressed={scope === s}
+                  onClick={() => setScope(s)}
+                  className={cn(
+                    "h-9 rounded-md text-muted-foreground",
+                    scope === s && "bg-background font-semibold text-foreground shadow-sm",
+                  )}
+                >
+                  {s === "once" ? "Den här gången" : "Alla gånger"}
+                </button>
+              ))}
+            </div>
+          )}
+          <label className="flex items-center gap-2 text-sm text-muted-foreground">
+            <span className="whitespace-nowrap">Vem gör den?</span>
+            <select
+              aria-label={`${t.title}: vem gör den?`}
+              value={(scope === "all" ? seriesId : assigneeId) ?? ""}
+              onChange={(e) => {
+                const next = e.target.value || null;
+                if (scope === "all") {
                   run(
                     () => assignChore(t.choreId, next),
-                    () => setOptimisticAssignee(next),
+                    () => {
+                      setOptimisticSeries(next);
+                      setOptimisticAssignee(next);
+                    },
                     next ? `${firstName(next)} gör "${t.title}" alla gånger` : `Ingen har "${t.title}" alla gånger`,
                   );
-                }}
-                className={cn(selectClass, "min-w-0 flex-1")}
-              >
-                <option value="">Ingen</option>
-                {members.map((m) => (
-                  <option key={m.id} value={m.id}>
-                    {m.id === currentUserId ? `${m.name} (jag)` : m.name}
-                  </option>
-                ))}
-              </select>
-            </label>
-          )}
-          <Button variant="ghost" className="ml-auto h-10" onClick={() => setEditing(true)}>
-            <Pencil /> Ändra
-          </Button>
-          <Button
-            variant="ghost"
-            className="h-10 text-destructive"
-            onClick={() => run(() => deleteChore(t.choreId), () => setHidden(true), `"${t.title}" togs bort`)}
-          >
-            <Trash2 /> Ta bort uppgiften
-          </Button>
+                } else {
+                  run(() => assignInstance(t.id, next), () => setOptimisticAssignee(next));
+                }
+              }}
+              className={cn(selectClass, "min-w-0 max-w-60 flex-1")}
+            >
+              <option value="">Ingen</option>
+              {members.map((m) => (
+                <option key={m.id} value={m.id}>
+                  {firstName(m.id)}
+                </option>
+              ))}
+            </select>
+          </label>
+          <div className="flex justify-end gap-1">
+            <Button variant="ghost" className="h-10" onClick={() => setEditing(true)}>
+              <Pencil /> Ändra
+            </Button>
+            <Button
+              variant="ghost"
+              className="h-10 text-destructive"
+              onClick={() => run(() => deleteChore(t.choreId), () => setHidden(true), `"${t.title}" togs bort`)}
+            >
+              <Trash2 /> Ta bort uppgiften
+            </Button>
+          </div>
         </div>
       )}
       {asking && (
