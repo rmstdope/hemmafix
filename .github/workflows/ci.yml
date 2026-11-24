@@ -38,7 +38,7 @@ jobs:
       DATABASE_URL: postgres://hemmafix:hemmafix@localhost:5432/hemmafix
     steps:
       - uses: actions/checkout@v5
-      - uses: pnpm/action-setup@v5
+      - uses: pnpm/action-setup@v6
       - uses: actions/setup-node@v6
         with:
           node-version-file: .nvmrc
@@ -79,7 +79,7 @@ jobs:
       TEST_DATABASE_URL: postgres://hemmafix:hemmafix@localhost:5432/hemmafix
     steps:
       - uses: actions/checkout@v5
-      - uses: pnpm/action-setup@v5
+      - uses: pnpm/action-setup@v6
       - uses: actions/setup-node@v6
         with:
           node-version-file: .nvmrc
