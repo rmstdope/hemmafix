@@ -111,7 +111,9 @@ async function status() {
       from membership m join "user" u on u.id = m.user_id order by u.created_at`;
     const [counts] = await sql`select (select count(*) from floor) floors, (select count(*) from room) rooms,
       (select count(*) from chore) chores, (select count(*) from routine) routines, (select count(*) from list) lists, (select count(*) from oauth_client) registered_clients,
-      (select count(*) from app_connection_use) connections`;
+      (select count(*) from app_connection_use) connections,
+      (select count(*) from look_purchase) look_purchases, (select count(*) from reward_purchase) reward_purchases,
+      (select count(*) from reward) rewards, (select count(*) from daily_chest) chests, (select count(*) from badge_award) badges`;
     console.log(JSON.stringify({ homes: homes.map((h) => h.name), members, ...counts }, null, 2));
   });
 }
@@ -143,11 +145,12 @@ async function member(name, newRole) {
 async function reset() {
   await withSql(await ensureDatabase(true), async (sql) => {
     await sql.begin(async (tx) => {
-      // The home's contents and every connected app go (and the ready-made routines stay away: the home counts as seeded); users, accounts, sessions and the home stay.
-      await tx`truncate chore_instance, chore, room, floor, routine, list, app_connection_use, app_token, oauth_consent,
+      // The home's contents, everyone's coins, purchases and badges, and every connected app go (and the ready-made routines stay away: the home counts as seeded); users, accounts, sessions and the home stay.
+      await tx`truncate chore_instance, chore, room, floor, routine, list,
+        look_purchase, reward_purchase, reward, badge_award, daily_chest, week_recap_seen, app_connection_use, app_token, oauth_consent,
         oauth_access_token, oauth_refresh_token, oauth_client_assertion, oauth_client_resource, oauth_client cascade`;
       await tx`delete from "user" u where not exists (select 1 from account a where a.user_id = u.id)`;
-      await tx`update membership set role = 'adult', updated_at = now()`;
+      await tx`update membership set role = 'adult', frame = null, theme = null, coin_look = null, updated_at = now()`;
       const homes = await tx`update household set name = ${HOME_NAME}, routines_seeded_at = now(), updated_at = now() returning id`;
       for (const home of homes) await tx`insert into floor (household_id, name, position) values (${home.id}, '1', 1)`;
     });
