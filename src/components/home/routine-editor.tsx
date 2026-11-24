@@ -60,7 +60,7 @@ export function RoutineEditor({ routine, suggestions }: { routine: Routine; sugg
             <Button
               variant="ghost"
               size="icon-lg"
-              className="h-8 w-11 shrink-0 text-muted-foreground"
+              className="size-11 shrink-0 text-muted-foreground"
               aria-label={`Byt namn på ${routine.name}`}
               onClick={() => setRenaming(true)}
             >

@@ -34,10 +34,12 @@ export function TaskRowBody({
         </p>
         {trailing}
       </div>
-      <div className="mt-1 flex items-end gap-2">
-        <p className="min-w-0 flex-1 text-xs leading-4 text-muted-foreground">{details}</p>
-        {coins !== null && <CoinBadge coins={coins} faded={faded} />}
-      </div>
+      {(details || coins !== null) && (
+        <div className="mt-1 flex items-end gap-2">
+          <p className="min-w-0 flex-1 text-xs leading-4 text-muted-foreground">{details}</p>
+          {coins !== null && <CoinBadge coins={coins} faded={faded} />}
+        </div>
+      )}
     </div>
   );
 }

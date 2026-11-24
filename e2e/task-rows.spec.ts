@@ -40,6 +40,45 @@ test("task rows keep the coin clear of a long title at 300 px, for open and done
   // The title wraps rather than being cut with an ellipsis.
   expect((await box(open.locator("p.font-medium").first())).height).toBeGreaterThan(30);
   expect(await noSideways(page)).toBe(true);
+
+  await page.getByText(/Klart senaste veckan/).click();
+  const klart = page.getByRole("list", { name: "Klart" }).getByRole("listitem").filter({ hasText: LONG }).first();
+  await expectCalm(klart);
+});
+
+test("the panel has a switch for a recurring task only, keeps focus on the chevron and tabs in order", async ({ page, context }) => {
+  const anna = await logIn(context, "anna", "adult");
+  const rooms = await seedRooms("Kök");
+  await seedChore({ title: "Diska", roomId: rooms["Kök"]!.id });
+  await seedChore({ title: "Torka", roomId: rooms["Kök"]!.id, recurrence: null, assigneeId: anna.id });
+  await page.goto("/");
+  const row = (t: string) => page.getByRole("tabpanel").getByRole("listitem").filter({ hasText: t });
+
+  // Nobody has Diska: no name. Torka is mine: "Jag" last.
+  await expect(row("Diska").getByText("Kök", { exact: true })).toBeVisible();
+  await expect(row("Diska").locator("p.text-xs")).toHaveText("Kök");
+  await expect(row("Torka").locator("p.text-xs")).toHaveText("Kök · Jag");
+
+  const more = row("Torka").getByRole("button", { name: "Mer" });
+  await more.click();
+  await expect(more).toBeFocused();
+  await expect(row("Torka").getByRole("group", { name: /gäller/ })).toHaveCount(0);
+  await more.click();
+  await expect(more).toBeFocused();
+
+  const diska = row("Diska");
+  await diska.getByRole("button", { name: "Mer" }).click();
+  await diska.getByRole("button", { name: "Mer" }).focus();
+  for (const name of ["Den här gången", "Alla gånger"]) {
+    await page.keyboard.press("Tab");
+    await expect(diska.getByRole("button", { name })).toBeFocused();
+  }
+  await page.keyboard.press("Tab");
+  await expect(diska.getByRole("combobox", { name: "vem gör den?" })).toBeFocused();
+  await page.keyboard.press("Tab");
+  await expect(diska.getByRole("button", { name: "Ändra" })).toBeFocused();
+  await page.keyboard.press("Tab");
+  await expect(diska.getByRole("button", { name: "Ta bort uppgiften" })).toBeFocused();
 });
 
 test("a child's open row has no panel button and Gjort shows the coin of each tick", async ({ page, context }) => {
