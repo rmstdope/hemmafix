@@ -46,7 +46,7 @@ export function HistoryFilters({
   };
 
   return (
-    <div className={cn("grid gap-2", members.length > 0 && "grid-cols-2", pending && "opacity-60")} role="search">
+    <div className={cn("grid gap-2", members.length > 0 && "sm:grid-cols-2", pending && "opacity-60")} role="search">
       {members.length > 0 && (
         <select
           aria-label="Vems uppgifter"

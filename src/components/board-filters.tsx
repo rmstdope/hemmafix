@@ -92,12 +92,15 @@ export function FilterHeader(props: Props & { title: string; subtitle?: string; 
 
   return (
     <div>
-      <header className="mb-3 flex items-center justify-between gap-2">
-        <div className="min-w-0 [&>p]:truncate">
+      {/* The controls drop under the heading when both do not fit on one row (a 300 px phone). The
+          home's name takes no width of its own (w-0 min-w-full), so only the heading decides that,
+          and the name then has the whole row. */}
+      <header className="mb-3 flex flex-wrap items-center justify-between gap-x-2 gap-y-1">
+        <div className="min-w-0 grow">
           <h1 className="text-xl font-semibold">{title}</h1>
-          {subtitle ? <p className="truncate text-sm text-muted-foreground">{subtitle}</p> : null}
+          {subtitle ? <p className="w-0 min-w-full truncate text-sm text-muted-foreground">{subtitle}</p> : null}
         </div>
-        <div className="flex items-center gap-1">
+        <div className="ml-auto flex items-center gap-1">
           <button
             ref={button}
             type="button"
