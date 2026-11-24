@@ -86,7 +86,7 @@ export function ChoreItem({
   const notYet = !completed && t.dueDate !== null && isNotYetDue({ dueDate: t.dueDate, recurrence: t.recurrence }, today);
   const locked = notYet && !canManage;
   const noCoinsYet = notYet && canManage;
-  const due = completed || !showDue ? null : formatDue(t.dueDate, today);
+  const due = completed || notYet || !showDue ? null : formatDue(t.dueDate, today);
   const firstName = (id: string | null) =>
     id === currentUserId ? "Jag" : (members.find((m) => m.id === id)?.name.split(" ")[0] ?? "");
 

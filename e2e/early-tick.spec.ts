@@ -45,7 +45,7 @@ test("an adult may tick it early: the row says no coins first, and the tick give
   await expect(pill(page)).toHaveText("0");
   await page.goto("/");
   await page.getByText(/Klart senaste veckan/).click();
-  await expect(page.getByRole("list", { name: "Klart" }).getByRole("listitem").filter({ hasText: "Diska" })).toContainText("0");
+  await expect(page.getByRole("list", { name: "Klart" }).getByRole("listitem").filter({ hasText: "Diska" }).getByText("0 mynt", { exact: true })).toBeAttached();
 });
 
 test("a screen left open over midnight asks the server for the new day, which moves the rows to Nu", async ({ page, context }) => {
@@ -54,8 +54,23 @@ test("a screen left open over midnight asks the server for the new day, which mo
   await page.clock.install({ time: new Date() });
   await page.goto("/?flik=imorgon");
   await expect(page.getByRole("button", { name: "Diska: kan bockas av imorgon" })).toBeVisible();
+  // Let the refresh the event stream makes on connecting happen first, so only a midnight one counts.
+  await page.clock.resume();
+  await page.waitForTimeout(1_000);
 
   const refreshed = page.waitForRequest((r) => r.url().includes("_rsc") && r.headers()["next-router-prefetch"] === undefined);
   await page.clock.fastForward("25:00:00");
   await refreshed;
+});
+
+test("further ahead, on Senare, the row names the day once", async ({ page, context }) => {
+  await logIn(context, "bo", "child");
+  const rooms = await seedRooms("Kök");
+  await seedChore({ title: "Damma", roomId: rooms["Kök"]!.id, dueDate: addDays(todayIso(), 6), recurrence: { unit: "week", interval: 1 } });
+  await page.goto("/?flik=senare");
+
+  const row = page.getByRole("tabpanel").getByRole("listitem").filter({ hasText: "Damma" });
+  await expect(row.getByRole("button", { name: /^Damma: kan bockas av \S{3} \d+ \S+$/ })).toBeVisible();
+  const details = (await row.locator("p.text-xs").innerText()).trim();
+  expect(details).toMatch(/^Kök · Kan bockas av \S{3} \d+ \S+$/);
 });
