@@ -141,7 +141,7 @@ jobs:
       - name: Preserve a manifest already published for this revision
         id: existing
         run: deploy/preserve-manifest.sh
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v8
         if: steps.existing.outputs.preserved != 'true'
         with:
           name: tested-image
