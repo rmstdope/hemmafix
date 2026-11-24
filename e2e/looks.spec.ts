@@ -165,8 +165,10 @@ test("under a bought theme every theme tile keeps its own colour, and the lit da
   const swatch = (name: string | RegExp) => tile(page, name).locator(".bg-primary");
   await expect(swatch("Lila, används")).toHaveCSS("background-color", "rgb(124, 58, 237)");
   // The app's own near-black --primary, oklch(0.205 0 0) in globals.css, as the build compiles it.
+  await expect(swatch("Svart")).not.toHaveCSS("background-color", "rgb(124, 58, 237)");
   await expect(swatch("Svart")).toHaveCSS("background-color", /^lab\(7\.78/);
   await expect(swatch("Skog, 200 mynt")).toHaveCSS("background-color", "rgb(5, 150, 105)");
+  await expect(swatch("Hallon, 200 mynt")).toHaveCSS("background-color", "rgb(225, 29, 72)");
 
   await page.goto("/");
   await expect(page.getByRole("tab", { selected: true })).toHaveCSS("border-bottom-color", "rgb(124, 58, 237)");
