@@ -339,7 +339,8 @@ export function CoinShowerProvider({ children }: { children: ReactNode }) {
     () => ({ start, registerPill, reportTotal, reportStreakDay, shown: tally.shown, glow, held }),
     [start, registerPill, reportTotal, reportStreakDay, tally.shown, glow, held],
   );
-  const total = tally.shown ?? server;
+  // As in the real pill (`useShownCoins`): a waiting badge card's coins are not shown yet.
+  const total = tally.shown ?? server - held;
 
   return (
     <Context.Provider value={api}>

@@ -233,3 +233,40 @@ test("buying a look that wins Första köpet gets its badge card", async ({ page
   await page.getByRole("dialog").getByRole("button", { name: "Köp för 150 mynt" }).click();
   await expect(badgeCard(page).getByText("Första köpet", { exact: true })).toBeVisible({ timeout: 5_000 });
 });
+
+test("scrolled down on a phone, no pill shows the badge's coins while its card is open", async ({ page, context }, info) => {
+  test.skip(info.project.name !== "mobile", "the top strip of the desktop stays in view");
+  await logInWithChestTaken(context, "bo", "child", { badges: "none" });
+  const rooms = await seedRooms("Kök", "Badrum");
+  for (let i = 1; i <= 14; i++) await seedChore({ title: `Syssla ${i}`, roomId: rooms["Kök"]!.id, recurrence: null });
+  // Every number the real pill or its sliding copy shows while a badge card is open.
+  await page.addInitScript(() => {
+    const w = window as unknown as { duringCard: string[] };
+    w.duringCard = [];
+    new MutationObserver(() => {
+      if (!document.querySelector("dialog[open]")) return;
+      const real = [...document.querySelectorAll("button")].find((b) => /mynt$/.test(b.getAttribute("aria-label") ?? "") && b.getClientRects().length > 0);
+      for (const el of [real, document.querySelector("[data-coin-float]")]) {
+        const text = el?.textContent?.trim();
+        if (text) w.duringCard.push(text);
+      }
+    }).observe(document, { subtree: true, childList: true, characterData: true, attributes: true });
+  });
+  await page.goto("/");
+  await expect(pill(page)).toHaveText("0");
+  await page.evaluate(() => window.scrollTo(0, document.body.scrollHeight));
+  await expect(pill(page)).not.toBeInViewport();
+  await tick(page, "Syssla 14");
+
+  await expect(badgeCard(page)).toBeVisible({ timeout: 5_000 });
+  // Long enough for the tick's save to answer and the shower to hand back to the server's total.
+  await page.waitForTimeout(2_500);
+  const duringCard = await page.evaluate(() => (window as unknown as { duringCard: string[] }).duringCard);
+  expect(duringCard).toContain("10");
+  expect(duringCard).not.toContain("35");
+
+  await badgeCard(page).getByRole("button", { name: "Fortsätt" }).click();
+  await expect(badgeCard(page)).toBeHidden();
+  await page.evaluate(() => window.scrollTo(0, 0));
+  await expect(pill(page)).toHaveText("35", { timeout: 5_000 });
+});
