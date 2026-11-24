@@ -1,7 +1,9 @@
 import type { Page } from "@playwright/test";
 import { todayIso } from "../src/lib/dates";
 import { E2E_BASE_URL } from "./support/env";
-import { logIn, logInWithChestTaken, seedChore, seedRooms } from "./support/family";
+import { isNull } from "drizzle-orm";
+import { choreInstance } from "../src/db/schema";
+import { db, logIn, logInWithChestTaken, seedChore, seedRooms } from "./support/family";
 import { expect, test } from "./support/test";
 
 const item = (page: Page, title: string) =>
@@ -122,6 +124,10 @@ test("a tick earns the set amount, a changed amount counts from the next tick, a
   await expect(item(page, "Dammsuga").getByText("45 mynt")).toBeAttached();
   await expect(pill(page)).toHaveAccessibleName("20 mynt");
 
+  // Its day comes, so the next tick pays (before it, an adult's tick gives no coins).
+  await db.update(choreInstance).set({ dueDate: todayIso() }).where(isNull(choreInstance.completedAt));
+  await page.reload();
+  await page.getByRole("tablist").getByRole("tab", { name: /^Nu,/ }).click();
   await page.getByRole("button", { name: "Dammsuga: markera som klar" }).click();
   await expect(pill(page)).toHaveAccessibleName("65 mynt");
 
