@@ -193,6 +193,9 @@ test("on a wider screen the Uppgifter header stays one row", async ({ page, cont
 /** The home name hf-ylj was found with: 32 characters, one line across a 320 px phone. */
 const VERIFY_NAME = "Familjen Andersson (verifiering)";
 
+/** The streak pill's accessible name, with a streak or without. */
+const STREAK = /i rad|Ingen svit/;
+
 const REMOVED_LIST = "/listor/6f1c3b0e-5f8a-4c7e-9d2a-1b3c4d5e6f70";
 
 /** A 7-day streak and 1 320 coins: pills too wide to share a 320 px row with Listor's heading. */
@@ -229,8 +232,8 @@ async function pageHeader(page: Page, title: string, name: string) {
       .filter((m) => textOf(text, m.index, m.index + m[0].length).getClientRects().length > 1)
       .map((m) => m[0]);
     const words = [head.querySelector("h1")!, el].map((e) => box(textOf(e).getBoundingClientRect()));
-    // The pills are drawn buttons too, so every control is measured.
-    const controls = [...head.querySelectorAll("button, a")]
+    // The sort button, the coin pill and the picture are buttons; the streak pill is only a sign (img).
+    const controls = [...head.querySelectorAll('button, a, [role="img"][aria-label]')]
       .map((c) => ({ label: c.getAttribute("aria-label") ?? c.textContent, ...box(c.getBoundingClientRect()) }))
       .filter((c) => c.right > c.x);
     const overlapping = controls
@@ -270,9 +273,15 @@ function expectWholeName(h: Header, lines: number) {
   expect(h.overlapping).toEqual([]);
 }
 
+/** The streak pill is the one control that is no button, so it is checked to be among those measured. */
+function expectStreakMeasured(h: Header) {
+  expect(h.controls.map((c) => c.label)).toContainEqual(expect.stringMatching(STREAK));
+}
+
 /** One row of heading and controls, the name under it. */
 function expectOneRow(h: Header, lines = 1) {
   expectWholeName(h, lines);
+  expectStreakMeasured(h);
   expect(h.top).toBe(h.header.y);
   expect(h.left).toBeGreaterThanOrEqual(h.heading.right);
   expect(h.nameBox.y - h.header.y).toBe(44);
@@ -282,6 +291,7 @@ function expectOneRow(h: Header, lines = 1) {
 /** Heading, name, then the controls on a row of their own, right-aligned. */
 function expectDropped(h: Header, lines = 1) {
   expectWholeName(h, lines);
+  expectStreakMeasured(h);
   expect(h.nameBox.y - h.header.y).toBe(28);
   expect(h.top - h.nameBox.bottom).toBe(4);
   expect(h.right).toBeCloseTo(h.header.right, 0);
