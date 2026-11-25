@@ -102,13 +102,15 @@ export function FilterHeader(props: Props & { title: string; subtitle?: string; 
         <div className="flex flex-wrap items-start justify-between gap-x-2 gap-y-0.5 [--header-w:100cqw]">
           <div className="min-w-0 grow">
             <h1 className="text-xl font-semibold">{title}</h1>
-            <div className="@container sm:hidden">
-              <div className="h-[clamp(0px,calc((var(--header-w)-100cqw)*999),16px)]" />
-            </div>
             {subtitle ? (
-              <p className="w-0 min-w-full text-sm text-muted-foreground">
-                <span className="block w-(--header-w) wrap-break-word sm:w-auto">{subtitle}</span>
-              </p>
+              <>
+                <div className="@container sm:hidden">
+                  <div className="h-[clamp(0px,calc((var(--header-w)-100cqw)*999),16px)]" />
+                </div>
+                <p className="w-0 min-w-full text-sm text-muted-foreground">
+                  <span className="block w-(--header-w) wrap-break-word sm:w-auto">{subtitle}</span>
+                </p>
+              </>
             ) : null}
           </div>
           <div className="mt-0.5 ml-auto flex items-center gap-1">
