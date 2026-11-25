@@ -52,7 +52,7 @@ function controls(s, y){
 }
 function tabs(s, y){ s.line(30, y, 500, y); ['Nu','Imorgon','tor','fre','Senare'].forEach((w,i)=>s.text(40+i*90, y+28, w, {size:20})); s.rect(30, y+50, 470, 40); s.text(44, y+76, 'Dammsuga hallen'); s.rect(30, y+100, 470, 40); s.text(44, y+126, 'Tömma diskmaskinen'); }
 const IDEAS = [
-  {letter: 'A', name: 'the name on its own line under the whole row', cost: 'nothing grows; the name just runs under the buttons', draw(s){
+  {letter: 'A', name: 'the name on its own line under the whole row', cost: 'the header grows 16 px on phones such as 390 px, for every home', draw(s){
     s.rect(10, 10, 520, 340); controls(s, 30);
     s.text(30, 60, 'Uppgifter', {size: 30});
     s.hachure(30, 80, 300, 24, BLUE); s.text(32, 100, 'Familjen (verifiering)', {fill: BLUE});
