@@ -9,8 +9,8 @@
 
 @custom-variant dark (&:is(.dark *));
 
-/* The Uppgifter header's width, registered so that `100cqw` is resolved where it is set (against
-   the header) and inherited as a length into the containers further in (FilterHeader). */
+/* A page header's width, registered so that `100cqw` is resolved where it is set (against the
+   header) and inherited as a length into the containers further in (PageHeader). */
 @property --header-w {
   syntax: "<length>";
   inherits: true;

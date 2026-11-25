@@ -5,6 +5,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useId, useRef, useState, useTransition, type ReactNode } from "react";
 import { activeFilters, boardQuery, parseTab } from "@/lib/board-tabs";
 import { cn } from "@/lib/utils";
+import { PageHeader } from "./page-header";
 import { RoomOptions } from "./room-options";
 import { floorLabel } from "@/lib/floors";
 
@@ -92,54 +93,31 @@ export function FilterHeader(props: Props & { title: string; subtitle?: string; 
 
   return (
     <div>
-      {/* The controls drop under the heading when both do not fit on one row (a 300 px phone). The
-          home's name takes no width of its own (w-0 min-w-full), so only the heading decides that.
-          On a phone with the controls beside the heading, the name runs under them at the header's
-          full width. Which case it is depends on how wide the controls are, so CSS reads it from the
-          heading's column: narrower than the header means the controls share its row, and only then
-          has the spacer a height, 16 px, which puts the name under them. */}
-      <header className="@container mb-3">
-        <div className="flex flex-wrap items-start justify-between gap-x-2 gap-y-0.5 [--header-w:100cqw]">
-          <div className="min-w-0 grow">
-            <h1 className="text-xl font-semibold">{title}</h1>
-            {subtitle ? (
-              <>
-                <div className="@container sm:hidden">
-                  <div className="h-[clamp(0px,calc((var(--header-w)-100cqw)*999),16px)]" />
-                </div>
-                <p className="w-0 min-w-full text-sm text-muted-foreground">
-                  <span className="block w-(--header-w) wrap-break-word sm:w-auto">{subtitle}</span>
-                </p>
-              </>
-            ) : null}
-          </div>
-          <div className="mt-0.5 ml-auto flex items-center gap-1">
-            <button
-              ref={button}
-              type="button"
-              aria-label={count > 0 ? `Filtrera, ${count} filter på` : "Filtrera"}
-              aria-expanded={open}
-              aria-controls={panelId}
-              onClick={() => (open ? close() : setOpen(true))}
-              className={cn(
-                "relative flex size-11 items-center justify-center rounded-lg border outline-none focus-visible:ring-3 focus-visible:ring-ring/50",
-                open ? "border-foreground bg-foreground text-background" : "text-muted-foreground",
-              )}
+      <PageHeader title={title} subtitle={subtitle} lowered>
+        <button
+          ref={button}
+          type="button"
+          aria-label={count > 0 ? `Filtrera, ${count} filter på` : "Filtrera"}
+          aria-expanded={open}
+          aria-controls={panelId}
+          onClick={() => (open ? close() : setOpen(true))}
+          className={cn(
+            "relative flex size-11 items-center justify-center rounded-lg border outline-none focus-visible:ring-3 focus-visible:ring-ring/50",
+            open ? "border-foreground bg-foreground text-background" : "text-muted-foreground",
+          )}
+        >
+          <ListFilter className="size-5" aria-hidden />
+          {count > 0 && !open ? (
+            <span
+              aria-hidden
+              className="absolute -top-1 -right-1 flex size-4 items-center justify-center rounded-full bg-primary text-[10px] font-semibold text-primary-foreground ring-2 ring-background"
             >
-              <ListFilter className="size-5" aria-hidden />
-              {count > 0 && !open ? (
-                <span
-                  aria-hidden
-                  className="absolute -top-1 -right-1 flex size-4 items-center justify-center rounded-full bg-primary text-[10px] font-semibold text-primary-foreground ring-2 ring-background"
-                >
-                  {count}
-                </span>
-              ) : null}
-            </button>
-            {children}
-          </div>
-        </div>
-      </header>
+              {count}
+            </span>
+          ) : null}
+        </button>
+        {children}
+      </PageHeader>
       <div
         id={panelId}
         role="group"
