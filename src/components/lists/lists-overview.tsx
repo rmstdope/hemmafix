@@ -2,6 +2,7 @@
 
 import { ArrowDownUp, ChevronRight } from "lucide-react";
 import Link from "next/link";
+import { PageHeader } from "@/components/page-header";
 import { useRouter } from "next/navigation";
 import { useOptimistic, useRef, useState, useTransition, type ReactNode } from "react";
 import { createList, setListOrder } from "@/app/actions";
@@ -49,25 +50,19 @@ export function ListsOverview({
 
   return (
     <div data-hydrated={hydrated} className="flex flex-1 flex-col">
-      <header className="mb-3 flex items-center justify-between gap-2">
-        <div className="min-w-0 [&>p]:truncate">
-          <h1 className="text-xl font-semibold">Listor</h1>
-          {subtitle ? <p className="text-sm text-muted-foreground">{subtitle}</p> : null}
-        </div>
-        <div className="flex items-center gap-1">
-          <Menu
-            radio
-            triggerRef={sortButton}
-            label={`Sortera listor: ${orderMenuLabel(shown)}`}
-            heading="Sortera listor"
-            triggerClassName="flex size-11 items-center justify-center rounded-lg border text-muted-foreground outline-none focus-visible:ring-3 focus-visible:ring-ring/50 aria-expanded:border-foreground aria-expanded:bg-foreground aria-expanded:text-background"
-            items={LIST_ORDERS.map((o) => ({ label: orderMenuLabel(o), checked: o === shown, onSelect: () => choose(o) }))}
-          >
-            <ArrowDownUp className="size-5" aria-hidden />
-          </Menu>
-          {children}
-        </div>
-      </header>
+      <PageHeader title="Listor" subtitle={subtitle}>
+        <Menu
+          radio
+          triggerRef={sortButton}
+          label={`Sortera listor: ${orderMenuLabel(shown)}`}
+          heading="Sortera listor"
+          triggerClassName="flex size-11 items-center justify-center rounded-lg border text-muted-foreground outline-none focus-visible:ring-3 focus-visible:ring-ring/50 aria-expanded:border-foreground aria-expanded:bg-foreground aria-expanded:text-background"
+          items={LIST_ORDERS.map((o) => ({ label: orderMenuLabel(o), checked: o === shown, onSelect: () => choose(o) }))}
+        >
+          <ArrowDownUp className="size-5" aria-hidden />
+        </Menu>
+        {children}
+      </PageHeader>
 
       {lists.length === 0 ? (
         <div className="rounded-xl border border-dashed p-6 text-center text-muted-foreground">
