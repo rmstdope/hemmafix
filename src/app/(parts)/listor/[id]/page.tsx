@@ -3,6 +3,7 @@ import { cache, Suspense } from "react";
 import { ListView } from "@/components/lists/list-view";
 import { LiveUpdates } from "@/components/live-updates";
 import { PageCorner } from "@/components/page-corner";
+import { PageHeader } from "@/components/page-header";
 import { getHousehold } from "@/server/chores";
 import { requireMember } from "@/server/dal";
 import { getList } from "@/server/lists";
@@ -44,15 +45,11 @@ async function Content({ params }: Props) {
   return (
     <>
       <LiveUpdates />
-      <header className="mb-4 flex items-center justify-between gap-2">
-        <div className="min-w-0 [&>p]:truncate">
-          <h1 className="text-xl font-semibold">Listor</h1>
-          <p className="text-sm text-muted-foreground">{home?.name}</p>
-        </div>
+      <PageHeader title="Listor" subtitle={home?.name}>
         <div className="sm:hidden">
           <PageCorner />
         </div>
-      </header>
+      </PageHeader>
       <div className="rounded-xl border border-dashed p-6 text-center text-muted-foreground">
         <p>Listan finns inte längre.</p>
         <Link href="/listor" className="mt-3 inline-block min-h-11 py-2.5 font-medium text-foreground underline">

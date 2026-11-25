@@ -5,6 +5,7 @@ import { WeekCard } from "@/components/jag/week-card";
 import { JagParts } from "@/components/jag/jag-parts";
 import { LiveUpdates } from "@/components/live-updates";
 import { PageCorner } from "@/components/page-corner";
+import { PageHeader } from "@/components/page-header";
 import { BadgeGrid } from "@/components/jag/badge-grid";
 import { StreakCard } from "@/components/jag/streak-card";
 import { Butik } from "@/components/jag/butik";
@@ -45,15 +46,11 @@ async function Jag() {
   return (
     <>
       <LiveUpdates />
-      <header className="mb-3 flex items-center justify-between gap-2">
-        <div className="min-w-0 [&>p]:truncate">
-          <h1 className="text-xl font-semibold">Jag</h1>
-          {home?.name ? <p className="text-sm text-muted-foreground">{home.name}</p> : null}
-        </div>
+      <PageHeader title="Jag" subtitle={home?.name}>
         <div className="sm:hidden">
           <PageCorner />
         </div>
-      </header>
+      </PageHeader>
       <JagParts
         framsteg={
           <>
