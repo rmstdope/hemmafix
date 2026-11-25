@@ -2,18 +2,18 @@ import "server-only";
 import { and, count, eq, gte, isNotNull, lt, sql } from "drizzle-orm";
 import { db } from "@/db";
 import { badgeAward, choreInstance, weekRecapSeen } from "@/db/schema";
-import { addDays, HOME_TIME_ZONE, todayIso } from "@/lib/dates";
+import { addDays, todayIso } from "@/lib/dates";
 import { formatWeekRange, weekStart, type WeekCounts } from "@/lib/weeks";
+import { startOfDay, sumEarned } from "./earned";
 import type { Actor } from "./household";
 
-const startOfDay = (iso: string) => sql`(${iso}::date)::timestamp at time zone ${HOME_TIME_ZONE}`;
-
 /**
- * What the actor ticked off in the week starting on `start` (a Monday): their own ticks that
- * earned coins (ticks from before coins existed have none), counted by when they were done.
- * Badges are those won in the week.
+ * The actor's week starting on `start` (a Monday): the tasks are their own ticks that earned coins
+ * (ticks from before coins existed have none), counted by when they were done; the coins are all
+ * they earned in it, by the balance's rules; badges are those won in the week.
  */
-export async function weekCounts(actor: Actor, start: string): Promise<WeekCounts> {
+export async function weekCounts(actor: Actor, start: string, today: string = todayIso()): Promise<WeekCounts> {
+  const end = addDays(start, 7);
   const [badges] = await db
     .select({ n: count() })
     .from(badgeAward)
@@ -22,11 +22,11 @@ export async function weekCounts(actor: Actor, start: string): Promise<WeekCount
         eq(badgeAward.userId, actor.userId),
         eq(badgeAward.householdId, actor.householdId),
         gte(badgeAward.wonAt, startOfDay(start)),
-        lt(badgeAward.wonAt, startOfDay(addDays(start, 7))),
+        lt(badgeAward.wonAt, startOfDay(end)),
       ),
     );
   const [row] = await db
-    .select({ tasks: count(), coins: sql<number>`coalesce(sum(${choreInstance.coins}), 0)::int` })
+    .select({ tasks: count() })
     .from(choreInstance)
     .where(
       and(
@@ -34,16 +34,18 @@ export async function weekCounts(actor: Actor, start: string): Promise<WeekCount
         eq(choreInstance.completedById, actor.userId),
         isNotNull(choreInstance.coins),
         gte(choreInstance.completedAt, startOfDay(start)),
-        lt(choreInstance.completedAt, startOfDay(addDays(start, 7))),
+        lt(choreInstance.completedAt, startOfDay(end)),
       ),
     );
-  return { tasks: row?.tasks ?? 0, coins: row?.coins ?? 0, badges: badges?.n ?? 0 };
+  const coins = await sumEarned(actor.householdId, actor.userId, db, { days: { from: start, before: end }, today });
+  return { tasks: row?.tasks ?? 0, coins, badges: badges?.n ?? 0 };
 }
 
 /** This week and last week, for the card on Framsteg. */
 export async function getWeekCard(actor: Actor, now: Date = new Date()) {
-  const thisWeek = weekStart(todayIso(now));
-  const [current, last] = await Promise.all([weekCounts(actor, thisWeek), weekCounts(actor, addDays(thisWeek, -7))]);
+  const today = todayIso(now);
+  const thisWeek = weekStart(today);
+  const [current, last] = await Promise.all([weekCounts(actor, thisWeek, today), weekCounts(actor, addDays(thisWeek, -7), today)]);
   return { now: current, before: last };
 }
 
@@ -55,7 +57,8 @@ export type WeekRecap = { range: string; week: WeekCounts; before: WeekCounts };
  * first time they open Hemmafix in a later week, on any device.
  */
 export async function getPendingRecap(actor: Actor, now: Date = new Date()): Promise<WeekRecap | null> {
-  const thisWeek = weekStart(todayIso(now));
+  const today = todayIso(now);
+  const thisWeek = weekStart(today);
   const [seen] = await db.select({ weekStart: weekRecapSeen.weekStart }).from(weekRecapSeen).where(eq(weekRecapSeen.userId, actor.userId));
   if (!seen) {
     await db.insert(weekRecapSeen).values({ userId: actor.userId, weekStart: thisWeek }).onConflictDoNothing();
@@ -63,7 +66,7 @@ export async function getPendingRecap(actor: Actor, now: Date = new Date()): Pro
   }
   if (seen.weekStart >= thisWeek) return null;
   const last = addDays(thisWeek, -7);
-  const [week, before] = await Promise.all([weekCounts(actor, last), weekCounts(actor, addDays(last, -7))]);
+  const [week, before] = await Promise.all([weekCounts(actor, last, today), weekCounts(actor, addDays(last, -7), today)]);
   return { range: formatWeekRange(last), week, before };
 }
 
