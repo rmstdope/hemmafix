@@ -5,6 +5,7 @@ import { WeekCard } from "@/components/jag/week-card";
 import { JagParts } from "@/components/jag/jag-parts";
 import { LiveUpdates } from "@/components/live-updates";
 import { PageCorner } from "@/components/page-corner";
+import { PageHeader } from "@/components/page-header";
 import { BadgeGrid } from "@/components/jag/badge-grid";
 import { StreakCard } from "@/components/jag/streak-card";
 import { Butik } from "@/components/jag/butik";
@@ -45,19 +46,11 @@ async function Jag() {
   return (
     <>
       <LiveUpdates />
-      {/* The controls drop under the heading when both do not fit on one row, so none covers it. The
-          home's name takes no width of its own (w-0 min-w-full), so only the heading decides that, and
-          it wraps rather than being cut where the controls leave it little room. Top-aligned, so a
-          wrapped name never pulls the heading off the controls' line. */}
-      <header className="mb-3 flex flex-wrap items-start justify-between gap-x-2 gap-y-1">
-        <div className="min-w-0 grow">
-          <h1 className="text-xl font-semibold">Jag</h1>
-          {home?.name ? <p className="w-0 min-w-full text-sm break-words text-muted-foreground">{home.name}</p> : null}
-        </div>
-        <div className="ml-auto sm:hidden">
+      <PageHeader title="Jag" subtitle={home?.name}>
+        <div className="sm:hidden">
           <PageCorner />
         </div>
-      </header>
+      </PageHeader>
       <JagParts
         framsteg={
           <>

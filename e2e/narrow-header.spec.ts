@@ -1,6 +1,6 @@
 import type { Locator } from "@playwright/test";
 import { household } from "../src/db/schema";
-import { db, logIn } from "./support/family";
+import { db, logIn, seedDone, seedRooms, seedStreak } from "./support/family";
 import { expect, test } from "./support/test";
 
 /** Room the select's own arrow takes inside its padding box, in Chromium. */
@@ -28,12 +28,17 @@ const PAGES = [
   { path: "/", heading: "Uppgifter", controls: 2 }, // the filter and the picture at least
   { path: "/listor", heading: "Listor", controls: 2 }, // the sort and the picture
   { path: "/jag", heading: "Jag", controls: 1 }, // the picture
+  { path: "/listor/6f1c3b0e-5f8a-4c7e-9d2a-1b3c4d5e6f70", heading: "Listor", controls: 1, label: "a removed list" }, // the picture
 ];
 
-for (const { path, heading: name, controls: least } of PAGES) {
-  test(`on a 300 px phone the ${name} header keeps the heading clear and the home name whole`, async ({ page, context }) => {
-    await logIn(context, "anna", "adult");
+for (const { path, heading: name, controls: least, label = name } of PAGES) {
+  test(`on a 300 px phone the ${label} header keeps the heading clear and the home name whole`, async ({ page, context }) => {
+    const anna = await logIn(context, "anna", "adult");
     await db.update(household).set({ name: LONG_HOME });
+    // A long streak and a big balance make the picture's pills as wide as a real family's.
+    const room = (await seedRooms("Kök"))["Kök"]!.id;
+    await seedStreak({ roomId: room, completedById: anna.id, days: 12 });
+    await seedDone({ title: "Storstädning", roomId: room, completedById: anna.id, coins: 98_000 });
     await page.setViewportSize({ width: 300, height: 700 });
     await page.goto(path);
 
@@ -59,7 +64,7 @@ for (const { path, heading: name, controls: least } of PAGES) {
     const home = page.getByText(LONG_HOME, { exact: true });
     await expect(home).toBeVisible();
     const cut = await home.evaluate((el) => el.scrollWidth > el.clientWidth);
-    expect(cut, `the home name is cut on ${name}`).toBe(false);
+    expect(cut, `the home name is cut on ${label}`).toBe(false);
   });
 }
 
