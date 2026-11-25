@@ -189,3 +189,200 @@ test("on a wider screen the Uppgifter header stays one row", async ({ page, cont
   expect(filter.y).toBeLessThan(heading.y + heading.height);
   expect(filter.x).toBeGreaterThanOrEqual(heading.x + heading.width);
 });
+
+/** The home name hf-ylj was found with: 32 characters, one line across a 320 px phone. */
+const VERIFY_NAME = "Familjen Andersson (verifiering)";
+
+/** The streak pill's accessible name, with a streak or without. */
+const STREAK = /i rad|Ingen svit/;
+
+const REMOVED_LIST = "/listor/6f1c3b0e-5f8a-4c7e-9d2a-1b3c4d5e6f70";
+
+/** A 7-day streak and 1 320 coins: pills too wide to share a 320 px row with Listor's heading. */
+async function seedRichMember(userId: string) {
+  const room = (await seedRooms("Kök"))["Kök"]!.id;
+  await seedStreak({ roomId: room, completedById: userId, days: 7 });
+  await seedDone({ title: "Storstädning", roomId: room, completedById: userId, coins: 1_250 });
+}
+
+/**
+ * A page header as drawn: the heading's and the name's text, the controls, the words of the name
+ * broken over two lines, and any control lying over the heading or the name.
+ */
+async function pageHeader(page: Page, title: string, name: string) {
+  const heading = page.getByRole("heading", { level: 1, name: title });
+  const header = page.locator("header").filter({ has: heading });
+  const home = header.getByText(name, { exact: true });
+  await expect(home).toBeVisible();
+  await expect(header.getByRole("button", { name: "Meny" })).toBeVisible();
+  const measured = await home.evaluate((el) => {
+    const head = el.closest("header")!;
+    const textOf = (node: Node, from = 0, to?: number) => {
+      const range = document.createRange();
+      if (to === undefined) range.selectNodeContents(node);
+      else {
+        range.setStart(node, from);
+        range.setEnd(node, to);
+      }
+      return range;
+    };
+    const box = (r: DOMRect) => ({ x: r.left, y: r.top, right: r.right, bottom: r.bottom });
+    const text = el.firstChild!;
+    const broken = [...text.textContent!.matchAll(/\S+/g)]
+      .filter((m) => textOf(text, m.index, m.index + m[0].length).getClientRects().length > 1)
+      .map((m) => m[0]);
+    const words = [head.querySelector("h1")!, el].map((e) => box(textOf(e).getBoundingClientRect()));
+    // The sort button, the coin pill and the picture are buttons; the streak pill is only a sign (img).
+    const controls = [...head.querySelectorAll('button, a, [role="img"][aria-label]')]
+      .map((c) => ({ label: c.getAttribute("aria-label") ?? c.textContent, ...box(c.getBoundingClientRect()) }))
+      .filter((c) => c.right > c.x);
+    const overlapping = controls
+      .filter((c) => words.some((w) => c.x < w.right && c.right > w.x && c.y < w.bottom && c.bottom > w.y))
+      .map((c) => c.label);
+    return {
+      header: box(head.getBoundingClientRect()),
+      headerHeight: head.getBoundingClientRect().height,
+      heading: words[0]!,
+      name: words[1]!,
+      nameBox: box(el.getBoundingClientRect()),
+      lines: Math.round(el.getBoundingClientRect().height / parseFloat(getComputedStyle(el).lineHeight)),
+      clipped: el.scrollWidth > el.clientWidth,
+      broken,
+      controls,
+      overlapping,
+    };
+  });
+  return {
+    ...measured,
+    top: Math.min(...measured.controls.map((c) => c.y)),
+    bottom: Math.max(...measured.controls.map((c) => c.bottom)),
+    left: Math.min(...measured.controls.map((c) => c.x)),
+    right: Math.max(...measured.controls.map((c) => c.right)),
+  };
+}
+
+type Header = Awaited<ReturnType<typeof pageHeader>>;
+
+/** The name is on a full-width line of its own, whole, and nothing covers it or the heading. */
+function expectWholeName(h: Header, lines: number) {
+  expect(h.nameBox.x).toBeCloseTo(h.header.x, 0);
+  expect(h.nameBox.right).toBeCloseTo(h.header.right, 0);
+  expect(h.lines).toBe(lines);
+  expect(h.broken).toEqual([]);
+  expect(h.clipped).toBe(false);
+  expect(h.overlapping).toEqual([]);
+}
+
+/** The streak pill is the one control that is no button, so it is checked to be among those measured. */
+function expectStreakMeasured(h: Header) {
+  expect(h.controls.map((c) => c.label)).toContainEqual(expect.stringMatching(STREAK));
+}
+
+/** One row of heading and controls, the name under it. */
+function expectOneRow(h: Header, lines = 1) {
+  expectWholeName(h, lines);
+  expectStreakMeasured(h);
+  expect(h.top).toBe(h.header.y);
+  expect(h.left).toBeGreaterThanOrEqual(h.heading.right);
+  expect(h.nameBox.y - h.header.y).toBe(44);
+  expect(h.headerHeight).toBe(44 + 20 * lines);
+}
+
+/** Heading, name, then the controls on a row of their own, right-aligned. */
+function expectDropped(h: Header, lines = 1) {
+  expectWholeName(h, lines);
+  expectStreakMeasured(h);
+  expect(h.nameBox.y - h.header.y).toBe(28);
+  expect(h.top - h.nameBox.bottom).toBe(4);
+  expect(h.right).toBeCloseTo(h.header.right, 0);
+  expect(h.headerHeight).toBe(28 + 20 * lines + 4 + 44);
+}
+
+async function openPage(page: Page, path: string, name: string, width: number) {
+  await db.update(household).set({ name });
+  await page.setViewportSize({ width, height: 700 });
+  await page.goto(path);
+}
+
+for (const width of [320, 390]) {
+  test(`at ${width} px a new member's Listor header is one row, with the home name under it`, async ({ page, context }) => {
+    await logIn(context, "anna", "adult");
+    await openPage(page, "/listor", VERIFY_NAME, width);
+    expectOneRow(await pageHeader(page, "Listor", VERIFY_NAME));
+  });
+}
+
+// A new member's controls miss the 300 px row by about a pixel with one system's emoji and make it
+// with another's, so only the rich member, who is far too wide, pins the dropped form.
+for (const width of [300, 320]) {
+  test(`at ${width} px a rich member's Listor controls drop under the home name`, async ({ page, context }) => {
+    const anna = await logIn(context, "anna", "adult");
+    await seedRichMember(anna.id);
+    await openPage(page, "/listor", VERIFY_NAME, width);
+    expectDropped(await pageHeader(page, "Listor", VERIFY_NAME));
+  });
+}
+
+test("at 320 px the longest home name wraps between words on Listor", async ({ page, context }) => {
+  await logIn(context, "anna", "adult");
+  await openPage(page, "/listor", LONG_NAME, 320);
+  expectOneRow(await pageHeader(page, "Listor", LONG_NAME), 2);
+});
+
+for (const rich of [false, true]) {
+  test(`from 300 to 400 px a ${rich ? "rich" : "new"} member's Listor header never breaks a word or overlaps`, async ({ page, context }) => {
+    const anna = await logIn(context, "anna", "adult");
+    if (rich) await seedRichMember(anna.id);
+    await openPage(page, "/listor", VERIFY_NAME, 300);
+    for (let width = 300; width <= 400; width++) {
+      await page.setViewportSize({ width, height: 700 });
+      const h = await pageHeader(page, "Listor", VERIFY_NAME);
+      const at = `at ${width} px`;
+      expect(h.broken, at).toEqual([]);
+      expect(h.overlapping, at).toEqual([]);
+      expect(h.clipped, at).toBe(false);
+      expect(h.right, at).toBeLessThanOrEqual(h.header.right + 0.5);
+      // One of the two forms, never anything between.
+      if (h.top === h.header.y) expectOneRow(h, h.lines);
+      else {
+        expectDropped(h, h.lines);
+        // Dropped only because the heading, the 8 px gap and the controls are wider than the row.
+        const needed = h.heading.right - h.heading.x + 8 + (h.right - h.left);
+        expect(needed, at).toBeGreaterThan(h.header.right - h.header.x - 0.5);
+      }
+    }
+  });
+}
+
+for (const { path, title, label } of [
+  { path: "/jag", title: "Jag", label: "Jag" },
+  { path: REMOVED_LIST, title: "Listor", label: "a removed list" },
+]) {
+  test(`at 320 px ${label} has the home name under its header row`, async ({ page, context }) => {
+    await logIn(context, "anna", "adult");
+    await openPage(page, path, VERIFY_NAME, 320);
+    expectOneRow(await pageHeader(page, title, VERIFY_NAME));
+  });
+}
+
+for (const { name, lines } of [
+  { name: NAME, lines: 1 },
+  { name: WIDE_NAME, lines: 2 },
+]) {
+  test(`from 640 px a Listor name of ${lines} line(s) stays beside the sort button`, async ({ page, context }) => {
+    await logIn(context, "anna", "adult");
+    await openPage(page, "/listor", name, 640);
+    const heading = page.getByRole("heading", { level: 1, name: "Listor" });
+    const header = page.locator("header").filter({ has: heading });
+    const sort = (await header.getByRole("button", { name: /^Sortera listor/ }).boundingBox())!;
+    const home = header.getByText(name, { exact: true });
+    const box = (await header.boundingBox())!;
+    const text = await textBox(home);
+
+    expect(sort.y).toBe(box.y);
+    expect(text.y).toBeLessThan((await heading.boundingBox())!.y + 28 + 6);
+    expect(text.right).toBeLessThanOrEqual(sort.x);
+    expect(await home.evaluate((el) => Math.round(el.getBoundingClientRect().height / 20))).toBe(lines);
+    expect(box.height).toBe(Math.max(44, 28 + 20 * lines));
+  });
+}
