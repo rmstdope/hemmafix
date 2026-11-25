@@ -1,4 +1,4 @@
-import type { Locator } from "@playwright/test";
+import type { Locator, Page } from "@playwright/test";
 import { household } from "../src/db/schema";
 import { db, logIn, seedDone, seedRooms, seedStreak } from "./support/family";
 import { expect, test } from "./support/test";
@@ -23,6 +23,105 @@ async function showsWholeText(select: Locator) {
  * a 300 px phone's row of its own (the narrow layout gives it that row).
  */
 const LONG_HOME = "Familjen Andersson (sommarstugan)";
+const NAME = "Familjen (verifiering)";
+/** The longest a home's name can be: 60 characters. */
+const LONG_NAME = "Familjen Andersson-Lindqvists sommarhus vid Västerviks skärg";
+
+/** Too wide for the room beside the filter even on a desktop. */
+const WIDE_NAME = "MMMMM ".repeat(10).trim();
+
+async function openHome(page: Page, name: string, width: number) {
+  await db.update(household).set({ name });
+  await page.setViewportSize({ width, height: 700 });
+  await page.goto("/");
+}
+
+/** Where the text itself is drawn, which may differ from its element's box. */
+async function textBox(element: Locator) {
+  return element.evaluate((el) => {
+    const range = document.createRange();
+    range.selectNodeContents(el);
+    const r = range.getBoundingClientRect();
+    return { x: r.left, y: r.top, width: r.width, height: r.height, right: r.right, bottom: r.bottom };
+  });
+}
+
+/** The header's parts, with the name's text measured and whether anything clips it. */
+async function headerParts(page: Page, name: string) {
+  const heading = page.getByRole("heading", { level: 1, name: "Uppgifter" });
+  const header = page.locator("header").filter({ has: heading });
+  const home = header.getByText(name, { exact: true });
+  await expect(home).toBeVisible();
+  return {
+    header: (await header.boundingBox())!,
+    heading: (await heading.boundingBox())!,
+    filter: (await page.getByRole("button", { name: "Filtrera" }).boundingBox())!,
+    name: await textBox(home),
+    lines: await home.evaluate((el) => Math.round(el.getBoundingClientRect().height / parseFloat(getComputedStyle(el).lineHeight))),
+    clipped: await home.evaluate((el) => {
+      for (let e: Element | null = el; e; e = e.parentElement) {
+        if (getComputedStyle(e).overflowX !== "visible" && e.scrollWidth > e.clientWidth) return true;
+      }
+      return false;
+    }),
+  };
+}
+
+for (const { name, lines } of [
+  { name: NAME, lines: 1 },
+  { name: LONG_NAME, lines: 2 },
+]) {
+  test(`at 390 px a ${name.length}-character home name is whole, under the header row`, async ({ page, context }) => {
+    await logIn(context, "anna", "adult");
+    await openHome(page, name, 390);
+    const p = await headerParts(page, name);
+
+    // The controls stay beside the heading, where they were: 2 px into the header.
+    expect(p.filter.x).toBeGreaterThanOrEqual(p.heading.x + p.heading.width);
+    expect(p.filter.y - p.header.y).toBe(2);
+    expect(p.filter.height).toBe(44);
+    // The name starts at the left edge, under the controls' row, and may run the full width.
+    expect(p.name.x).toBeCloseTo(p.header.x, 0);
+    expect(p.name.y).toBeGreaterThanOrEqual(p.filter.y + p.filter.height - 1);
+    expect(p.name.right).toBeLessThanOrEqual(p.header.x + p.header.width);
+    expect(p.lines).toBe(lines);
+    expect(p.clipped).toBe(false);
+    expect(p.header.height).toBe(44 + 20 * lines);
+  });
+}
+
+test("on a 300 px phone a long home name wraps between the heading and the controls", async ({ page, context }) => {
+  await logIn(context, "anna", "adult");
+  await openHome(page, LONG_NAME, 300);
+  const p = await headerParts(page, LONG_NAME);
+
+  expect(p.name.y).toBeGreaterThanOrEqual(p.heading.y + p.heading.height);
+  expect(p.name.y).toBeLessThan(p.heading.y + p.heading.height + 6);
+  expect(p.filter.y - (p.header.y + 28 + 20 * p.lines)).toBe(4);
+  expect(p.lines).toBeGreaterThanOrEqual(2);
+  expect(p.name.right).toBeLessThanOrEqual(p.header.x + p.header.width);
+  expect(p.clipped).toBe(false);
+  expect(p.header.height).toBe(28 + 20 * p.lines + 4 + 44);
+});
+
+for (const { name, lines } of [
+  { name: NAME, lines: 1 },
+  { name: WIDE_NAME, lines: 2 },
+]) {
+  test(`from 640 px a name of ${lines} line(s) stays beside the filter`, async ({ page, context }) => {
+    await logIn(context, "anna", "adult");
+    await openHome(page, name, 640);
+    const p = await headerParts(page, name);
+
+    expect(p.filter.y - p.header.y).toBe(2);
+    expect(p.name.y).toBeLessThan(p.heading.y + p.heading.height + 6);
+    expect(p.name.right).toBeLessThanOrEqual(p.filter.x);
+    expect(p.lines).toBe(lines);
+    expect(p.clipped).toBe(false);
+    expect(p.header.height).toBe(28 + 20 * lines);
+  });
+}
+
 
 const PAGES = [
   { path: "/", heading: "Uppgifter", controls: 2 }, // the filter and the picture at least
