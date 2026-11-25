@@ -49,12 +49,16 @@ export function ListsOverview({
 
   return (
     <div data-hydrated={hydrated} className="flex flex-1 flex-col">
-      <header className="mb-3 flex items-center justify-between gap-2">
-        <div className="min-w-0 [&>p]:truncate">
+      {/* The controls drop under the heading when both do not fit on one row, so none covers it. The
+          home's name takes no width of its own (w-0 min-w-full), so only the heading decides that, and
+          it wraps rather than being cut where the controls leave it little room. Top-aligned, so a
+          wrapped name never pulls the heading off the controls' line. */}
+      <header className="mb-3 flex flex-wrap items-start justify-between gap-x-2 gap-y-1">
+        <div className="min-w-0 grow">
           <h1 className="text-xl font-semibold">Listor</h1>
-          {subtitle ? <p className="text-sm text-muted-foreground">{subtitle}</p> : null}
+          {subtitle ? <p className="w-0 min-w-full text-sm break-words text-muted-foreground">{subtitle}</p> : null}
         </div>
-        <div className="flex items-center gap-1">
+        <div className="ml-auto flex items-center gap-1">
           <Menu
             radio
             triggerRef={sortButton}

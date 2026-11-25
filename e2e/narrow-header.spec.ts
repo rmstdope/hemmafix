@@ -1,5 +1,6 @@
 import type { Locator } from "@playwright/test";
-import { logIn } from "./support/family";
+import { household } from "../src/db/schema";
+import { db, logIn } from "./support/family";
 import { expect, test } from "./support/test";
 
 /** Room the select's own arrow takes inside its padding box, in Chromium. */
@@ -17,35 +18,50 @@ async function showsWholeText(select: Locator) {
   }, ARROW);
 }
 
-test("on a 300 px phone the Uppgifter header keeps the heading clear and the home name whole", async ({ page, context }) => {
-  await logIn(context, "anna", "adult");
-  await page.setViewportSize({ width: 300, height: 700 });
-  await page.goto("/");
+/**
+ * A home name long enough that a control beside it cuts it, and short enough that it fits whole on
+ * a 300 px phone's row of its own (the narrow layout gives it that row).
+ */
+const LONG_HOME = "Familjen Andersson (sommarstugan)";
 
-  const heading = page.getByRole("heading", { level: 1, name: "Uppgifter" });
-  // The heading's text, not its box, is what a control may not cover.
-  const text = await heading.evaluate((el) => {
-    const range = document.createRange();
-    range.selectNodeContents(el);
-    const r = range.getBoundingClientRect();
-    return { x: r.left, y: r.top, width: r.width, height: r.height };
+const PAGES = [
+  { path: "/", heading: "Uppgifter", controls: 2 }, // the filter and the picture at least
+  { path: "/listor", heading: "Listor", controls: 2 }, // the sort and the picture
+  { path: "/jag", heading: "Jag", controls: 1 }, // the picture
+];
+
+for (const { path, heading: name, controls: least } of PAGES) {
+  test(`on a 300 px phone the ${name} header keeps the heading clear and the home name whole`, async ({ page, context }) => {
+    await logIn(context, "anna", "adult");
+    await db.update(household).set({ name: LONG_HOME });
+    await page.setViewportSize({ width: 300, height: 700 });
+    await page.goto(path);
+
+    const heading = page.getByRole("heading", { level: 1, name });
+    // The heading's text, not its box, is what a control may not cover.
+    const text = await heading.evaluate((el) => {
+      const range = document.createRange();
+      range.selectNodeContents(el);
+      const r = range.getBoundingClientRect();
+      return { x: r.left, y: r.top, width: r.width, height: r.height };
+    });
+    expect(text.x).toBeGreaterThanOrEqual(0);
+    const controls = page.locator("header").filter({ has: heading }).getByRole("button");
+    expect(await controls.count()).toBeGreaterThanOrEqual(least);
+    for (const control of await controls.all()) {
+      const box = (await control.boundingBox())!;
+      const apart =
+        box.x >= text.x + text.width || box.x + box.width <= text.x || box.y >= text.y + text.height || box.y + box.height <= text.y;
+      expect(apart, `${await control.getAttribute("aria-label")} overlaps the heading`).toBe(true);
+      expect(box.x + box.width).toBeLessThanOrEqual(300);
+    }
+
+    const home = page.getByText(LONG_HOME, { exact: true });
+    await expect(home).toBeVisible();
+    const cut = await home.evaluate((el) => el.scrollWidth > el.clientWidth);
+    expect(cut, `the home name is cut on ${name}`).toBe(false);
   });
-  expect(text.x).toBeGreaterThanOrEqual(0);
-  const controls = page.locator("header").filter({ has: heading }).getByRole("button");
-  expect(await controls.count()).toBeGreaterThanOrEqual(2); // the filter and the picture at least
-  for (const control of await controls.all()) {
-    const box = (await control.boundingBox())!;
-    const apart =
-      box.x >= text.x + text.width || box.x + box.width <= text.x || box.y >= text.y + text.height || box.y + box.height <= text.y;
-    expect(apart, `${await control.getAttribute("aria-label")} overlaps the heading`).toBe(true);
-    expect(box.x + box.width).toBeLessThanOrEqual(300);
-  }
-
-  const home = page.getByText("Familjen E2E", { exact: true });
-  await expect(home).toBeVisible();
-  const cut = await home.evaluate((el) => el.scrollWidth > el.clientWidth);
-  expect(cut).toBe(false);
-});
+}
 
 test("on a 300 px phone Gjort's two filters show their whole choice", async ({ page, context }) => {
   await logIn(context, "anna", "adult");
