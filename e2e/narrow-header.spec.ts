@@ -312,13 +312,12 @@ for (const width of [320, 390]) {
   });
 }
 
-for (const { who, width, rich } of [
-  { who: "a rich member", width: 320, rich: true },
-  { who: "a new member", width: 300, rich: false },
-]) {
-  test(`at ${width} px ${who}'s Listor controls drop under the home name`, async ({ page, context }) => {
+// A new member's controls miss the 300 px row by about a pixel with one system's emoji and make it
+// with another's, so only the rich member, who is far too wide, pins the dropped form.
+for (const width of [300, 320]) {
+  test(`at ${width} px a rich member's Listor controls drop under the home name`, async ({ page, context }) => {
     const anna = await logIn(context, "anna", "adult");
-    if (rich) await seedRichMember(anna.id);
+    await seedRichMember(anna.id);
     await openPage(page, "/listor", VERIFY_NAME, width);
     expectDropped(await pageHeader(page, "Listor", VERIFY_NAME));
   });
@@ -345,7 +344,12 @@ for (const rich of [false, true]) {
       expect(h.right, at).toBeLessThanOrEqual(h.header.right + 0.5);
       // One of the two forms, never anything between.
       if (h.top === h.header.y) expectOneRow(h, h.lines);
-      else expectDropped(h, h.lines);
+      else {
+        expectDropped(h, h.lines);
+        // Dropped only because the heading, the 8 px gap and the controls are wider than the row.
+        const needed = h.heading.right - h.heading.x + 8 + (h.right - h.left);
+        expect(needed, at).toBeGreaterThan(h.header.right - h.header.x - 0.5);
+      }
     }
   });
 }
