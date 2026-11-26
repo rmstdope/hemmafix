@@ -57,6 +57,11 @@ describe("moveTask", () => {
     expect(moveTask(list, "c", "2026-11-28").map((t) => t.id)).toEqual(["c", "a", "b", "d"]);
   });
 
+  it("leaves the undated as the server listed them: a removed date, not age, may have placed them", () => {
+    const list = [task("a", "2026-11-30"), task("newer", null, 5), task("older", null, 1)];
+    expect(moveTask(list, "a", "2026-12-01").map((t) => t.id)).toEqual(["a", "newer", "older"]);
+  });
+
   it("orders tasks of one day and one moment by id", () => {
     const list = [task("b", "2026-12-01"), task("a", "2026-11-30")];
     expect(moveTask(list, "a", "2026-12-01").map((t) => t.id)).toEqual(["a", "b"]);
