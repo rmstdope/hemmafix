@@ -123,6 +123,20 @@ export async function closeDatabase() {
   await client.end();
 }
 
+/**
+ * Holds back every read of the person's looks (their theme and coin marks) until the returned
+ * function is called, by locking the table those reads wait on. A page then shows without its marks.
+ */
+export async function holdLooks(): Promise<() => Promise<void>> {
+  const lock = await client.reserve();
+  await lock`begin`;
+  await lock`lock table look_purchase in access exclusive mode`;
+  return async () => {
+    await lock`rollback`;
+    lock.release();
+  };
+}
+
 /** The household's floors (created on demand), top floor first. */
 export async function floors() {
   const householdId = await homeId();
