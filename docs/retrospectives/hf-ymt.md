@@ -1,7 +1,7 @@
 # hf-ymt — retrospective
 
 - **Implementer:** Rogue
-- **Date:** 2026-11-28
+- **Date:** 2026-11-27
 - **PR:** #145
 
 ## The local integration gate failed on tests the diff does not touch, in two ways
