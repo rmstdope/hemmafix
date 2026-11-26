@@ -119,7 +119,7 @@ test("within Senare the chore moves to its new place and keeps focus", async ({ 
   await quickDay(page, "Byta", 8).click();
 
   await expect(rows(page)).toHaveText([/Rensa/, /Putsa/, /Byta/, /Frosta/]);
-  const [, , day, month] = ["", ...formatShortDay(inDays(8)).split(" ")];
+  const [, day, month] = formatShortDay(inDays(8)).split(" ");
   await expect(item(page, "Byta")).toContainText(`${day} ${month}`);
   await expect(more(page, "Byta")).toBeFocused();
   await expect(more(page, "Byta")).toHaveAttribute("aria-expanded", "false");
@@ -149,6 +149,13 @@ test("Välj dag… opens the device's picker, from the day after the chore's own
   await expect(page.locator("body")).toHaveAttribute("data-pickers", "1");
   await pickDay(page, "Dammsuga").press("Enter");
   await expect(page.locator("body")).toHaveAttribute("data-pickers", "2");
+
+  // The field is unseen, so nothing typed into it may move the chore.
+  await dateField(page, "Dammsuga").focus();
+  await page.keyboard.type(inDays(20).replaceAll("-", ""));
+  await page.keyboard.press("ArrowUp");
+  await expect(dateField(page, "Dammsuga")).toHaveValue("");
+  await expect(item(page, "Dammsuga").getByText("Skjut upp")).toBeVisible();
 
   // A picker that lets a day through anyway moves nothing.
   await dateField(page, "Dammsuga").fill(inDays(0));

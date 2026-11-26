@@ -87,6 +87,10 @@ export function PostponeLine({
             aria-hidden
             className="absolute inset-0 size-full cursor-pointer opacity-0"
             onClick={openPicker}
+            // A click leaves focus on the unseen field: typing there would move the chore to a half-typed day.
+            onKeyDown={(e) => {
+              if (e.key !== "Tab" && e.key !== "Escape") e.preventDefault();
+            }}
           />
         </div>
       </div>
