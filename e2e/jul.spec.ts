@@ -1,42 +1,19 @@
-import type { Locator, Page } from "@playwright/test";
-import { eq } from "drizzle-orm";
-import { choreInstance, lookPurchase, membership } from "../src/db/schema";
-import { PASS_MS, sleighPassStart } from "../src/lib/jul";
-import { db, logIn, seedChore, seedDone, seedRooms } from "./support/family";
+import type { Page } from "@playwright/test";
+import { PASS_MS } from "../src/lib/sky";
+import { logIn, seedChore, seedDone, seedRooms } from "./support/family";
 import { chooseFromMenu } from "./support/menu";
+import { body, flightAt, grant, hydrated, openButik, paintedMidFlight, part, pausedClock, pieceTops, wear, WHITE } from "./support/sky";
 import { expect, test } from "./support/test";
 
 const SKY = "rgb(15, 31, 61)";
 const DARK_SKY = "rgb(11, 22, 48)";
 const RED = "rgb(192, 38, 45)";
 const GREEN = "rgb(21, 128, 61)";
-const WHITE = /^(rgb\(255, 255, 255\)|lab\(100 .*|oklch\(1 0 0\))$/;
 
-const hydrated = (page: Page) => expect(page.locator('[data-hydrated="true"]')).toBeAttached();
-const body = (page: Page) => page.locator("body");
 const sleigh = (page: Page) => page.locator("[data-sleigh]:visible");
 const sky = (page: Page) => page.locator("[data-jul-sky=page]:visible");
 const plus = (page: Page) => page.getByRole("button", { name: "Ny uppgift" });
-const part = (page: Page, name: "Uppgifter" | "Listor" | "Jag") => page.getByRole("link", { name, exact: true }).locator("visible=true");
-
-/** Makes the person own Jul and use it, as buying it does. */
-async function wearJul(userId: string) {
-  const [m] = await db.select({ householdId: membership.householdId }).from(membership).where(eq(membership.userId, userId));
-  await db.insert(lookPurchase).values({ householdId: m!.householdId, userId, kind: "theme", key: "jul", price: 300 });
-  await db.update(membership).set({ theme: "jul" }).where(eq(membership.userId, userId));
-}
-
-async function grant(userId: string, coins: number) {
-  const rooms = await seedRooms("Hall");
-  const done = await seedDone({ title: "Stor", roomId: rooms["Hall"]!.id, completedById: userId });
-  await db.update(choreInstance).set({ coins }).where(eq(choreInstance.choreId, done.id));
-}
-
-async function openButik(page: Page) {
-  await page.goto("/jag");
-  await hydrated(page);
-  await page.getByRole("group", { name: "Visa" }).getByRole("button", { name: "Butik" }).click();
-}
+const wearJul = (userId: string) => wear(userId, "jul");
 
 test("Jul is sold for 300, previewed with what moves, and used at once", async ({ page, context }) => {
   const bo = await logIn(context, "bo", "child");
@@ -235,9 +212,6 @@ test("signing out forgets the sky on this device", async ({ page, context }) => 
   expect(await page.evaluate(() => localStorage.getItem("hemmafix-sky"))).toBeNull();
 });
 
-const pieceTops = (box: Locator) =>
-  box.locator("[data-piece]").evaluateAll((all) => all.map((el) => el.getBoundingClientRect().top));
-
 test("snow and presents fall behind the content, spread over the window from the start", async ({ page, context }) => {
   const bo = await logIn(context, "bo", "child");
   await wearJul(bo.id);
@@ -252,7 +226,7 @@ test("snow and presents fall behind the content, spread over the window from the
   const size = page.viewportSize()!;
   expect(await sky(page).boundingBox()).toEqual({ x: 0, y: 0, ...size });
   await expect(sky(page).locator("[data-piece=present]")).toHaveCount(12);
-  await expect(sky(page).locator("[data-fall]").first()).toHaveCSS("animation-name", "jul-fall");
+  await expect(sky(page).locator("[data-fall]").first()).toHaveCSS("animation-name", "sky-fall");
   const tops = await pieceTops(sky(page));
   expect(tops.filter((t) => t > size.height / 2).length).toBeGreaterThan(10);
 
@@ -263,35 +237,9 @@ test("snow and presents fall behind the content, spread over the window from the
   expect(await sky(page).boundingBox()).toEqual({ x: 0, y: 0, ...size });
 });
 
-/** Stops the page's clock, and answers how long it is until the next pass starts (and a little in). */
-async function pausedClock(page: Page) {
-  await page.clock.pauseAt((await page.evaluate(() => Date.now())) + 100);
-  const now = await page.evaluate(() => performance.now());
-  let start = sleighPassStart(now);
-  if (start <= now) {
-    await page.clock.runFor(start + PASS_MS - now + 100);
-    start = sleighPassStart(start + PASS_MS);
-  }
-  return async () => start - (await page.evaluate(() => performance.now()));
-}
-
 /** Whether the sleigh's red is what is painted where its body is, with the flight held mid-way. */
-async function sleighOnTop(page: Page) {
-  await page.evaluate(() => {
-    for (const a of document.querySelector("[data-sleigh]")!.getAnimations()) {
-      a.pause();
-      a.currentTime = 2000;
-    }
-  });
-  const box = (await page.locator("[data-sleigh] [data-sleigh-body]").boundingBox())!;
-  const shot = await page.screenshot({ clip: { x: box.x + box.width * 0.4, y: box.y + box.height * 0.75, width: 1, height: 1 } });
-  return page.evaluate(async (data) => {
-    const image = await createImageBitmap(await (await fetch(`data:image/png;base64,${data}`)).blob());
-    const canvas = new OffscreenCanvas(image.width, image.height).getContext("2d")!;
-    canvas.drawImage(image, 0, 0);
-    return Array.from(canvas.getImageData(0, 0, 1, 1).data.slice(0, 3));
-  }, shot.toString("base64"));
-}
+const sleighOnTop = (page: Page) =>
+  paintedMidFlight(page, page.locator("[data-sleigh]"), page.locator("[data-sleigh] [data-sleigh-body]"), { x: 0.4, y: 0.75 });
 
 test("the sleigh flies four seconds every thirty, over everything, and presses go through it", async ({ page, context }) => {
   const anna = await logIn(context, "anna", "adult");
@@ -308,15 +256,7 @@ test("the sleigh flies four seconds every thirty, over everything, and presses g
   await expect(sleigh(page)).toHaveCSS("pointer-events", "none");
 
   // It crosses the whole window, left to right.
-  const at = (ms: number) =>
-    sleigh(page).evaluate((el, time) => {
-      for (const a of el.getAnimations()) {
-        a.pause();
-        a.currentTime = time;
-      }
-      const { left, right } = el.getBoundingClientRect();
-      return { left, right, width: window.innerWidth };
-    }, ms);
+  const at = (ms: number) => flightAt(sleigh(page), ms);
   expect((await at(0)).right).toBeLessThanOrEqual(1);
   expect((await at(PASS_MS - 1)).left).toBeGreaterThanOrEqual((await at(0)).width - 2);
   const mid = await at(2000);

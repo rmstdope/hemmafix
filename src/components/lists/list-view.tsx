@@ -335,7 +335,7 @@ function OpenRow({
         onClick={onTick}
         className="flex size-11 shrink-0 items-center justify-center rounded-full"
       >
-        <span className="flex size-6 items-center justify-center rounded-full border-2 border-input">
+        <span className="tick-box flex size-6 items-center justify-center rounded-full border-2 border-input">
           <Check className="size-3.5 opacity-0" aria-hidden />
         </span>
       </button>

@@ -1,9 +1,9 @@
 "use client";
 
-import { useLayoutEffect, useRef } from "react";
-import { setSkyHint } from "./jul/sky-hint";
-import { Sleigh } from "./jul/sleigh";
-import { JulSky } from "./jul/sky";
+import { Fragment, useLayoutEffect, useRef } from "react";
+import { skyTheme } from "@/lib/sky";
+import { setSkyHint } from "./sky/hint";
+import { SCENES } from "./sky/scenes";
 
 /**
  * An element that carries `attributes` only while its page is shown. Next keeps a page that was
@@ -29,23 +29,27 @@ export function ScopeMark() {
 }
 
 /**
- * The hidden element that carries the person's theme and coin look for globals.css, and Jul's
- * decoration.
+ * The hidden element that carries the person's theme and coin look for globals.css, and the
+ * decoration of a theme that has a sky of its own.
  */
 export function LookMarks({ theme, coin }: { theme: string; coin: string }) {
   const attributes = { "data-look-own": theme, "data-look-own-coin": coin };
   const mark = useShownAttributes(attributes);
 
-  useLayoutEffect(() => setSkyHint(theme === "jul"), [theme]);
+  const sky = skyTheme(theme);
+  const scene = sky && SCENES[sky];
+
+  useLayoutEffect(() => setSkyHint(sky), [sky]);
 
   return (
     <>
       <span ref={mark} hidden {...attributes} />
-      {theme === "jul" && (
-        <>
-          <JulSky name="page" className="fixed inset-0 -z-10" />
-          <Sleigh />
-        </>
+      {scene && (
+        // Keyed, so switching from one sky theme to the other leaves nothing of the first.
+        <Fragment key={sky}>
+          <scene.Sky name="page" className="fixed inset-0 -z-10" />
+          <scene.Flyer />
+        </Fragment>
       )}
     </>
   );
