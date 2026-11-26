@@ -177,6 +177,12 @@ test("the sky is there before the person's choice has arrived", async ({ page, c
   await context.clearCookies();
   await page.goto("/login");
   await expect(body(page)).not.toHaveCSS("background-color", SKY);
+
+  // Only a theme that has a sky is taken from the device's memory.
+  await page.evaluate(() => localStorage.setItem("hemmafix-sky", "lila"));
+  await page.reload();
+  await expect(page.getByRole("button", { name: /Google/ })).toBeVisible();
+  await expect(page.locator("html")).not.toHaveAttribute("data-sky", /./);
 });
 
 /** Where a rising or falling piece's track has it at two moments of one crossing. */
@@ -273,6 +279,19 @@ test("the bunch rises four seconds every thirty, from a new place, over everythi
   await expect(page.getByRole("dialog", { name: "Ny uppgift" })).toBeVisible();
   await expect(bunch(page)).toHaveCount(1);
   await expect.poll(() => bunchOnTop(page)).toEqual([230, 57, 70]);
+  // Where the held bunch covers the sheet, a press lands in the sheet.
+  expect(
+    await bunch(page).evaluate((el) => {
+      const r = el.getBoundingClientRect();
+      const d = document.querySelector("dialog[open]")!.getBoundingClientRect();
+      // The middle of where the two overlap, or null when this pass misses the sheet.
+      const x = (Math.max(r.left, d.left) + Math.min(r.right, d.right)) / 2;
+      const y = (Math.max(r.top, d.top) + Math.min(r.bottom, d.bottom)) / 2;
+      if (r.right <= d.left || r.left >= d.right || r.bottom <= d.top || r.top >= d.bottom) return null;
+      const hit = document.elementFromPoint(x, y);
+      return !el.contains(hit) && hit?.closest("dialog") !== null;
+    }),
+  ).not.toBe(false);
 
   // Gone after the pass; the next one, thirty seconds on, crosses the already open sheet.
   await page.clock.runFor(PASS_MS);
