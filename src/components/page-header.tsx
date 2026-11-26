@@ -29,13 +29,13 @@ export function PageHeader({
     <header className="@container mb-3">
       <div className={cn("flex flex-wrap items-start justify-between gap-x-2 [--header-w:100cqw]", lowered ? "gap-y-0.5" : "gap-y-1")}>
         <div className="min-w-0 grow">
-          <h1 className="text-xl font-semibold">{title}</h1>
+          <h1 className="on-sky text-xl font-semibold">{title}</h1>
           {subtitle ? (
             <>
               <div className="@container sm:hidden">
                 <div className="h-[clamp(0px,calc((var(--header-w)-100cqw)*999),16px)]" />
               </div>
-              <p className="w-0 min-w-full text-sm text-muted-foreground">
+              <p className="on-sky-muted w-0 min-w-full text-sm text-muted-foreground">
                 <span className="block w-(--header-w) wrap-break-word sm:w-auto">{subtitle}</span>
               </p>
             </>

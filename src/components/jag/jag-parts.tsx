@@ -55,7 +55,7 @@ export function JagParts({ framsteg, butik }: { framsteg: ReactNode; butik: Reac
               onClick={() => choose(p.key)}
               className={cn(
                 "min-h-11 min-w-0 flex-1 rounded-lg px-2 text-sm whitespace-nowrap outline-none focus-visible:ring-3 focus-visible:ring-ring/50",
-                on ? "bg-background font-semibold text-primary shadow-sm" : "text-muted-foreground",
+                on ? "sky-lit bg-background font-semibold text-primary shadow-sm" : "text-muted-foreground",
               )}
             >
               {p.label}

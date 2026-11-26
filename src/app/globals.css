@@ -206,6 +206,143 @@
   --ring: #fb7185;
 }
 
+/*
+ * Jul changes the page as well as the buttons: a night sky behind the content. The second selector
+ * is the moment before the person's marks have streamed in, on a device that remembers they use Jul
+ * (components/jul/sky-hint.ts). Rows, sheets and the tab bar keep their own colours, so only what
+ * sits straight on the page is marked: `on-sky` and `on-sky-muted` text turns light, an open `sky-toggle` button white, a `sky-box`
+ * (something with no background of its own) gets a card's, `sky-lit` is the lit tab or switch, and
+ * `done-mark` a ticked box. Without Jul these classes do nothing.
+ */
+:root:has([data-look-own="jul"]),
+:root[data-sky="jul"]:has([data-look-scope]):not(:has([data-look-own])) {
+  --sky: #0f1f3d;
+  --primary: #c0262d;
+  --primary-foreground: #fff;
+  --ring: #c0262d;
+
+  &.dark {
+    --sky: #0b1630;
+  }
+  body {
+    background-color: var(--sky);
+  }
+  .on-sky:not(.sky-box *, .bg-card *, dialog *) {
+    color: #f8fafc;
+  }
+  .on-sky-muted:not(.sky-box *, .bg-card *, dialog *) {
+    color: #cbd5e1;
+  }
+  .sky-toggle:not([aria-expanded="true"]) {
+    border-color: rgb(255 255 255 / 0.35);
+  }
+  :is(a, button):is(.on-sky, .on-sky-muted):not([aria-expanded="true"], .sky-box *, .bg-card *, dialog *):hover {
+    background-color: rgb(255 255 255 / 0.12);
+  }
+  /* An open filter or sort button is a white button with dark ink. */
+  .on-sky-muted.sky-toggle[aria-expanded="true"]:not(.sky-box *, .bg-card *, dialog *) {
+    background-color: #fff;
+    border-color: #fff;
+    color: #18181b;
+  }
+  .sky-box {
+    background-color: var(--card);
+  }
+  .sky-line {
+    border-color: rgb(255 255 255 / 0.2);
+  }
+  .sky-lit {
+    background-color: var(--primary);
+    color: var(--primary-foreground);
+  }
+  .done-mark {
+    background-color: #15803d;
+    color: #fff;
+  }
+}
+[data-look-theme="jul"] {
+  --sky: #0f1f3d;
+  --primary: #c0262d;
+  --primary-foreground: #fff;
+  --ring: #c0262d;
+}
+.dark [data-look-theme="jul"] {
+  --sky: #0b1630;
+}
+
+/*
+ * Jul's snow and presents (components/jul/sky.tsx). Each stands in a track as tall as the sky, so
+ * one fall is the track's own height whatever holds it. Still, every piece is where its --y puts
+ * it; falling, the negative --delay starts it there, so nothing begins at the top all at once.
+ */
+[data-fall] {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+}
+[data-piece] {
+  position: absolute;
+  top: calc(var(--y) * 1%);
+  display: block;
+  width: var(--size);
+  height: var(--size);
+  background-color: var(--colour);
+  rotate: calc(var(--turn) * var(--y) / 100);
+}
+[data-piece="flake"] {
+  border-radius: 9999px;
+  opacity: 0.85;
+}
+[data-piece="present"] {
+  border-radius: 3px;
+  /* The gold ribbon's cross. */
+  background-image:
+    linear-gradient(90deg, transparent 40%, #fde68a 40% 60%, transparent 60%),
+    linear-gradient(transparent 40%, #fde68a 40% 60%, transparent 60%);
+}
+[data-preview-sleigh] {
+  display: none;
+}
+@media (prefers-reduced-motion: no-preference) {
+  [data-fall] {
+    animation: jul-fall var(--seconds) var(--delay) linear infinite;
+  }
+  [data-piece] {
+    top: 0;
+    animation: jul-turn var(--seconds) var(--delay) linear infinite;
+  }
+  [data-preview-sleigh] {
+    display: block;
+    animation: jul-preview-flight 6s linear infinite;
+  }
+}
+@keyframes jul-fall {
+  from {
+    transform: translateY(calc(-1 * var(--size)));
+  }
+  to {
+    transform: translateY(100%);
+  }
+}
+@keyframes jul-turn {
+  from {
+    rotate: 0deg;
+  }
+  to {
+    rotate: var(--turn);
+  }
+}
+/* Across the preview in four of every six seconds, then out of sight. */
+@keyframes jul-preview-flight {
+  from {
+    transform: translateX(-120px);
+  }
+  66%,
+  to {
+    transform: translateX(100%);
+  }
+}
+
 /* The coin: gold unless the person bought another look (the same variables draw every coin). */
 :root {
   --coin-bg: radial-gradient(circle at 35% 35%, #fde68a, #f59e0b 70%, #b45309);

@@ -48,7 +48,7 @@ export function PartsNav({ variant }: { variant: "top" | "bottom" }) {
               lit ? "font-semibold text-primary" : "text-muted-foreground",
               variant === "bottom"
                 ? "flex flex-1 flex-col items-center justify-center gap-0.5 text-xs"
-                : cn("rounded-lg px-3 py-1.5 text-sm", lit && "bg-muted"),
+                : cn("rounded-lg px-3 py-1.5 text-sm", lit ? "sky-lit bg-muted" : "on-sky-muted"),
             )}
           >
             {variant === "bottom" && <Icon className="size-5" aria-hidden />}

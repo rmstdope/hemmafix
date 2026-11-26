@@ -34,7 +34,7 @@ export function FloorsAndRooms({ floors, rooms }: { floors: Floor[]; rooms: Room
         const floorRooms = rooms.filter((r) => r.floorId === f.id);
         if (!many) return <RoomList key={f.id} rooms={floorRooms} floorId={f.id} />;
         return (
-          <section key={f.id} aria-label={label} className="space-y-2 rounded-xl border p-3">
+          <section key={f.id} aria-label={label} className="sky-box space-y-2 rounded-xl border p-3">
             <FloorHeader
               floor={f}
               isTop={i === 0}
@@ -49,7 +49,7 @@ export function FloorsAndRooms({ floors, rooms }: { floors: Floor[]; rooms: Room
         );
       })}
 
-      <Button variant="outline" className="h-11 w-full" disabled={pending} onClick={() => run(() => addFloor())}>
+      <Button variant="outline" className="sky-box h-11 w-full" disabled={pending} onClick={() => run(() => addFloor())}>
         <Plus /> Lägg till våning
       </Button>
     </div>

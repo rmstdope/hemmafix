@@ -54,7 +54,7 @@ async function History({ searchParams }: { searchParams: PageProps<"/gjort">["se
       <LiveUpdates />
       <header className="mb-4 flex items-center gap-2">
         <BackToPart />
-        <h1 className="text-xl font-semibold">Gjort</h1>
+        <h1 className="on-sky text-xl font-semibold">Gjort</h1>
       </header>
 
       <HistoryFilters
@@ -64,7 +64,7 @@ async function History({ searchParams }: { searchParams: PageProps<"/gjort">["se
         period={period}
       />
 
-      <p className="mt-4 mb-3 text-sm text-muted-foreground" aria-live="polite">
+      <p className="on-sky-muted mt-4 mb-3 text-sm text-muted-foreground" aria-live="polite">
         {done.length === 0
           ? `${who} har inte bockat av något ${PERIOD_LABELS[period]}.`
           : done.length >= HISTORY_LIMIT
@@ -75,11 +75,11 @@ async function History({ searchParams }: { searchParams: PageProps<"/gjort">["se
       <div className="space-y-6">
         {days.map(({ day, items }) => (
           <section key={day} aria-label={formatDay(day, today)}>
-            <h2 className="mb-2 text-sm font-medium text-muted-foreground">{formatDay(day, today)}</h2>
+            <h2 className="on-sky-muted mb-2 text-sm font-medium text-muted-foreground">{formatDay(day, today)}</h2>
             <ul className="divide-y rounded-xl border bg-card">
               {items.map((d) => (
                 <li key={d.id} className="flex items-start gap-3 px-3 py-2.5">
-                  <span className="flex size-8 shrink-0 items-center justify-center rounded-full bg-secondary" aria-hidden>
+                  <span className="done-mark flex size-8 shrink-0 items-center justify-center rounded-full bg-secondary" aria-hidden>
                     <Check className="size-4" />
                   </span>
                   <TaskRowBody

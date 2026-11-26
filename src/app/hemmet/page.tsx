@@ -48,28 +48,28 @@ async function HomeSettings() {
       <LiveUpdates />
       <header className="mb-6 flex items-center gap-2">
         <BackToPart />
-        <h1 className="text-xl font-semibold">Hemmet</h1>
+        <h1 className="on-sky text-xl font-semibold">Hemmet</h1>
       </header>
 
       <section className="space-y-2" aria-labelledby="name-heading">
-        <h2 id="name-heading" className="text-sm font-medium text-muted-foreground">
+        <h2 id="name-heading" className="on-sky-muted text-sm font-medium text-muted-foreground">
           Namn
         </h2>
         <RenameForm name={home?.name ?? ""} />
       </section>
 
       <section className="mt-8 space-y-2" aria-labelledby="rooms-heading">
-        <h2 id="rooms-heading" className="text-sm font-medium text-muted-foreground">
+        <h2 id="rooms-heading" className="on-sky-muted text-sm font-medium text-muted-foreground">
           {floors.length > 1 ? "Våningar och rum" : "Rum"}
         </h2>
         <FloorsAndRooms floors={floors} rooms={rooms} />
       </section>
 
       <section className="mt-8 space-y-2" aria-labelledby="family-heading">
-        <h2 id="family-heading" className="text-sm font-medium text-muted-foreground">
+        <h2 id="family-heading" className="on-sky-muted text-sm font-medium text-muted-foreground">
           Familjen
         </h2>
-        <p className="text-sm text-muted-foreground">
+        <p className="on-sky-muted text-sm text-muted-foreground">
           Vuxna kan ändra hemmet och uppgifterna. Barn kan bocka av och se vad de gjort. Nya
           personer blir barn tills en vuxen ändrar det.
         </p>
@@ -77,10 +77,10 @@ async function HomeSettings() {
       </section>
 
       <section className="mt-8 space-y-2" aria-labelledby="routines-heading">
-        <h2 id="routines-heading" className="text-sm font-medium text-muted-foreground">
+        <h2 id="routines-heading" className="on-sky-muted text-sm font-medium text-muted-foreground">
           Rutiner
         </h2>
-        <p className="text-sm text-muted-foreground">
+        <p className="on-sky-muted text-sm text-muted-foreground">
           Uppgifter som brukar göras tillsammans, till exempel när ni städar badrummet.
         </p>
         <Routines routines={routines} />

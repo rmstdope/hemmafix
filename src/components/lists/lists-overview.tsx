@@ -56,7 +56,7 @@ export function ListsOverview({
           triggerRef={sortButton}
           label={`Sortera listor: ${orderMenuLabel(shown)}`}
           heading="Sortera listor"
-          triggerClassName="flex size-11 items-center justify-center rounded-lg border text-muted-foreground outline-none focus-visible:ring-3 focus-visible:ring-ring/50 aria-expanded:border-foreground aria-expanded:bg-foreground aria-expanded:text-background"
+          triggerClassName="on-sky-muted sky-toggle flex size-11 items-center justify-center rounded-lg border text-muted-foreground outline-none focus-visible:ring-3 focus-visible:ring-ring/50 aria-expanded:border-foreground aria-expanded:bg-foreground aria-expanded:text-background"
           items={LIST_ORDERS.map((o) => ({ label: orderMenuLabel(o), checked: o === shown, onSelect: () => choose(o) }))}
         >
           <ArrowDownUp className="size-5" aria-hidden />
@@ -65,7 +65,7 @@ export function ListsOverview({
       </PageHeader>
 
       {lists.length === 0 ? (
-        <div className="rounded-xl border border-dashed p-6 text-center text-muted-foreground">
+        <div className="sky-box rounded-xl border border-dashed p-6 text-center text-muted-foreground">
           <p>Inga listor ännu.</p>
           <p className="mt-3">Tryck på + för att göra en lista för inköp, packning eller annat ni vill bocka av tillsammans.</p>
         </div>

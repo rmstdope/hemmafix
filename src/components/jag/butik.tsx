@@ -56,7 +56,7 @@ export function Butik({
       )}
       {purchases.length > 0 && (
         <section aria-labelledby="butik-kopt">
-          <h2 id="butik-kopt" className="mb-2 text-sm font-semibold text-muted-foreground">
+          <h2 id="butik-kopt" className="on-sky-muted mb-2 text-sm font-semibold text-muted-foreground">
             Köpt
           </h2>
           <ul className="space-y-2">
@@ -69,17 +69,17 @@ export function Butik({
 
       <section aria-labelledby="butik-beloningar">
         <div className="mb-2 flex items-center justify-between gap-2">
-          <h2 id="butik-beloningar" className="text-sm font-semibold text-muted-foreground">
+          <h2 id="butik-beloningar" className="on-sky-muted text-sm font-semibold text-muted-foreground">
             Belöningar
           </h2>
           {isAdult && (
-            <Button variant="outline" className="min-h-11" onClick={(e) => open({ kind: "new" }, e.currentTarget)}>
+            <Button variant="outline" className="sky-box min-h-11" onClick={(e) => open({ kind: "new" }, e.currentTarget)}>
               ＋ Ny belöning
             </Button>
           )}
         </div>
         {rewards.length === 0 ? (
-          <p className="rounded-xl border border-dashed p-6 text-center text-muted-foreground">
+          <p className="sky-box rounded-xl border border-dashed p-6 text-center text-muted-foreground">
             Inga belöningar än.
             <br />
             {isAdult ? "Lägg till något familjen kan köpa för sina mynt." : "Be en vuxen lägga till några."}

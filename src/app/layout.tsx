@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import { Geist } from "next/font/google";
 import { ThemeProvider } from "next-themes";
+import { SKY_HINT_SCRIPT } from "@/components/jul/sky-hint";
 import { Toaster } from "@/components/ui/sonner";
 import "./globals.css";
 
@@ -26,6 +27,10 @@ export const viewport: Viewport = {
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
     <html lang="sv" className={`${geistSans.variable} h-full antialiased`} suppressHydrationWarning>
+      <head>
+        {/* Runs from the server's HTML before the first paint; a soft navigation never runs it again. */}
+        <script dangerouslySetInnerHTML={{ __html: SKY_HINT_SCRIPT }} />
+      </head>
       <body className="min-h-full flex flex-col bg-background text-foreground">
         <ThemeProvider attribute="class" defaultTheme="system" enableSystem disableTransitionOnChange>
           {children}

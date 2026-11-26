@@ -41,7 +41,7 @@ export function RoutineEditor({ routine, suggestions }: { routine: Routine; sugg
         <Link
           href="/hemmet"
           aria-label="Tillbaka"
-          className="-ml-3 flex size-11 shrink-0 items-center justify-center rounded-lg text-muted-foreground"
+          className="on-sky-muted -ml-3 flex size-11 shrink-0 items-center justify-center rounded-lg text-muted-foreground"
         >
           <ArrowLeft className="size-5" />
         </Link>
@@ -56,11 +56,11 @@ export function RoutineEditor({ routine, suggestions }: { routine: Routine; sugg
           />
         ) : (
           <>
-            <h1 className="min-w-0 flex-1 text-xl font-semibold break-words">{routine.name}</h1>
+            <h1 className="on-sky min-w-0 flex-1 text-xl font-semibold break-words">{routine.name}</h1>
             <Button
               variant="ghost"
               size="icon-lg"
-              className="size-11 shrink-0 text-muted-foreground"
+              className="on-sky-muted size-11 shrink-0 text-muted-foreground"
               aria-label={`Byt namn på ${routine.name}`}
               onClick={() => setRenaming(true)}
             >
@@ -71,11 +71,11 @@ export function RoutineEditor({ routine, suggestions }: { routine: Routine; sugg
       </header>
 
       <section className="space-y-3" aria-labelledby="tasks-heading">
-        <h2 id="tasks-heading" className="text-sm font-medium text-muted-foreground">
+        <h2 id="tasks-heading" className="on-sky-muted text-sm font-medium text-muted-foreground">
           Uppgifter
         </h2>
         {routine.tasks.length === 0 ? (
-          <p className="rounded-xl border border-dashed p-3.5 text-sm text-muted-foreground">
+          <p className="sky-box rounded-xl border border-dashed p-3.5 text-sm text-muted-foreground">
             Inga uppgifter ännu. Lägg till det som brukar göras tillsammans.
           </p>
         ) : (
@@ -176,7 +176,7 @@ function EditField({
           aria-label={label}
           autoFocus
           autoComplete="off"
-          className="h-11 text-base md:text-sm"
+          className="sky-box h-11 text-base md:text-sm"
         />
         {coins === undefined && <EditButtons pending={pending} onCancel={onCancel} />}
       </div>
@@ -198,7 +198,7 @@ function EditButtons({ pending, onCancel }: { pending: boolean; onCancel: () => 
       <Button type="submit" className="h-11 shrink-0" disabled={pending}>
         Spara
       </Button>
-      <Button type="button" variant="ghost" className="h-11 shrink-0" onClick={onCancel}>
+      <Button type="button" variant="ghost" className="on-sky-muted h-11 shrink-0" onClick={onCancel}>
         Avbryt
       </Button>
     </>
@@ -233,7 +233,7 @@ function NewTask({ routineId, suggestions }: { routineId: string; suggestions: s
           placeholder="Ny uppgift"
           aria-label="Ny uppgift"
           autoComplete="off"
-          className="h-11 text-base md:text-sm"
+          className="sky-box h-11 text-base md:text-sm"
         />
         <Button type="submit" className="h-11 shrink-0" disabled={pending}>
           Lägg till
@@ -247,7 +247,7 @@ function NewTask({ routineId, suggestions }: { routineId: string; suggestions: s
               type="button"
               disabled={pending}
               onClick={() => add(s)}
-              className="min-h-11 rounded-full border border-dashed px-3.5 text-sm text-muted-foreground disabled:opacity-50"
+              className="sky-box min-h-11 rounded-full border border-dashed px-3.5 text-sm text-muted-foreground disabled:opacity-50"
             >
               + {s}
             </button>
@@ -302,7 +302,7 @@ function RemoveRoutine({ routine }: { routine: Routine }) {
         type="button"
         ref={openerRef}
         onClick={() => setAsking(true)}
-        className="mt-8 h-11 w-full rounded-xl border font-semibold text-destructive"
+        className="sky-box mt-8 h-11 w-full rounded-xl border font-semibold text-destructive"
       >
         Ta bort rutinen
       </button>

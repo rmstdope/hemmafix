@@ -49,7 +49,7 @@ export function BoardTabs({
 
   return (
     <>
-      <div role="tablist" aria-label="Uppgifter" onKeyDown={onKeyDown} className="mb-3 flex border-b">
+      <div role="tablist" aria-label="Uppgifter" onKeyDown={onKeyDown} className="sky-box mb-3 flex rounded-t-xl border-b">
         {tabs.map((t) => {
           const selected = t.key === current;
           return (

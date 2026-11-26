@@ -16,6 +16,7 @@ export const LOOKS: readonly Look[] = [
   { kind: "theme", key: "lila", name: "Lila", price: 200 },
   { kind: "theme", key: "skog", name: "Skog", price: 200 },
   { kind: "theme", key: "hallon", name: "Hallon", price: 200 },
+  { kind: "theme", key: "jul", name: "Jul", price: 300 },
   { kind: "coin", key: "guld", name: "Guld", price: 0 },
   { kind: "coin", key: "silver", name: "Silver", price: 100 },
   { kind: "coin", key: "diamant", name: "Diamant", price: 250 },
@@ -34,6 +35,10 @@ const PREVIEWS: Record<LookKind, string> = {
   coin: "Så här ser dina mynt ut.",
 };
 export const previewText = (kind: LookKind) => PREVIEWS[kind];
+
+/** The preview's second line, for a look that moves; null for the rest. */
+export const previewMotionText = (look: Look) =>
+  look.kind === "theme" && look.key === "jul" ? "Snö och paket faller, och tomtens släde flyger förbi." : null;
 
 export const buyLookLabel = (price: number) => `Köp för ${price} mynt`;
 

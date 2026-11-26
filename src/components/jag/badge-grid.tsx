@@ -14,7 +14,7 @@ export function BadgeGrid({ badges }: { badges: BadgeView[] }) {
 
   return (
     <section aria-labelledby="badges-heading" className="mt-3">
-      <h2 id="badges-heading" className="mb-2 text-sm font-semibold">
+      <h2 id="badges-heading" className="on-sky mb-2 text-sm font-semibold">
         Märken · {won} av {badges.length}
       </h2>
       <ul className="grid grid-cols-4 gap-2">

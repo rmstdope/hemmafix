@@ -37,9 +37,9 @@ async function RoutineContent({ params }: { params: Promise<{ id: string }> }) {
         <>
           <header className="mb-6 flex items-center gap-2">
             <BackToHome />
-            <h1 className="text-xl font-semibold">Rutin</h1>
+            <h1 className="on-sky text-xl font-semibold">Rutin</h1>
           </header>
-          <div className="rounded-xl border border-dashed p-3.5 text-sm text-muted-foreground">
+          <div className="sky-box rounded-xl border border-dashed p-3.5 text-sm text-muted-foreground">
             <p>Den här rutinen finns inte längre.</p>
             <Link href="/hemmet" className="mt-3 inline-block min-h-11 py-2.5 font-medium text-foreground underline">
               Tillbaka till Hemmet
@@ -56,7 +56,7 @@ function BackToHome() {
     <Link
       href="/hemmet"
       aria-label="Tillbaka"
-      className="-ml-3 flex size-11 shrink-0 items-center justify-center rounded-lg text-muted-foreground"
+      className="on-sky-muted -ml-3 flex size-11 shrink-0 items-center justify-center rounded-lg text-muted-foreground"
     >
       <ArrowLeft className="size-5" />
     </Link>
