@@ -1,0 +1,102 @@
+<!doctype html>
+<!--
+  A starter sheet for one round of concept sketches (skills/agree-experience, "Sketching the idea
+  first"; the agreed look is docs/ui/cb-icwi-concept-sketches.html). Copy it to the scratchpad as
+  <id>-sketches-<round>.html, set TITLE and IDEAS, and replace each idea's draw function. Two to
+  four ideas, never one and never more. Set AGREED to the agreed idea's letter only for the copy
+  kept in docs/ui/: it circles that idea in red and writes "agreed" beside it.
+
+  The look is marker on a whiteboard: wobbly doubled strokes, a handwriting typeface, real words on
+  the screen, one blue accent plus hatched fill for what the idea is about, red notes and arrows in
+  the margin. Rectangles and words only; no styling, no exact sizes.
+-->
+<html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Sketches</title>
+<link href="https://fonts.googleapis.com/css2?family=Caveat:wght@400;600&display=swap" rel="stylesheet">
+<style>
+  body{margin:0;background:#fdfcf8;font-family:system-ui,sans-serif;color:#222}
+  header{padding:14px 20px;border-bottom:1px solid #ddd;background:#fff}
+  h1{margin:0;font-size:18px} p{margin:4px 0 0;font-size:13px;color:#555}
+  /* One idea above the other, each at full width, so a sheet reads on a narrow screen (cb-395b). */
+  main{padding:20px;max-width:900px;margin:0 auto;display:flex;flex-direction:column;gap:24px}
+  svg{display:block;width:100%;height:auto;background:#fffef9;border:1px solid #e6e2d6;border-radius:4px}
+</style>
+<script>
+// The hand-drawn helper. Every stroke is drawn twice with a little jitter; the seed is fixed so a
+// sheet looks the same each time it is opened.
+const BLUE = '#1971c2', RED = '#c92a2a', INK = '#1e1e1e';
+function Sketch(svg, o){ this.svg = svg; this.o = Object.assign({stroke: INK, w: 2.4, jit: 1.4, double: true, font: "'Caveat', cursive"}, o || {}); this.seed = 7; }
+Sketch.prototype.r = function(){ this.seed = (this.seed * 9301 + 49297) % 233280; return this.seed / 233280 - 0.5; };
+Sketch.prototype.add = function(tag, attrs, text){ const e = document.createElementNS('http://www.w3.org/2000/svg', tag); for (const k in attrs) e.setAttribute(k, attrs[k]); if (text) e.textContent = text; this.svg.appendChild(e); return e; };
+Sketch.prototype.line = function(x1, y1, x2, y2, o){ o = Object.assign({}, this.o, o || {}); for (let p = 0; p < (o.double ? 2 : 1); p++){ const j = o.jit, mx = (x1 + x2) / 2 + this.r() * j * 2, my = (y1 + y2) / 2 + this.r() * j * 2; this.add('path', {d: `M${x1 + this.r() * j},${y1 + this.r() * j} Q${mx},${my} ${x2 + this.r() * j},${y2 + this.r() * j}`, fill: 'none', stroke: o.stroke, 'stroke-width': o.w * (p ? 0.7 : 1), 'stroke-linecap': 'round', opacity: p ? 0.6 : 1}); } };
+Sketch.prototype.rect = function(x, y, w, h, o){ this.line(x, y, x + w, y, o); this.line(x + w, y, x + w, y + h, o); this.line(x + w, y + h, x, y + h, o); this.line(x, y + h, x, y, o); };
+Sketch.prototype.hachure = function(x, y, w, h, color, gap){ gap = gap || 8; for (let i = -h; i < w; i += gap){ const ax = Math.max(x, x + i), ay = y + Math.max(0, -i), bx = Math.min(x + w, x + i + h), by = y + Math.min(h, w - i); this.line(ax, ay, bx, by, {stroke: color || BLUE, w: 1.3, double: false, jit: 0.8}); } };
+Sketch.prototype.text = function(x, y, s, o){ o = Object.assign({size: 22, fill: this.o.stroke, anchor: 'start'}, o || {}); this.add('text', {x, y, 'font-family': this.o.font, 'font-size': o.size, fill: o.fill, 'text-anchor': o.anchor}, s); };
+Sketch.prototype.arrow = function(x1, y1, x2, y2, o){ this.line(x1, y1, x2, y2, o); const a = Math.atan2(y2 - y1, x2 - x1); this.line(x2, y2, x2 - 12 * Math.cos(a - 0.5), y2 - 12 * Math.sin(a - 0.5), o); this.line(x2, y2, x2 - 12 * Math.cos(a + 0.5), y2 - 12 * Math.sin(a + 0.5), o); };
+Sketch.prototype.note = function(x, y, s){ this.text(x, y, s, {fill: RED}); };
+// A loose hand-drawn loop, squarish so it takes in a box's corners: the kept sheet's mark on the agreed idea.
+Sketch.prototype.ring = function(cx, cy, rx, ry){ const f = t => Math.sign(t) * Math.pow(Math.abs(t), 0.3); let d = ''; for (let a = 0; a <= 6.75; a += 0.12){ const k = 1 + this.r() * 0.025 + (a > 6.3 ? 0.04 : 0); d += (a ? ' L' : 'M') + (cx + rx * k * f(Math.cos(a))) + ',' + (cy + ry * k * f(Math.sin(a))); } this.add('path', {d, fill: 'none', stroke: RED, 'stroke-width': 3, 'stroke-linecap': 'round', 'stroke-linejoin': 'round'}); };
+</script></head><body>
+<header><h1 id="title"></h1><p>Rough sketches of the idea. Which idea do we build on?</p></header>
+<main id="sheet"></main>
+<script>
+// ---- Edit from here --------------------------------------------------------------------------
+const TITLE = 'Chores with no date first in Senare';
+const AGREED = 'A';
+function board(s, undatedWord){
+  s.rect(10, 10, 520, 340);
+  const tabs = ['Nu','Imorgon','fre','lör','Senare'];
+  tabs.forEach((n,i)=>{ s.text(28 + i*100, 40, n, {size: 22, fill: i===4 ? BLUE : INK}); });
+  s.line(420, 48, 500, 48, {stroke: BLUE});
+  s.line(10, 56, 530, 56);
+  const rows = [
+    ['Rensa förrådet', 'Förråd', undatedWord, true],
+    ['Byt glödlampa', 'Hall', undatedWord, true],
+    ['Tvätta fönster', 'Vardagsrum', '4 dec', false],
+    ['Frosta av frysen', 'Kök', '12 dec', false],
+  ];
+  rows.forEach(([title, room, when, undated], i)=>{
+    const y = 68 + i*68;
+    s.rect(24, y, 492, 56);
+    if (undated) s.hachure(24, y, 492, 56, BLUE, 14);
+    s.rect(36, y + 12, 30, 30);
+    s.text(80, y + 26, title, {size: 22});
+    const parts = [room]; if (when) parts.push(when); parts.push('Anna');
+    s.text(80, y + 48, parts.join(' · '), {size: 18, fill: '#555'});
+  });
+}
+const IDEAS = [
+  {letter: 'A', name: 'no word where the date would be', cost: 'nothing on the row says why it is first', draw(s){
+    board(s, '');
+    s.note(300, 100, 'just room · person');
+  }},
+  {letter: 'B', name: '"Inget datum" where the date would be', cost: 'one more word on each undated row', draw(s){
+    board(s, 'Inget datum');
+    s.note(330, 100, 'says it plainly');
+  }},
+  {letter: 'C', name: '"När som helst" where the date would be', cost: 'a new phrase; reads as an invitation to do it now', draw(s){
+    board(s, 'När som helst');
+    s.note(340, 100, 'do it any day');
+  }},
+];
+// ---- to here ---------------------------------------------------------------------------------
+document.title = TITLE + ' — sketches';
+document.getElementById('title').textContent = TITLE;
+(function(){
+  // Each idea gets its own SVG, stacked down the page.
+  const sheet = document.getElementById('sheet'), x = 30, scale = 0.7, w = 460, h = 390;
+  IDEAS.forEach(idea => {
+    const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+    svg.setAttribute('viewBox', `0 0 ${w} ${h}`);
+    sheet.appendChild(svg);
+    const g = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+    g.setAttribute('transform', `translate(${x},28) scale(${scale})`);
+    svg.appendChild(g);
+    idea.draw(new Sketch(g));
+    const s = new Sketch(svg);
+    s.text(x + 5, 308, `${idea.letter} — ${idea.name}`, {size: 24});
+    s.text(x + 5, 333, idea.cost, {size: 20, fill: '#666'});
+    if (AGREED === idea.letter){ s.ring(x + 190, 184, 214, 176); s.text(x + 330, 378, 'agreed', {size: 26, fill: RED}); }
+  });
+})();
+</script></body></html>
