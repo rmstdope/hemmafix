@@ -1,7 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import { Geist } from "next/font/google";
 import { ThemeProvider } from "next-themes";
-import { SKY_HINT_SCRIPT } from "@/components/jul/sky-hint";
+import { SKY_HINT_SCRIPT } from "@/components/sky/hint";
 import { Toaster } from "@/components/ui/sonner";
 import "./globals.css";
 

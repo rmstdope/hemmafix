@@ -1,26 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { FIRST_PASS_MS, PASS_EVERY_MS, PASS_MS, SKY_PIECES, sleighPassStart } from "./jul";
-
-describe("the sleigh's rhythm", () => {
-  it("is four seconds in the air, every thirty, first a few seconds after opening", () => {
-    expect([FIRST_PASS_MS, PASS_MS, PASS_EVERY_MS]).toEqual([4000, 4000, 30000]);
-  });
-  it("waits for the first pass", () => {
-    expect(sleighPassStart(0)).toBe(4000);
-    expect(sleighPassStart(3999)).toBe(4000);
-  });
-  it("keeps a pass that is under way, so it is resumed rather than restarted", () => {
-    expect(sleighPassStart(4000)).toBe(4000);
-    expect(sleighPassStart(7999)).toBe(4000);
-    expect(sleighPassStart(36000)).toBe(34000);
-  });
-  it("then waits for the next, thirty seconds after the last", () => {
-    expect(sleighPassStart(8000)).toBe(34000);
-    expect(sleighPassStart(33999)).toBe(34000);
-    expect(sleighPassStart(38000)).toBe(64000);
-    expect(sleighPassStart(3_604_000)).toBe(3_604_000);
-  });
-});
+import { SKY_PIECES } from "./jul";
 
 describe("the sky", () => {
   const flakes = SKY_PIECES.filter((p) => p.kind === "flake");

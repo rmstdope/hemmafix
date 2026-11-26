@@ -166,7 +166,7 @@ export function ChoreItem({
           <Button
             variant="outline"
             size="icon-lg"
-            className="size-11 shrink-0 rounded-full"
+            className="tick-box size-11 shrink-0 rounded-full"
             aria-label={`${t.title}: markera som klar`}
             onClick={(e) =>
               run(
