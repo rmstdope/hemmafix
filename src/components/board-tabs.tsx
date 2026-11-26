@@ -14,12 +14,15 @@ export function BoardTabs({
   initial,
   panels,
   underTabs,
+  lit,
 }: {
   tabs: BoardTab[];
   initial: TabKey;
   panels: Record<TabKey, ReactNode>;
   /** Shown between the tab row and the lists (the filter chips). */
   underTabs?: ReactNode;
+  /** A tab whose count is briefly highlighted, as a chore has just moved there. */
+  lit?: TabKey | null;
 }) {
   const [current, setCurrent] = useState(initial);
   const refs = useRef<Partial<Record<TabKey, HTMLButtonElement | null>>>({});
@@ -74,9 +77,11 @@ export function BoardTabs({
               <span className="max-w-full truncate">{t.name}</span>
               <span
                 aria-hidden
+                data-lit={t.key === lit ? "" : undefined}
                 className={cn(
-                  "text-xs font-semibold",
+                  "rounded px-1 text-xs font-semibold transition-colors",
                   t.overdue ? "text-destructive" : t.count === 0 ? "text-muted-foreground/50" : "text-muted-foreground",
+                  t.key === lit && "bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-200",
                 )}
               >
                 {t.count}

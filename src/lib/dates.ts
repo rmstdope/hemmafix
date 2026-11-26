@@ -104,3 +104,13 @@ export function formatTabDay(day: string): string {
 export function formatTabDayLong(day: string): string {
   return capitalised(tabDayLong.format(parse(day)));
 }
+
+const shortWeekday = new Intl.DateTimeFormat("sv-SE", { weekday: "short", timeZone: "UTC" });
+const shortMonth = new Intl.DateTimeFormat("sv-SE", { month: "short", timeZone: "UTC" });
+
+/** A day in a sentence: "tor 26 nov" (Intl's short torsdag is "tors" and its months have dots). */
+export function formatShortDay(day: string): string {
+  const date = parse(day);
+  const short = (f: Intl.DateTimeFormat) => f.format(date).replace(".", "");
+  return `${short(shortWeekday).slice(0, 3)} ${date.getUTCDate()} ${short(shortMonth)}`;
+}

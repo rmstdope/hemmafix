@@ -6,10 +6,12 @@ import { db } from "@/db";
 import { chore, choreInstance, household, lookPurchase, oauthClient, oauthRefreshToken, room } from "@/db/schema";
 import type { CurrentMember } from "@/server/dal";
 import { createFamily } from "../../test/integration/factories";
+import { addDays, todayIso } from "@/lib/dates";
 
 let current: CurrentMember | null = null;
 vi.mock("@/server/dal", () => ({ getCurrentMember: async () => current }));
-vi.mock("next/cache", () => ({ refresh: () => {} }));
+const refresh = vi.fn();
+vi.mock("next/cache", () => ({ refresh: () => refresh() }));
 
 const actions = await import("./actions");
 const chores = await import("@/server/chores");
@@ -40,6 +42,47 @@ const openInstance = async (choreId: string) =>
 beforeEach(async () => {
   await db.delete(household);
   f = await createFamily();
+});
+
+describe("postponing", () => {
+  const later = () => addDays(todayIso(), 3);
+  const dated = async () => {
+    const t = await weeklyTask("Diska", "recurring");
+    return { ...t, due: (await openInstance(t.choreId))!.dueDate! };
+  };
+
+  it("is refused for a child, with a fresh list", async () => {
+    const t = await dated();
+    as(f.child);
+
+    expect(await actions.postponeInstance(t.instanceId, later())).toEqual(FORBIDDEN);
+    expect(await actions.undoPostpone(t.instanceId, { to: t.due, version: "1.1" })).toEqual(FORBIDDEN);
+    expect((await openInstance(t.choreId))!.dueDate).toBe(t.due);
+  });
+
+  it("hands back what Ångra needs, and Ångra restores the day", async () => {
+    const t = await dated();
+    as(f.adult);
+
+    const result = await actions.postponeInstance(t.instanceId, later());
+
+    expect(result).toEqual({ ...OK, postponed: { from: t.due, version: expect.any(String) } });
+    expect(await actions.undoPostpone(t.instanceId, { to: t.due, version: result.postponed!.version })).toEqual(OK);
+    expect((await openInstance(t.choreId))!.dueDate).toBe(t.due);
+  });
+
+  it("refreshes the list when a move is refused", async () => {
+    const t = await dated();
+    as(f.adult);
+    await chores.completeInstance(f.adult, t.instanceId);
+    refresh.mockClear();
+
+    expect(await actions.postponeInstance(t.instanceId, later())).toEqual({
+      ok: false,
+      error: "Någon har redan bockat av den",
+    });
+    expect(refresh).toHaveBeenCalledOnce();
+  });
 });
 
 describe("as a child", () => {

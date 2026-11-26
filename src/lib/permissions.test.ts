@@ -10,6 +10,7 @@ const RULES: Record<Action, "V" | "V+B"> = {
   "member:set-role": "V",
   "task:create": "V",
   "task:edit": "V",
+  "task:postpone": "V",
   "task:assign": "V",
   "task:delete": "V",
   "task:complete": "V+B",
