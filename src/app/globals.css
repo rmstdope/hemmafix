@@ -210,7 +210,7 @@
  * Jul changes the page as well as the buttons: a night sky behind the content. The second selector
  * is the moment before the person's marks have streamed in, on a device that remembers they use Jul
  * (components/jul/sky-hint.ts). Rows, sheets and the tab bar keep their own colours, so only what
- * sits straight on the page is marked: `on-sky` and `on-sky-muted` text turns light, a `sky-box`
+ * sits straight on the page is marked: `on-sky` and `on-sky-muted` text turns light, an open `sky-toggle` button white, a `sky-box`
  * (something with no background of its own) gets a card's, `sky-lit` is the lit tab or switch, and
  * `done-mark` a ticked box. Without Jul these classes do nothing.
  */
@@ -229,17 +229,18 @@
   }
   .on-sky:not(.sky-box *, .bg-card *, dialog *) {
     color: #f8fafc;
-    border-color: rgb(255 255 255 / 0.35);
   }
   .on-sky-muted:not(.sky-box *, .bg-card *, dialog *) {
     color: #cbd5e1;
+  }
+  .sky-toggle:not([aria-expanded="true"]) {
     border-color: rgb(255 255 255 / 0.35);
   }
-  :is(a, button):is(.on-sky, .on-sky-muted):not(.sky-box *, .bg-card *, dialog *):hover {
+  :is(a, button):is(.on-sky, .on-sky-muted):not([aria-expanded="true"], .sky-box *, .bg-card *, dialog *):hover {
     background-color: rgb(255 255 255 / 0.12);
   }
   /* An open filter or sort button is a white button with dark ink. */
-  .on-sky-muted[aria-expanded="true"]:not(.sky-box *, .bg-card *, dialog *) {
+  .on-sky-muted.sky-toggle[aria-expanded="true"]:not(.sky-box *, .bg-card *, dialog *) {
     background-color: #fff;
     border-color: #fff;
     color: #18181b;

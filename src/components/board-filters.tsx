@@ -102,7 +102,7 @@ export function FilterHeader(props: Props & { title: string; subtitle?: string; 
           aria-controls={panelId}
           onClick={() => (open ? close() : setOpen(true))}
           className={cn(
-            "on-sky-muted relative flex size-11 items-center justify-center rounded-lg border outline-none focus-visible:ring-3 focus-visible:ring-ring/50",
+            "on-sky-muted sky-toggle relative flex size-11 items-center justify-center rounded-lg border outline-none focus-visible:ring-3 focus-visible:ring-ring/50",
             open ? "border-foreground bg-foreground text-background" : "text-muted-foreground",
           )}
         >

@@ -47,6 +47,16 @@ describe("the sky", () => {
       }
     }
   });
+  it("starts no flake on top of a present, and lines nothing up", () => {
+    for (const flake of flakes) {
+      for (const present of presents) {
+        expect(Math.hypot(flake.x - present.x, flake.y - present.y)).toBeGreaterThan(1);
+      }
+    }
+    // Neighbours in the list a fixed step apart in both directions would draw diagonal lines.
+    const steps = flakes.slice(1).map((p, i) => `${Math.round(p.x - flakes[i]!.x)}/${Math.round(p.y - flakes[i]!.y)}`);
+    expect(new Set(steps).size).toBeGreaterThan(20);
+  });
   it("falls slowly, turning a little", () => {
     for (const p of SKY_PIECES) {
       expect(p.seconds).toBeGreaterThanOrEqual(10);

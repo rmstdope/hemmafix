@@ -123,6 +123,39 @@ test("the page is a night sky with white rows, light headings, red controls and 
   await other.close();
 });
 
+test("an open filter button is white with dark ink, and an opened section stays light on the sky", async ({ page, context }) => {
+  const bo = await logIn(context, "bo", "child");
+  await wearJul(bo.id);
+  const rooms = await seedRooms("Kök");
+  await seedDone({ title: "Mata katten", roomId: rooms["Kök"]!.id, completedById: bo.id });
+  await page.goto("/");
+  const filter = page.getByRole("button", { name: "Filtrera" });
+  await filter.click();
+  await filter.hover();
+  await expect(filter).toHaveCSS("background-color", "rgb(255, 255, 255)");
+  await expect(filter).toHaveCSS("color", "rgb(24, 24, 27)");
+
+  const summary = page.getByText(/^Klart senaste veckan/);
+  await summary.click();
+  await expect(summary).toHaveCSS("color", "rgb(203, 213, 225)");
+
+  await page.goto("/listor");
+  await hydrated(page);
+  await page.getByRole("button", { name: "Ny lista" }).click();
+  await page.getByRole("dialog").getByRole("textbox").fill("Inköp");
+  await page.keyboard.press("Enter");
+  const field = page.getByRole("textbox", { name: "Lägg till…" });
+  await field.fill("Mjölk");
+  await field.press("Enter");
+  await page.getByRole("button", { name: "Mjölk: bocka av" }).click();
+  const done = page.getByRole("button", { name: /^Klart \(1\)/ });
+  await done.click();
+  await expect(done).toHaveAttribute("aria-expanded", "true");
+  await done.hover();
+  await expect(done).toHaveCSS("color", "rgb(203, 213, 225)");
+  await expect(page.getByRole("button", { name: "Mjölk: ångra avbockad" })).toHaveCSS("background-color", GREEN);
+});
+
 test("dark mode deepens the sky and keeps its dark rows", async ({ page, context }) => {
   await page.emulateMedia({ colorScheme: "dark" });
   const bo = await logIn(context, "bo", "child");

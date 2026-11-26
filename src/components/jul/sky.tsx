@@ -2,7 +2,12 @@ import type { CSSProperties } from "react";
 import { SKY_PIECES, type SkyPiece } from "@/lib/jul";
 import { cn } from "@/lib/utils";
 
-const take = (kind: SkyPiece["kind"], count?: number) => SKY_PIECES.filter((p) => p.kind === kind).slice(0, count);
+/** `count` pieces of a kind taken evenly from left to right, so a small sky is filled across too. */
+function take(kind: SkyPiece["kind"], count?: number) {
+  const all = SKY_PIECES.filter((p) => p.kind === kind).sort((a, b) => a.x - b.x);
+  if (count === undefined) return all;
+  return Array.from({ length: count }, (_, i) => all[Math.floor(((i + 0.5) * all.length) / count)]!);
+}
 
 /**
  * Snow and wrapped presents over whatever box holds it: the whole window, a tile or a preview.

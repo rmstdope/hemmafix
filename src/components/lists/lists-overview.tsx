@@ -56,7 +56,7 @@ export function ListsOverview({
           triggerRef={sortButton}
           label={`Sortera listor: ${orderMenuLabel(shown)}`}
           heading="Sortera listor"
-          triggerClassName="on-sky-muted flex size-11 items-center justify-center rounded-lg border text-muted-foreground outline-none focus-visible:ring-3 focus-visible:ring-ring/50 aria-expanded:border-foreground aria-expanded:bg-foreground aria-expanded:text-background"
+          triggerClassName="on-sky-muted sky-toggle flex size-11 items-center justify-center rounded-lg border text-muted-foreground outline-none focus-visible:ring-3 focus-visible:ring-ring/50 aria-expanded:border-foreground aria-expanded:bg-foreground aria-expanded:text-background"
           items={LIST_ORDERS.map((o) => ({ label: orderMenuLabel(o), checked: o === shown, onSelect: () => choose(o) }))}
         >
           <ArrowDownUp className="size-5" aria-hidden />

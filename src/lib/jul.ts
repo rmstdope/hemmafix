@@ -35,20 +35,39 @@ export type SkyPiece = {
 
 const PRESENT_COLOURS = ["#dc2626", "#16a34a", "#eab308", "#2563eb", "#db2777"];
 
-/** An even but irregular spread without chance: the server and the browser draw the same sky. */
-const spread = (i: number, step: number) => ((i + 1) * step) % 1;
+/**
+ * A seeded generator (mulberry32): scattered as by chance, but the same on every draw, so the
+ * server and the browser agree on the sky and a new page does not reshuffle it.
+ */
+function seeded(seed: number) {
+  let state = seed;
+  return () => {
+    state = (state + 0x6d2b79f5) | 0;
+    let t = Math.imul(state ^ (state >>> 15), 1 | state);
+    t ^= t + Math.imul(t ^ (t >>> 7), 61 | t);
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
 
-function pieces(kind: SkyPiece["kind"], count: number): SkyPiece[] {
+function pieces(kind: SkyPiece["kind"], count: number, random: () => number): SkyPiece[] {
   const flake = kind === "flake";
+  // One piece in each of `count` columns and rows, paired by chance: spread out, never in lines.
+  const shuffled = () =>
+    Array.from({ length: count }, (_, i) => ({ i, at: random() }))
+      .sort((a, b) => a.at - b.at)
+      .map(({ i }) => ((i + random()) / count) * 100);
+  const columns = shuffled();
+  const rows = shuffled();
   return Array.from({ length: count }, (_, i) => ({
     kind,
-    x: spread(i, 0.618034) * 100,
-    y: spread(i, 0.754877) * 100,
-    seconds: 10 + spread(i, 0.569840) * 8,
-    turn: (i % 2 ? -1 : 1) * (60 + spread(i, 0.414214) * 140),
+    x: columns[i]!,
+    y: rows[i]!,
+    seconds: 10 + random() * 8,
+    turn: (i % 2 ? -1 : 1) * (60 + random() * 140),
     size: flake ? 3 + (i % 3) : 16 + (i % 3) * 2,
     colour: flake ? "#ffffff" : PRESENT_COLOURS[i % PRESENT_COLOURS.length]!,
   }));
 }
 
-export const SKY_PIECES: readonly SkyPiece[] = [...pieces("flake", 40), ...pieces("present", 12)];
+const random = seeded(24);
+export const SKY_PIECES: readonly SkyPiece[] = [...pieces("flake", 40, random), ...pieces("present", 12, random)];
