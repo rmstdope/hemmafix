@@ -448,6 +448,11 @@ export const choreInstance = pgTable(
       .notNull()
       .references(() => household.id, { onDelete: "cascade" }),
     dueDate: date("due_date", { mode: "string" }),
+    /**
+     * When an edit removed the due date, which puts the instance last among the undated. Null for
+     * one that never had a date removed; those have been undated since they were created.
+     */
+    undatedSince: timestamp("undated_since", { withTimezone: true }),
     assigneeId: text("assignee_id").references(() => user.id, { onDelete: "set null" }),
     completedAt: timestamp("completed_at", { withTimezone: true }),
     completedById: text("completed_by_id").references(() => user.id, { onDelete: "set null" }),

@@ -1,5 +1,5 @@
 import type { Page } from "@playwright/test";
-import { addDays, formatTabDay, formatTabDayLong, todayIso } from "../src/lib/dates";
+import { addDays, formatDue, formatTabDay, formatTabDayLong, todayIso } from "../src/lib/dates";
 import { sql } from "drizzle-orm";
 import { household } from "../src/db/schema";
 import { db, logIn, seedChore, seedDone, seedRooms } from "./support/family";
@@ -69,6 +69,44 @@ test("the other tabs show their day or everything later, with dates only under S
   await expect(item(page, "Laga")).not.toContainText(/\d+ \w+\./);
   await expect(item(page, "Rensa")).toContainText(/\d+ \w+\./);
   await expect(panel(page)).not.toContainText(/Varje|Var \d|Varannan/);
+});
+
+test("Senare lists undated tasks first, oldest added first, live and when a date is removed", async ({ page, context }) => {
+  await logIn(context, "anna", "adult");
+  const rooms = await seedRooms("Kök");
+  const room = rooms["Kök"]!.id;
+  const once = { roomId: room, recurrence: null };
+  await seedChore({ ...once, title: "Tvätta", dueDate: inDays(10) });
+  await seedChore({ ...once, title: "Rensa", dueDate: null });
+  await seedChore({ ...once, title: "Byta", dueDate: null });
+  await page.goto("/");
+  await tab(page, /^Senare,/).click();
+  const rows = panel(page).getByRole("listitem");
+  await expect(rows).toHaveText([/Rensa/, /Byta/, /Tvätta/]);
+
+  // Added on another device: it goes in last among the undated.
+  await seedChore({ ...once, title: "Sortera", dueDate: null });
+  const [home] = await db.select({ id: household.id }).from(household);
+  await db.execute(sql`select pg_notify('hemmafix_tasks', ${home!.id})`);
+  await expect(rows).toHaveText([/Rensa/, /Byta/, /Sortera/, /Tvätta/]);
+  await expect(tab(page, /^Senare,/)).toHaveText("Senare4");
+
+  // The oldest of all loses its date: it has waited the shortest as undated.
+  await item(page, "Tvätta").getByRole("button", { name: "Mer" }).click();
+  await item(page, "Tvätta").getByRole("button", { name: "Ändra" }).click();
+  const form = page.getByRole("form", { name: "Ändra Tvätta" });
+  await form.getByLabel("Klart senast").fill("");
+  await form.getByRole("button", { name: "Spara" }).click();
+  await expect(item(page, "Tvätta")).not.toContainText(formatDue(inDays(10), today())!.label);
+  await expect(rows).toHaveText([/Rensa/, /Byta/, /Sortera/, /Tvätta/]);
+
+  // A date takes a task out of the top, to its date's place.
+  await item(page, "Rensa").getByRole("button", { name: "Mer" }).click();
+  await item(page, "Rensa").getByRole("button", { name: "Ändra" }).click();
+  const dated = page.getByRole("form", { name: "Ändra Rensa" });
+  await dated.getByLabel("Klart senast").fill(inDays(20));
+  await dated.getByRole("button", { name: "Spara" }).click();
+  await expect(rows).toHaveText([/Byta/, /Sortera/, /Tvätta/, /Rensa/]);
 });
 
 test("Nu's count is grey when nothing is overdue, and a zero is grey", async ({ page, context }) => {

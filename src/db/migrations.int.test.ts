@@ -504,3 +504,24 @@ describe("0018: badges", () => {
     ).rejects.toThrow();
   });
 });
+
+describe("0019: when an uppgift lost its date", () => {
+  beforeEach(reset);
+
+  it("adds a nullable column, so the previous release still adds and edits without it", async () => {
+    await migrateUpTo(sql, "0018_badges");
+    const [home] = await sql`insert into household (name) values ('Hemma') returning id`;
+    await sql`insert into floor (household_id, name, position) values (${home!.id}, '1', 1)`;
+    const [r] = await sql`insert into room (household_id, floor_id, name)
+      select ${home!.id}, id, 'Kök' from floor returning id`;
+    const [c] = await sql`insert into chore (household_id, room_id, title) values (${home!.id}, ${r!.id}, 'Diska') returning id`;
+    await sql`insert into chore_instance (chore_id, household_id) values (${c!.id}, ${home!.id})`;
+
+    await migrateUpTo(sql, "0019_undated_since");
+
+    expect(await sql`select undated_since from chore_instance`).toEqual([{ undated_since: null }]);
+    await sql`update chore_instance set due_date = '2026-12-24'`;
+    await sql`update chore_instance set due_date = null, completed_at = now()`;
+    await sql`insert into chore_instance (chore_id, household_id) values (${c!.id}, ${home!.id})`;
+  });
+});
