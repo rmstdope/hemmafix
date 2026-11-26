@@ -6,8 +6,14 @@ import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
 const script = resolve("scripts/ci-needed.sh");
 
-// No user or system git configuration (signing, hooks, quoting) reaches these repositories.
-const env = { ...process.env, GIT_CONFIG_GLOBAL: "/dev/null", GIT_CONFIG_NOSYSTEM: "1" };
+// No user or system git configuration (signing, hooks, quoting) reaches these repositories, and
+// no inherited GIT_DIR or GIT_INDEX_FILE (set inside a git hook) points git at the real one.
+const env = {
+  ...Object.fromEntries(Object.entries(process.env).filter(([name]) => !name.startsWith("GIT_"))),
+  NODE_ENV: process.env.NODE_ENV,
+  GIT_CONFIG_GLOBAL: "/dev/null",
+  GIT_CONFIG_NOSYSTEM: "1",
+};
 
 let repo: string;
 
