@@ -1,13 +1,13 @@
-import { Suspense, type ReactNode } from "react";
+import { Suspense } from "react";
 import { AddChoreSheet } from "@/components/add-chore-sheet";
-import { BoardTabs } from "@/components/board-tabs";
 import { FilterChips, FilterHeader } from "@/components/board-filters";
 import { ChoreItem } from "@/components/chore-item";
 import { GoldRows } from "@/components/gold-rows";
 import { HighFiveNotes } from "@/components/high-five-notes";
 import { LiveUpdates } from "@/components/live-updates";
+import { OpenBoard } from "@/components/open-board";
 import { PageCorner } from "@/components/page-corner";
-import { boardTabs, parseTab, splitByTab, type TabKey } from "@/lib/board-tabs";
+import { parseTab } from "@/lib/board-tabs";
 import { todayIso } from "@/lib/dates";
 import { can } from "@/lib/permissions";
 import { boardFilter } from "@/lib/validation";
@@ -62,12 +62,6 @@ async function Board({ searchParams }: { searchParams: PageProps<"/">["searchPar
   const open = await listOpenInstances(member, filter);
   const filtered = Boolean(filter.roomId || filter.floorId || filter.who);
   const showFloors = floors.length > 1;
-  const split = splitByTab(open, today);
-  const tabs = boardTabs(
-    today,
-    { nu: split.nu.length, d1: split.d1.length, d2: split.d2.length, d3: split.d3.length, senare: split.senare.length },
-    split.nu.some((t) => t.dueDate !== null && t.dueDate < today),
-  );
   const filterProps = {
     floors,
     rooms,
@@ -78,81 +72,13 @@ async function Board({ searchParams }: { searchParams: PageProps<"/">["searchPar
     who: filter.who,
   };
 
-  const emptyText = (key: TabKey) =>
-    filtered
-      ? "Inga uppgifter här."
-      : key === "nu"
-        ? "🎉 Allt i Nu är klart!"
-        : key === "senare"
-          ? "Inget planerat längre fram."
-          : "Inget att göra den här dagen.";
-  const list = (key: TabKey, items: typeof open, showDue: (dueDate: string | null) => boolean): ReactNode =>
-    items.length === 0 ? (
-      <p className="sky-box rounded-xl border border-dashed p-6 text-center text-muted-foreground">{emptyText(key)}</p>
-    ) : (
-      <ul
-        className="space-y-2"
-        aria-label={tabs.find((t) => t.key === key)?.ariaLabel}
-        data-clears-nu={key === "nu" && !filtered ? "" : undefined}
-      >
-        {items.map((t) => (
-          <ChoreItem
-            key={t.id}
-            instance={t}
-            members={members}
-            currentUserId={member.userId}
-            today={today}
-            canManage={isAdult}
-            canUndo={false}
-            showDue={showDue(t.dueDate)}
-            showFloors={showFloors}
-            floors={floors}
-            rooms={rooms}
-          />
-        ))}
-      </ul>
-    );
-
-  const panels: Record<TabKey, ReactNode> = {
-    nu: (
-      <>
-        <GoldRows rows={goldRows} now={new Date().toISOString()} />
-        {list("nu", split.nu, (d) => d !== null && d < today)}
-        {completed.length > 0 && (
-          <details className="mt-8">
-            <summary className="on-sky-muted cursor-pointer py-2 text-sm text-muted-foreground">
-              Klart senaste veckan ({completed.length})
-            </summary>
-            <ul className="mt-2 space-y-2" aria-label="Klart">
-              {completed.map((t) => (
-                <ChoreItem
-                  key={t.id}
-                  instance={t}
-                  members={members}
-                  currentUserId={member.userId}
-                  today={today}
-                  canManage={false}
-                  canUndo={canUndo(member, t)}
-                  highFive={{
-                    canGive: can(member.role, "history:view-anyone"),
-                    givenByMe: highFives.get(t.id)?.givenByMe ?? false,
-                    names: highFives.get(t.id)?.names ?? [],
-                  }}
-                  showDue
-                  showFloors={showFloors}
-                  floors={floors}
-                  rooms={rooms}
-                />
-              ))}
-            </ul>
-          </details>
-        )}
-      </>
-    ),
-    imorgon: list("imorgon", split.d1, () => false),
-    d2: list("d2", split.d2, () => false),
-    d3: list("d3", split.d3, () => false),
-    senare: list("senare", split.senare, () => true),
+  const rowProps = {
+    members,
+    currentUserId: member.userId,
+    canManage: isAdult,
+    showFloors,
+    floors,
+    rooms,
   };
 
   return (
@@ -164,7 +90,42 @@ async function Board({ searchParams }: { searchParams: PageProps<"/">["searchPar
         </div>
       </FilterHeader>
       <HighFiveNotes notes={notes} />
-      <BoardTabs tabs={tabs} initial={parseTab(first(params.flik))} panels={panels} underTabs={<FilterChips {...filterProps} />} />
+      <OpenBoard
+        open={open}
+        today={today}
+        filtered={filtered}
+        initialTab={parseTab(first(params.flik))}
+        underTabs={<FilterChips {...filterProps} />}
+        nuTop={<GoldRows rows={goldRows} now={new Date().toISOString()} />}
+        nuBottom={
+          completed.length > 0 && (
+            <details className="mt-8">
+              <summary className="on-sky-muted cursor-pointer py-2 text-sm text-muted-foreground">
+                Klart senaste veckan ({completed.length})
+              </summary>
+              <ul className="mt-2 space-y-2" aria-label="Klart">
+                {completed.map((t) => (
+                  <ChoreItem
+                    key={t.id}
+                    instance={t}
+                    today={today}
+                    {...rowProps}
+                    canManage={false}
+                    canUndo={canUndo(member, t)}
+                    highFive={{
+                      canGive: can(member.role, "history:view-anyone"),
+                      givenByMe: highFives.get(t.id)?.givenByMe ?? false,
+                      names: highFives.get(t.id)?.names ?? [],
+                    }}
+                    showDue
+                  />
+                ))}
+              </ul>
+            </details>
+          )
+        }
+        {...rowProps}
+      />
       {isAdult && (
         <AddChoreSheet floors={floors} rooms={rooms} routines={routines} members={members} currentUserId={member.userId} today={today} />
       )}

@@ -583,6 +583,8 @@ export type InstanceView = {
   roomName: string | null;
   floorName: string | null;
   dueDate: string | null;
+  /** When the occurrence was made: tasks of one day are listed oldest first. */
+  createdAt: Date;
   assigneeId: string | null;
   seriesAssigneeId: string | null;
   recurrence: Recurrence | null;
@@ -614,6 +616,7 @@ const instanceColumns = {
   roomName: room.name,
   floorName: floor.name,
   dueDate: choreInstance.dueDate,
+  createdAt: choreInstance.createdAt,
   assigneeId: choreInstance.assigneeId,
   seriesAssigneeId: chore.assigneeId,
   recurrenceUnit: chore.recurrenceUnit,
