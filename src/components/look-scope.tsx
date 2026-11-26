@@ -1,7 +1,7 @@
 import { Suspense, type ReactNode } from "react";
 import { getCurrentMember } from "@/server/dal";
 import { getLooks } from "@/server/looks";
-import { LookMarks } from "./look-marks";
+import { LookMarks, ScopeMark } from "./look-marks";
 
 /**
  * Marks the page with the theme and coin look the logged-in person chose. The marks are hidden
@@ -18,8 +18,7 @@ async function Marks() {
 export function LookScope({ children }: { children: ReactNode }) {
   return (
     <>
-      {/* In the shell: tells globals.css this is a themed page before the marks arrive. */}
-      <span hidden data-look-scope />
+      <ScopeMark />
       <Suspense>
         <Marks />
       </Suspense>

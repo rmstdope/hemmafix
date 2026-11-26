@@ -28,12 +28,8 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
     <html lang="sv" className={`${geistSans.variable} h-full antialiased`} suppressHydrationWarning>
       <head>
-        {/* As Next's "preventing flash" guide: run from the server's HTML, inert in the browser's render. */}
-        <script
-          type={typeof window === "undefined" ? "text/javascript" : "text/plain"}
-          suppressHydrationWarning
-          dangerouslySetInnerHTML={{ __html: SKY_HINT_SCRIPT }}
-        />
+        {/* Runs from the server's HTML before the first paint; a soft navigation never runs it again. */}
+        <script dangerouslySetInnerHTML={{ __html: SKY_HINT_SCRIPT }} />
       </head>
       <body className="min-h-full flex flex-col bg-background text-foreground">
         <ThemeProvider attribute="class" defaultTheme="system" enableSystem disableTransitionOnChange>

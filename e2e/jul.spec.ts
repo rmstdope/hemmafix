@@ -210,6 +210,21 @@ test("the sky is there before the person's choice has arrived, and never on the 
   await expect(body(page)).not.toHaveCSS("background-color", SKY);
 });
 
+test("a session that ended sends the person to a login page without the sky", async ({ page, context }) => {
+  const bo = await logIn(context, "bo", "child");
+  await wearJul(bo.id);
+  await page.goto("/");
+  await expect(page.locator("html")).toHaveAttribute("data-sky", "jul");
+  await context.clearCookies();
+  // A press inside the app: the redirect to /login happens without a new document.
+  await page.evaluate(() => Object.assign(window, { sameDocument: true }));
+  await part(page, "Listor").click();
+  await expect(page).toHaveURL(/\/login/);
+  await expect(page.getByRole("button", { name: /Google/ })).toBeVisible();
+  expect(await page.evaluate(() => "sameDocument" in window)).toBe(true);
+  await expect(body(page)).not.toHaveCSS("background-color", SKY);
+});
+
 test("signing out forgets the sky on this device", async ({ page, context }) => {
   const bo = await logIn(context, "bo", "child");
   await wearJul(bo.id);
@@ -339,18 +354,19 @@ test("moving between the parts and Hemmet neither restarts nor interrupts the rh
   await page.clock.runFor((await untilNext()) + 500);
   await expect(sleigh(page)).toHaveCount(1);
 
+  // A reload would start the rhythm over: every step below must stay in this document.
+  await page.evaluate(() => Object.assign(window, { sameDocument: true }));
   for (const go of [
     () => part(page, "Listor").click(),
     () => part(page, "Jag").click(),
     () => chooseFromMenu(page, "Hemmet"),
   ]) {
     await page.clock.resume();
-    const before = await page.evaluate(() => performance.now());
     await go();
     await expect(sky(page)).toHaveCount(1);
     const next = await pausedClock(page);
-    // The clock was never reset, and the passes still come at 4 s, 34 s, 64 s...
-    expect(await page.evaluate(() => performance.now())).toBeGreaterThan(before);
+    expect(await page.evaluate(() => "sameDocument" in window)).toBe(true);
+    // The passes still come at 4 s, 34 s, 64 s...
     await page.clock.runFor((await next()) - 200);
     await expect(sleigh(page)).toHaveCount(0);
     await page.clock.runFor(700);

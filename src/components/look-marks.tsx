@@ -6,28 +6,41 @@ import { Sleigh } from "./jul/sleigh";
 import { JulSky } from "./jul/sky";
 
 /**
+ * An element that carries `attributes` only while its page is shown. Next keeps a page that was
+ * left in the document, hidden, and runs this effect's cleanup: the attributes come off there,
+ * or globals.css would go on matching them.
+ */
+function useShownAttributes(attributes: Record<string, string>) {
+  const ref = useRef<HTMLSpanElement>(null);
+  useLayoutEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    const entries = Object.entries(attributes);
+    for (const [name, value] of entries) el.setAttribute(name, value);
+    return () => entries.forEach(([name]) => el.removeAttribute(name));
+  });
+  return ref;
+}
+
+/** In the shell: tells globals.css this is a themed page, before the marks arrive. */
+export function ScopeMark() {
+  const mark = useShownAttributes({ "data-look-scope": "" });
+  return <span ref={mark} hidden data-look-scope="" />;
+}
+
+/**
  * The hidden element that carries the person's theme and coin look for globals.css, and Jul's
- * decoration. Next keeps a page that was left in the document, hidden, and runs this effect's
- * cleanup: the marks come off there, or a look switched away from would still match.
+ * decoration.
  */
 export function LookMarks({ theme, coin }: { theme: string; coin: string }) {
-  const mark = useRef<HTMLSpanElement>(null);
+  const attributes = { "data-look-own": theme, "data-look-own-coin": coin };
+  const mark = useShownAttributes(attributes);
 
-  useLayoutEffect(() => {
-    const el = mark.current;
-    if (!el) return;
-    el.setAttribute("data-look-own", theme);
-    el.setAttribute("data-look-own-coin", coin);
-    setSkyHint(theme === "jul");
-    return () => {
-      el.removeAttribute("data-look-own");
-      el.removeAttribute("data-look-own-coin");
-    };
-  }, [theme, coin]);
+  useLayoutEffect(() => setSkyHint(theme === "jul"), [theme]);
 
   return (
     <>
-      <span ref={mark} hidden data-look-own={theme} data-look-own-coin={coin} />
+      <span ref={mark} hidden {...attributes} />
       {theme === "jul" && (
         <>
           <JulSky name="page" className="fixed inset-0 -z-10" />
