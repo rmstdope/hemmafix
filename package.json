@@ -23,7 +23,7 @@
     "@better-auth/mcp": "1.7.27",
     "@better-auth/oauth-provider": "1.7.27",
     "@modelcontextprotocol/server": "2.4.0",
-    "better-auth": "1.7.27",
+    "better-auth": "1.7.28",
     "class-variance-authority": "^0.7.1",
     "cn": "^0.5.2",
     "drizzle-orm": "^0.45.4",
