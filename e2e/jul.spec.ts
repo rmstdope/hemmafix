@@ -256,7 +256,9 @@ test("snow and presents fall behind the content, spread over the window from the
   const tops = await pieceTops(sky(page));
   expect(tops.filter((t) => t > size.height / 2).length).toBeGreaterThan(10);
 
-  await page.mouse.wheel(0, 600);
+  // The rows stream in after the sky: only then is there anything to scroll.
+  await expect(page.getByRole("listitem").filter({ hasText: /^Syssla/ })).toHaveCount(20);
+  await page.evaluate(() => window.scrollTo(0, 600));
   await expect.poll(() => page.evaluate(() => window.scrollY)).toBeGreaterThan(0);
   expect(await sky(page).boundingBox()).toEqual({ x: 0, y: 0, ...size });
 });
