@@ -23,6 +23,7 @@ import { roomLabel } from "@/lib/floors";
 import { useCelebrateNuCleared, useCoinShower, useOfferChest, useOfferCelebrations, type Shower } from "./coin-shower";
 import { TaskRowBody } from "./task-row";
 import { EditChoreForm } from "./edit-chore-form";
+import { PostponeLine } from "./postpone";
 import { cn } from "@/lib/utils";
 import type { InstanceView, Member } from "@/server/chores";
 
@@ -244,6 +245,7 @@ export function ChoreItem({
                   className="h-7 w-10 shrink-0 px-0 text-muted-foreground"
                   aria-label={`${t.title}: mer`}
                   aria-expanded={expanded}
+                  data-more={t.id}
                   onClick={() => setExpanded(!expanded)}
                 >
                   <ChevronDown className={cn("transition-transform", expanded && "rotate-180")} />
@@ -266,6 +268,13 @@ export function ChoreItem({
 
       {expanded && canManage && !completed && !editing && (
         <div className="space-y-3 border-t px-3 py-3">
+          {t.dueDate && (
+            <PostponeLine
+              task={{ id: t.id, title: t.title, dueDate: t.dueDate }}
+              today={today}
+              onChosen={() => setExpanded(false)}
+            />
+          )}
           {t.recurrence && (
             <div role="group" aria-label={`${t.title}: gäller`} className="grid grid-cols-2 gap-1 rounded-lg bg-muted p-1 text-sm">
               {(["once", "all"] as const).map((s) => (
