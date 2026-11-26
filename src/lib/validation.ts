@@ -141,6 +141,10 @@ export type EditChoreInput = z.infer<typeof editChoreInput>;
 
 export const instanceId = z.uuid();
 export const choreId = z.uuid();
+/** Skjut upp: an open instance and its new day. */
+export const postponeInput = z.object({ id: instanceId, day: isoDate });
+/** Ångra after Skjut upp: the old day, and the row versions the move left behind. */
+export const undoPostponeInput = z.object({ id: instanceId, to: isoDate, version: z.string().min(1).max(50) });
 export const assigneeIdInput = z.string().min(1).max(100).nullable();
 
 /**

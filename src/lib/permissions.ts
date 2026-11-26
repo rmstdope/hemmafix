@@ -17,6 +17,7 @@ const ADULTS_ONLY = new Set<Action>([
   "member:set-role",
   "task:create",
   "task:edit",
+  "task:postpone",
   "task:assign",
   "task:delete",
   "task:uncomplete-others",
@@ -36,6 +37,8 @@ export type Action =
   | "member:set-role"
   | "task:create"
   | "task:edit"
+  /** Move an open chore to a later day, and undo that. */
+  | "task:postpone"
   | "task:assign"
   | "task:delete"
   | "task:complete"

@@ -69,6 +69,12 @@ test("the panel has a switch for a recurring task only, keeps focus on the chevr
   const diska = row("Diska");
   await diska.getByRole("button", { name: "Mer" }).click();
   await diska.getByRole("button", { name: "Mer" }).focus();
+  const days = diska.getByRole("group", { name: /skjut upp/ }).getByRole("button");
+  await expect(days).toHaveCount(4);
+  for (let i = 0; i < 4; i++) {
+    await page.keyboard.press("Tab");
+    await expect(days.nth(i)).toBeFocused();
+  }
   for (const name of ["Den här gången", "Alla gånger"]) {
     await page.keyboard.press("Tab");
     await expect(diska.getByRole("button", { name })).toBeFocused();

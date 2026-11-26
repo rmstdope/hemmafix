@@ -34,6 +34,8 @@ export type ActionState = {
   levelUp?: { level: number; title: string; name: string; image: string | null };
   /** Said to the person after a tick that gave no coins because the chore was not yet due (completeInstance only). */
   notice?: string;
+  /** What Ångra needs after a move (postponeInstance only). */
+  postponed?: { from: string; version: string };
 };
 
 const LOGGED_OUT = "Du är utloggad – ladda om sidan och logga in igen.";
@@ -45,7 +47,11 @@ const LOGGED_OUT = "Du är utloggad – ladda om sidan och logga in igen.";
  */
 async function act(
   fn: (member: CurrentMember) => Promise<unknown>,
-  { notify = true, refreshPage = true }: { notify?: boolean; refreshPage?: boolean } = {},
+  {
+    notify = true,
+    refreshPage = true,
+    refreshOnError = false,
+  }: { notify?: boolean; refreshPage?: boolean; refreshOnError?: boolean } = {},
 ): Promise<ActionState> {
   const member = await getCurrentMember();
   if (!member) return { ok: false, error: LOGGED_OUT };
@@ -54,9 +60,10 @@ async function act(
     const out = await fn(member);
     // Asked, not done: nothing changed, so nobody is told and nothing is refreshed.
     if (out && typeof out === "object" && "confirm" in out) return { ok: true, confirm: out.confirm as UndoDebt };
-    // Only what a tick-off reports (its chest, badges and level) goes back; other results stay on the server.
+    // Only what a tick-off (chest, badges, level) and a move report goes back; the rest stays on the server.
     if (out && typeof out === "object") {
-      const { chestId, chestCoins, badges, levelUp, notice } = out as {
+      const { chestId, chestCoins, badges, levelUp, notice, postponed } = out as {
+        postponed?: ActionState["postponed"];
         chestId?: string;
         chestCoins?: number;
         badges?: string[];
@@ -64,11 +71,14 @@ async function act(
         notice?: string | null;
       };
       if (notice) extra = { notice };
+      if (postponed) extra = { postponed };
       if (chestId && chestCoins !== undefined) extra = { ...extra, chestId, chestCoins };
       if (badges?.length) extra = { ...extra, badges };
       if (levelUp) extra = { ...extra, levelUp: { ...levelUp, name: member.name, image: member.image } };
     }
   } catch (e) {
+    // A refusal that means the page is behind (the row moved or went) brings the fresh list with it.
+    if (refreshOnError && e instanceof UserError) refresh();
     if (e instanceof UserError) return { ok: false, error: e.message };
     if (e instanceof z.ZodError) return { ok: false, error: e.issues[0]?.message ?? "Ogiltiga uppgifter" };
     throw e;
@@ -245,6 +255,14 @@ export async function editChore(
 
 export async function completeInstance(id: string) {
   return act((m) => chores.completeInstance(m, id));
+}
+
+export async function postponeInstance(id: string, day: string) {
+  return act((m) => chores.postponeInstance(m, id, day), { refreshOnError: true });
+}
+
+export async function undoPostpone(id: string, back: { to: string; version: string }) {
+  return act((m) => chores.undoPostpone(m, id, back), { refreshOnError: true });
 }
 
 export async function openChest(id: string) {

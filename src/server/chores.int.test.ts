@@ -23,7 +23,9 @@ import {
   listOpenInstances,
   listRecentlyCompleted,
   openChest,
+  postponeInstance,
   uncompleteInstance,
+  undoPostpone,
 } from "./chores";
 import { addRoom, deleteRoom, listRooms } from "./household";
 import { buyLook, getLooks } from "./looks";
@@ -465,6 +467,117 @@ describe("deleteChore", () => {
     await expect(deleteChore(f.child, id)).rejects.toThrow(ForbiddenError);
     await deleteChore(f.neighbour, id);
     expect(await open()).toHaveLength(1);
+  });
+});
+
+describe("postponeInstance", () => {
+  const SAVE_FAILED = "Det gick inte att spara. Försök igen.";
+  const inDays = (n: number) => addDays(todayIso(), n);
+  /** A task due `days` from today, and its open instance. */
+  const dueIn = async (days: number, input = weekly("Dammsuga")) => {
+    const { id } = await createChore(f.adult, input);
+    await db.update(choreInstance).set({ dueDate: inDays(days) }).where(eq(choreInstance.choreId, id));
+    const [instance] = await instancesOf(id);
+    return { choreId: id, id: instance!.id };
+  };
+  const dueDateOf = async (choreId: string) => (await instancesOf(choreId)).find((i) => !i.completedAt)?.dueDate;
+
+  it.each([-3, 0, 4])("moves a task due %i days from today to a later day", async (days) => {
+    const t = await dueIn(days);
+
+    const { postponed } = await postponeInstance(f.adult, t.id, inDays(6));
+
+    expect(postponed.from).toBe(inDays(days));
+    expect(await dueDateOf(t.choreId)).toBe(inDays(6));
+  });
+
+  it("keeps a recurring task's rhythm from the day it is done, and pays nothing before the new day", async () => {
+    const t = await dueIn(0);
+    await postponeInstance(f.adult, t.id, inDays(2));
+
+    await expect(completeInstance(f.child, t.id)).rejects.toThrow("kan bockas av");
+    await bringDueToday(f.homeId);
+    await completeInstance(f.adult, t.id);
+
+    expect(await dueDateOf(t.choreId)).toBe(nextDueDate(todayIso(), { unit: "week", interval: 1 }));
+  });
+
+  it("is refused for a child, and for someone in another home", async () => {
+    const t = await dueIn(0);
+    await expect(postponeInstance(f.child, t.id, inDays(2))).rejects.toThrow(ForbiddenError);
+    await expect(postponeInstance(f.neighbour, t.id, inDays(2))).rejects.toThrow("Uppgiften finns inte längre");
+    expect(await dueDateOf(t.choreId)).toBe(todayIso());
+  });
+
+  it.each([
+    [-3, 0],
+    [-3, -1],
+    [0, 0],
+    [4, 4],
+    [4, 2],
+  ])("refuses to move a task due in %i days to %i days from today", async (due, to) => {
+    const t = await dueIn(due);
+
+    await expect(postponeInstance(f.adult, t.id, inDays(to))).rejects.toThrow(SAVE_FAILED);
+    expect(await dueDateOf(t.choreId)).toBe(inDays(due));
+  });
+
+  it("refuses a task without a day, and a day that is not one", async () => {
+    await createChore(f.adult, once("Laga lampan"));
+    const [lamp] = await openOf("Laga lampan");
+
+    await expect(postponeInstance(f.adult, lamp!.id, inDays(2))).rejects.toThrow(SAVE_FAILED);
+    await expect(postponeInstance(f.adult, lamp!.id, "2026-02-30")).rejects.toThrow("Ogiltigt datum");
+  });
+
+  it("says when the task was ticked off or removed meanwhile", async () => {
+    const done = await dueIn(0);
+    await completeInstance(f.adult, done.id);
+    await expect(postponeInstance(f.adult, done.id, inDays(2))).rejects.toThrow("Någon har redan bockat av den");
+
+    const removed = await dueIn(0, weekly("Damma"));
+    await deleteChore(f.adult, removed.choreId);
+    await expect(postponeInstance(f.adult, removed.id, inDays(2))).rejects.toThrow("Uppgiften finns inte längre");
+  });
+
+  it("can be undone, back to a day that has passed", async () => {
+    const t = await dueIn(-3);
+    const { postponed } = await postponeInstance(f.adult, t.id, inDays(2));
+
+    await undoPostpone(f.adult, t.id, { to: postponed.from, version: postponed.version });
+
+    expect(await dueDateOf(t.choreId)).toBe(inDays(-3));
+  });
+
+  it("is not undone by a child, to a later day, or twice", async () => {
+    const t = await dueIn(0);
+    const { postponed } = await postponeInstance(f.adult, t.id, inDays(2));
+    const back = { to: postponed.from, version: postponed.version };
+
+    await expect(undoPostpone(f.child, t.id, back)).rejects.toThrow(ForbiddenError);
+    await expect(undoPostpone(f.adult, t.id, { ...back, to: inDays(5) })).rejects.toThrow(SAVE_FAILED);
+    expect(await dueDateOf(t.choreId)).toBe(inDays(2));
+    await undoPostpone(f.adult, t.id, back);
+    await expect(undoPostpone(f.adult, t.id, back)).rejects.toThrow(SAVE_FAILED);
+  });
+
+  it.each<[string, (t: { choreId: string; id: string }) => Promise<unknown>]>([
+    ["moved again", (t) => postponeInstance(f.adult, t.id, inDays(5))],
+    ["given to someone", (t) => assignInstance(f.adult, t.id, f.child.userId)],
+    ["given to someone every time", (t) => assignChore(f.adult, t.choreId, f.child.userId)],
+    ["edited", (t) => editChore(f.adult, t.id, weekly("Dammsuga trappan", { dueDate: inDays(2) }))],
+    ["ticked off", (t) => completeInstance(f.adult, t.id)],
+    ["removed", (t) => deleteChore(f.adult, t.choreId)],
+  ])("is not undone once the task has been %s", async (_, change) => {
+    const t = await dueIn(0);
+    const { postponed } = await postponeInstance(f.adult, t.id, inDays(2));
+    await change(t);
+    const before = await instancesOf(t.choreId);
+
+    await expect(undoPostpone(f.adult, t.id, { to: postponed.from, version: postponed.version })).rejects.toThrow(
+      SAVE_FAILED,
+    );
+    expect(await instancesOf(t.choreId)).toEqual(before);
   });
 });
 

@@ -9,6 +9,8 @@ import { addDays, HOME_TIME_ZONE, todayIso } from "@/lib/dates";
 import { UserError } from "@/lib/errors";
 import { assertCan, can, type Role } from "@/lib/permissions";
 import { earlyDoneMessage, isNotYetDue, lockedMessage } from "@/lib/early-tick";
+import { laterThan } from "@/lib/postpone";
+import { SAVE_FAILED } from "@/lib/routine-texts";
 import type { BadgeKey } from "@/lib/badges";
 import { levelFor } from "@/lib/levels";
 import { rollChestCoins } from "@/lib/chest";
@@ -23,6 +25,8 @@ import {
   editChoreInput,
   instanceId as instanceIdInput,
   memberId as memberIdInput,
+  postponeInput,
+  undoPostponeInput,
   type BoardFilter,
 } from "@/lib/validation";
 import { awardBadges } from "./badges";
@@ -227,6 +231,75 @@ export async function assignChore(actor: Actor, id: string, assigneeId: string |
       .update(choreInstance)
       .set({ assigneeId: who })
       .where(and(eq(choreInstance.choreId, target), isNull(choreInstance.completedAt)));
+  });
+}
+
+// ---------------------------------------------------------------------------
+// Postponing (adults)
+// ---------------------------------------------------------------------------
+
+/** The rows' own versions: Postgres changes them on every write, so Ångra sees any later change. */
+const instanceVersion = sql<string>`${choreInstance}.xmin::text`;
+const choreVersion = sql<string>`${chore}.xmin::text`;
+
+/** The instance and its task, locked until the transaction ends; undefined when it is gone. */
+async function lockForMove(tx: Tx, actor: Actor, id: string) {
+  const [row] = await tx
+    .select({
+      dueDate: choreInstance.dueDate,
+      completedAt: choreInstance.completedAt,
+      instanceVersion,
+      choreVersion,
+    })
+    .from(choreInstance)
+    .innerJoin(chore, eq(chore.id, choreInstance.choreId))
+    .where(
+      and(eq(choreInstance.id, id), eq(choreInstance.householdId, actor.householdId), isNull(chore.archivedAt)),
+    )
+    .for("update");
+  return row;
+}
+
+/**
+ * Moves an open instance to a later day. Only that day changes, so a recurring task comes back
+ * one interval after it is done, as ever. Resolves with what Ångra needs.
+ */
+export async function postponeInstance(actor: Actor, id: string, day: string) {
+  assertCan(actor, "task:postpone");
+  const input = postponeInput.parse({ id, day });
+
+  return db.transaction(async (tx) => {
+    const row = await lockForMove(tx, actor, input.id);
+    if (!row) throw new UserError("Uppgiften finns inte längre");
+    if (row.completedAt) throw new UserError("Någon har redan bockat av den");
+    // The row offers only later days; one that is not has been overtaken (another move, midnight).
+    if (!row.dueDate || input.day <= laterThan(row.dueDate, todayIso())) throw new UserError(SAVE_FAILED);
+    const [moved] = await tx
+      .update(choreInstance)
+      .set({ dueDate: input.day })
+      .where(eq(choreInstance.id, input.id))
+      .returning({ version: instanceVersion });
+    return { postponed: { from: row.dueDate, version: `${moved!.version}.${row.choreVersion}` } };
+  });
+}
+
+/** Puts a postponed instance back, unless anything about it or its task has changed since. */
+export async function undoPostpone(actor: Actor, id: string, back: { to: string; version: string }) {
+  assertCan(actor, "task:postpone");
+  const input = undoPostponeInput.parse({ ...back, id });
+
+  await db.transaction(async (tx) => {
+    const row = await lockForMove(tx, actor, input.id);
+    if (
+      !row ||
+      row.completedAt ||
+      `${row.instanceVersion}.${row.choreVersion}` !== input.version ||
+      // Only ever back: a later day is Skjut upp's to give.
+      !row.dueDate ||
+      input.to >= row.dueDate
+    )
+      throw new UserError(SAVE_FAILED);
+    await tx.update(choreInstance).set({ dueDate: input.to }).where(eq(choreInstance.id, input.id));
   });
 }
 
@@ -510,6 +583,8 @@ export type InstanceView = {
   roomName: string | null;
   floorName: string | null;
   dueDate: string | null;
+  /** When the occurrence was made: tasks of one day are listed oldest first. */
+  createdAt: Date;
   assigneeId: string | null;
   seriesAssigneeId: string | null;
   recurrence: Recurrence | null;
@@ -541,6 +616,7 @@ const instanceColumns = {
   roomName: room.name,
   floorName: floor.name,
   dueDate: choreInstance.dueDate,
+  createdAt: choreInstance.createdAt,
   assigneeId: choreInstance.assigneeId,
   seriesAssigneeId: chore.assigneeId,
   recurrenceUnit: chore.recurrenceUnit,

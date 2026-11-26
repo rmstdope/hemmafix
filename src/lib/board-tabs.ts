@@ -10,20 +10,23 @@ export function parseTab(raw: string | null | undefined): TabKey {
 
 export type TabSplit<T> = { nu: T[]; d1: T[]; d2: T[]; d3: T[]; senare: T[] };
 
+/** The tab a task with this due date is on. */
+export function tabOf(dueDate: string | null, today: string): TabKey {
+  if (dueDate === null || dueDate > addDays(today, 3)) return "senare";
+  if (dueDate <= today) return "nu";
+  if (dueDate === addDays(today, 1)) return "imorgon";
+  return dueDate === addDays(today, 2) ? "d2" : "d3";
+}
+
 /**
  * Splits open tasks over the tabs: Nu (overdue and today), tomorrow and the two days after it,
  * and Senare (later, then undated). The input order is kept inside each tab.
  */
 export function splitByTab<T extends { dueDate: string | null }>(items: T[], today: string): TabSplit<T> {
   const split: TabSplit<T> = { nu: [], d1: [], d2: [], d3: [], senare: [] };
-  const days = [1, 2, 3].map((n) => addDays(today, n));
   for (const item of items) {
-    const d = item.dueDate;
-    if (d === null || d > days[2]!) split.senare.push(item);
-    else if (d <= today) split.nu.push(item);
-    else if (d === days[0]) split.d1.push(item);
-    else if (d === days[1]) split.d2.push(item);
-    else split.d3.push(item);
+    const tab = tabOf(item.dueDate, today);
+    split[tab === "imorgon" ? "d1" : tab].push(item);
   }
   return split;
 }
