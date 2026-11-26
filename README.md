@@ -71,6 +71,8 @@ en ändring som bara rör `docs/`: se [deploy/README.md](deploy/README.md).
   desktopformat. Servern får en egen databas och en engångshemlighet. Testerna loggar in utan Google via Better Auths `test-utils`-plugin,
   som bara finns i testprocessen: det skriver en riktig session och signerar cookien med
   samma hemlighet. Appen har alltså ingen testinloggning som kan råka vara påslagen.
+  I CI delas sviten i tio delar som körs samtidigt på var sin maskin (se
+  [deploy/README.md](deploy/README.md)); lokalt körs den i ett stycke.
 
 Integration och e2e skapar databaser på servern i `TEST_DATABASE_URL` (annars
 `DATABASE_URL`), bara på localhost om man inte sätter `ALLOW_REMOTE_TEST_DB=1`. De rör
