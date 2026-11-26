@@ -20,14 +20,19 @@ export function tabOf(dueDate: string | null, today: string): TabKey {
 
 /**
  * Splits open tasks over the tabs: Nu (overdue and today), tomorrow and the two days after it,
- * and Senare (later, then undated). The input order is kept inside each tab.
+ * and Senare (undated first, so they are not forgotten, then later). The input order is kept inside
+ * each tab, and inside each of Senare's two groups.
  */
 export function splitByTab<T extends { dueDate: string | null }>(items: T[], today: string): TabSplit<T> {
   const split: TabSplit<T> = { nu: [], d1: [], d2: [], d3: [], senare: [] };
+  const later: T[] = [];
   for (const item of items) {
     const tab = tabOf(item.dueDate, today);
-    split[tab === "imorgon" ? "d1" : tab].push(item);
+    if (tab === "senare" && item.dueDate !== null) later.push(item);
+    else split[tab === "imorgon" ? "d1" : tab].push(item);
   }
+  }
+  split.senare.push(...later);
   return split;
 }
 

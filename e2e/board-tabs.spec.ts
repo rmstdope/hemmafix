@@ -65,7 +65,8 @@ test("the other tabs show their day or everything later, with dates only under S
   await expect(panel(page).getByRole("listitem")).toHaveText([/Vika/]);
 
   await tab(page, /^Senare,/).click();
-  await expect(panel(page).getByRole("listitem")).toHaveText([/Rensa/, /Laga/]);
+  await expect(panel(page).getByRole("listitem")).toHaveText([/Laga/, /Rensa/]);
+  await expect(item(page, "Laga")).not.toContainText(/\d+ \w+\./);
   await expect(item(page, "Rensa")).toContainText(/\d+ \w+\./);
   await expect(panel(page)).not.toContainText(/Varje|Var \d|Varannan/);
 });
