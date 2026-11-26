@@ -102,7 +102,7 @@ export function FilterHeader(props: Props & { title: string; subtitle?: string; 
           aria-controls={panelId}
           onClick={() => (open ? close() : setOpen(true))}
           className={cn(
-            "relative flex size-11 items-center justify-center rounded-lg border outline-none focus-visible:ring-3 focus-visible:ring-ring/50",
+            "on-sky-muted relative flex size-11 items-center justify-center rounded-lg border outline-none focus-visible:ring-3 focus-visible:ring-ring/50",
             open ? "border-foreground bg-foreground text-background" : "text-muted-foreground",
           )}
         >
@@ -123,7 +123,7 @@ export function FilterHeader(props: Props & { title: string; subtitle?: string; 
         role="group"
         aria-label="Filter"
         hidden={!open}
-        className={cn("mb-3 space-y-3 rounded-xl border bg-muted/40 p-3 shadow-sm", pending && "opacity-60")}
+        className={cn("sky-box mb-3 space-y-3 rounded-xl border bg-muted/40 p-3 shadow-sm", pending && "opacity-60")}
       >
         <label className="block space-y-1 text-xs text-muted-foreground">
           <span>Rum</span>
@@ -168,7 +168,7 @@ export function FilterChips(props: Props) {
   return (
     <ul className="mb-3 flex flex-wrap gap-2" aria-label="Filter på">
       {chips.map((c) => (
-        <li key={c.kind} className="flex items-center gap-1 rounded-full border bg-muted/40 py-0.5 pr-0.5 pl-3 text-sm">
+        <li key={c.kind} className="sky-box flex items-center gap-1 rounded-full border bg-muted/40 py-0.5 pr-0.5 pl-3 text-sm">
           {c.text}
           <button
             type="button"

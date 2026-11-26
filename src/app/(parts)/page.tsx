@@ -88,7 +88,7 @@ async function Board({ searchParams }: { searchParams: PageProps<"/">["searchPar
           : "Inget att göra den här dagen.";
   const list = (key: TabKey, items: typeof open, showDue: (dueDate: string | null) => boolean): ReactNode =>
     items.length === 0 ? (
-      <p className="rounded-xl border border-dashed p-6 text-center text-muted-foreground">{emptyText(key)}</p>
+      <p className="sky-box rounded-xl border border-dashed p-6 text-center text-muted-foreground">{emptyText(key)}</p>
     ) : (
       <ul
         className="space-y-2"
@@ -120,7 +120,7 @@ async function Board({ searchParams }: { searchParams: PageProps<"/">["searchPar
         {list("nu", split.nu, (d) => d !== null && d < today)}
         {completed.length > 0 && (
           <details className="mt-8">
-            <summary className="cursor-pointer py-2 text-sm text-muted-foreground">
+            <summary className="on-sky-muted cursor-pointer py-2 text-sm text-muted-foreground">
               Klart senaste veckan ({completed.length})
             </summary>
             <ul className="mt-2 space-y-2" aria-label="Klart">

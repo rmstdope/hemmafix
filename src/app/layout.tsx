@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import { Geist } from "next/font/google";
 import { ThemeProvider } from "next-themes";
+import { SKY_HINT_SCRIPT } from "@/components/jul/sky-hint";
 import { Toaster } from "@/components/ui/sonner";
 import "./globals.css";
 
@@ -26,6 +27,14 @@ export const viewport: Viewport = {
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
     <html lang="sv" className={`${geistSans.variable} h-full antialiased`} suppressHydrationWarning>
+      <head>
+        {/* As Next's "preventing flash" guide: run from the server's HTML, inert in the browser's render. */}
+        <script
+          type={typeof window === "undefined" ? "text/javascript" : "text/plain"}
+          suppressHydrationWarning
+          dangerouslySetInnerHTML={{ __html: SKY_HINT_SCRIPT }}
+        />
+      </head>
       <body className="min-h-full flex flex-col bg-background text-foreground">
         <ThemeProvider attribute="class" defaultTheme="system" enableSystem disableTransitionOnChange>
           {children}

@@ -165,15 +165,15 @@ export function ListView({
         <Link
           href="/listor"
           aria-label="Tillbaka"
-          className="-ml-3 flex size-11 shrink-0 items-center justify-center rounded-lg text-muted-foreground"
+          className="on-sky-muted -ml-3 flex size-11 shrink-0 items-center justify-center rounded-lg text-muted-foreground"
         >
           <ArrowLeft className="size-5" />
         </Link>
-        <h1 className="min-w-0 flex-1 text-xl font-semibold break-words">{list.name}</h1>
+        <h1 className="on-sky min-w-0 flex-1 text-xl font-semibold break-words">{list.name}</h1>
         <Menu
           triggerRef={more}
           label={`Mer för ${list.name}`}
-          triggerClassName="flex size-11 items-center justify-center rounded-lg text-muted-foreground"
+          triggerClassName="on-sky-muted flex size-11 items-center justify-center rounded-lg text-muted-foreground"
           items={[
             { label: "Byt namn", onSelect: () => setDialog("rename") },
             { label: "Ta bort lista", destructive: true, onSelect: () => setDialog("delete") },
@@ -198,7 +198,7 @@ export function ListView({
         maxLength={200}
         autoComplete="off"
         enterKeyHint="done"
-        className="mb-3 h-11 w-full rounded-xl border border-input bg-transparent px-3 text-base outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 md:text-sm"
+        className="sky-box mb-3 h-11 w-full rounded-xl border border-input bg-transparent px-3 text-base outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 md:text-sm"
       />
 
       {openItems.length > 0 ? (
@@ -214,7 +214,7 @@ export function ListView({
           ))}
         </ul>
       ) : (
-        <p className="rounded-xl border border-dashed p-6 text-center text-muted-foreground">
+        <p className="sky-box rounded-xl border border-dashed p-6 text-center text-muted-foreground">
           {done.length > 0 ? "Allt är avbockat." : "Listan är tom."}
         </p>
       )}
@@ -226,11 +226,11 @@ export function ListView({
               type="button"
               onClick={toggleKlart}
               aria-expanded={klartOpen}
-              className="flex min-h-11 items-center gap-1 text-sm font-medium text-muted-foreground"
+              className="on-sky-muted flex min-h-11 items-center gap-1 text-sm font-medium text-muted-foreground"
             >
               Klart ({done.length}) <span aria-hidden>{klartOpen ? "▾" : "▸"}</span>
             </button>
-            <button type="button" onClick={clear} className="min-h-11 px-2 text-sm font-medium text-muted-foreground underline">
+            <button type="button" onClick={clear} className="on-sky-muted min-h-11 px-2 text-sm font-medium text-muted-foreground underline">
               Rensa
             </button>
           </div>
@@ -243,7 +243,7 @@ export function ListView({
                     data-box={item.id}
                     aria-label={`${item.text}: ångra avbockad`}
                     onClick={() => tick(item, false)}
-                    className="flex size-11 shrink-0 items-center justify-center rounded-full text-muted-foreground"
+                    className="done-mark flex size-11 shrink-0 items-center justify-center rounded-full text-muted-foreground"
                   >
                     <RotateCcw className="size-4" />
                   </button>

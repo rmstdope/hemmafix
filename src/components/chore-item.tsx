@@ -136,7 +136,7 @@ export function ChoreItem({
             <Button
               variant="secondary"
               size="icon-lg"
-              className="size-11 shrink-0 rounded-full"
+              className="done-mark size-11 shrink-0 rounded-full"
               ref={undoButton}
               aria-label={`${t.title}: ångra klar`}
               // No optimistic hide: a spent tick asks first, and its row must stay where it is until the answer.
@@ -145,7 +145,7 @@ export function ChoreItem({
               <RotateCcw />
             </Button>
           ) : (
-            <span className="flex size-11 shrink-0 items-center justify-center rounded-full bg-secondary" aria-hidden>
+            <span className="done-mark flex size-11 shrink-0 items-center justify-center rounded-full bg-secondary" aria-hidden>
               <Check className="size-4" />
             </span>
           )

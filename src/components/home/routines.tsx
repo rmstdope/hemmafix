@@ -28,7 +28,7 @@ export function Routines({ routines }: { routines: RoutineRow[] }) {
   return (
     <div className="space-y-3">
       {routines.length === 0 ? (
-        <p className="rounded-xl border border-dashed p-3.5 text-sm text-muted-foreground">Inga rutiner ännu.</p>
+        <p className="sky-box rounded-xl border border-dashed p-3.5 text-sm text-muted-foreground">Inga rutiner ännu.</p>
       ) : (
         <ul className="divide-y rounded-xl border bg-card" aria-label="Rutiner">
           {routines.map((r) => (
@@ -58,7 +58,7 @@ export function Routines({ routines }: { routines: RoutineRow[] }) {
           placeholder="Ny rutin"
           aria-label="Ny rutin"
           autoComplete="off"
-          className="h-11 text-base md:text-sm"
+          className="sky-box h-11 text-base md:text-sm"
         />
         <Button type="submit" className="h-11 shrink-0" disabled={pending}>
           Lägg till

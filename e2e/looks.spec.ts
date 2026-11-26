@@ -32,7 +32,7 @@ test("the three rows show every look with its price, the defaults in use", async
   await expect(tile(page, "Ingen ram, används")).toContainText("✓ Används");
   await expect(tile(page, "Svart, används")).toBeVisible();
   await expect(tile(page, "Guld, används")).toBeVisible();
-  for (const [look, price] of [["Guldram", 150], ["Himmelsram", 300], ["Lila", 200], ["Silver", 100], ["Diamant", 250], ["Stjärna", 400]] as const) {
+  for (const [look, price] of [["Guldram", 150], ["Himmelsram", 300], ["Lila", 200], ["Jul", 300], ["Silver", 100], ["Diamant", 250], ["Stjärna", 400]] as const) {
     await expect(tile(page, `${look}, ${price} mynt`)).toBeVisible();
   }
 });

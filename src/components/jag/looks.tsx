@@ -4,10 +4,11 @@ import { useRef, useState } from "react";
 import { buyLook, chooseLook, type ActionState } from "@/app/actions";
 import { useOfferCelebrations } from "@/components/coin-shower";
 import { formatCoins } from "@/lib/coins";
-import { buyLookLabel, coinsLeft, LOOKS_TITLES, LOOK_KINDS, looksOf, previewText, type Look } from "@/lib/looks";
+import { buyLookLabel, coinsLeft, LOOKS_TITLES, LOOK_KINDS, looksOf, previewMotionText, previewText, type Look } from "@/lib/looks";
 import { cn } from "@/lib/utils";
 import { attempt } from "../attempt";
 import { CoinDot } from "../coin-pill";
+import { JulPreview, JulSwatch } from "../jul/preview";
 import { MemberAvatar } from "../member-avatar";
 import { Sheet } from "../sheet";
 
@@ -29,6 +30,7 @@ function Visual({ look, name, image, large }: { look: Look; name: string; image:
       </span>
     );
   }
+  if (look.key === "jul") return large ? <JulPreview /> : <JulSwatch />;
   return (
     <span data-look-theme={look.key} className={cn("flex items-center justify-center rounded-lg", large ? "h-10 w-32" : "size-8")}>
       <span className={cn("rounded-md bg-primary text-xs font-semibold text-primary-foreground", large ? "px-4 py-2" : "size-8")}>
@@ -80,7 +82,7 @@ export function Looks({ name, image, coins, owned, chosen }: Props) {
     <div className="space-y-4">
       {LOOK_KINDS.map((kind) => (
         <section key={kind} aria-labelledby={`looks-${kind}`}>
-          <h2 id={`looks-${kind}`} className="mb-2 text-sm font-semibold">
+          <h2 id={`looks-${kind}`} className="on-sky mb-2 text-sm font-semibold">
             {LOOKS_TITLES[kind]}
           </h2>
           <ul className="-mx-4 flex gap-2 overflow-x-auto px-4 pb-1">
@@ -95,7 +97,7 @@ export function Looks({ name, image, coins, owned, chosen }: Props) {
                     aria-label={label}
                     onClick={(e) => press(look, e.currentTarget)}
                     className={cn(
-                      "flex min-h-11 w-24 flex-col items-center gap-1.5 rounded-xl border p-2 text-xs outline-none focus-visible:ring-3 focus-visible:ring-ring/50",
+                      "sky-box flex min-h-11 w-24 flex-col items-center gap-1.5 rounded-xl border p-2 text-xs outline-none focus-visible:ring-3 focus-visible:ring-ring/50",
                       used && "border-green-500 ring-2 ring-green-500",
                     )}
                   >
@@ -123,10 +125,11 @@ export function Looks({ name, image, coins, owned, chosen }: Props) {
       {preview && (
         <Sheet title={preview.name} onClose={() => setPreview(null)} returnFocusTo={opener} focusRef={focus}>
           <div className="flex flex-col items-center gap-4 py-2 text-center">
-            <div className="flex h-20 items-center justify-center">
+            <div className="flex min-h-20 w-full items-center justify-center">
               <Visual look={preview} name={name} image={image} large />
             </div>
             <p>{previewText(preview.kind)}</p>
+            {previewMotionText(preview) && <p className="-mt-3 text-sm text-muted-foreground">{previewMotionText(preview)}</p>}
             {!affordable && <p className="text-sm text-muted-foreground">{coinsLeft(preview.price, openedWith)}</p>}
             {error && (
               <p role="alert" className="text-sm text-destructive">

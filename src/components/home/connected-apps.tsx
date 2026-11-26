@@ -86,16 +86,16 @@ export function ConnectedApps({ apps }: { apps: ConnectedApp[] }) {
 
   return (
     <section className="mt-8 space-y-2" aria-labelledby="apps-heading">
-      <h2 id="apps-heading" ref={headingRef} tabIndex={-1} className="text-sm font-medium text-muted-foreground outline-none">
+      <h2 id="apps-heading" ref={headingRef} tabIndex={-1} className="on-sky-muted text-sm font-medium text-muted-foreground outline-none">
         Anslutna appar
       </h2>
       {apps.length === 0 ? (
-        <p ref={emptyRef} tabIndex={-1} className="rounded-xl border border-dashed p-3.5 text-sm text-muted-foreground outline-none">
+        <p ref={emptyRef} tabIndex={-1} className="sky-box rounded-xl border border-dashed p-3.5 text-sm text-muted-foreground outline-none">
           Du har inte anslutit några appar. När du ansluter till exempel Claude till Hemmafix syns den här.
         </p>
       ) : (
         <>
-          <p className="text-sm text-muted-foreground">Appar du har gett tillgång till hemmet. Bara du ser dina.</p>
+          <p className="on-sky-muted text-sm text-muted-foreground">Appar du har gett tillgång till hemmet. Bara du ser dina.</p>
           <ul className="divide-y rounded-xl border bg-card" aria-label="Anslutna appar">
             {apps.map((app) => (
               <li key={app.id} className="flex items-center gap-3 px-3 py-2.5">

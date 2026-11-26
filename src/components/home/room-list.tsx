@@ -48,7 +48,7 @@ export function RoomList({ rooms, floorId, where = "" }: { rooms: Room[]; floorI
   return (
     <div className="space-y-3">
       {rooms.length === 0 ? (
-        <p className="text-sm text-muted-foreground">Inga rum{suffix} ännu.</p>
+        <p className="on-sky-muted text-sm text-muted-foreground">Inga rum{suffix} ännu.</p>
       ) : (
         <ul className="divide-y rounded-xl border bg-card" aria-label={`Rum${suffix}`}>
           {rooms.map((r) =>
@@ -121,7 +121,7 @@ export function RoomList({ rooms, floorId, where = "" }: { rooms: Room[]; floorI
           autoComplete="off"
           required
           maxLength={40}
-          className="h-11 text-base md:text-sm"
+          className="sky-box h-11 text-base md:text-sm"
         />
         <Button
           type="submit"
@@ -142,7 +142,7 @@ export function RoomList({ rooms, floorId, where = "" }: { rooms: Room[]; floorI
               type="button"
               disabled={busy}
               onClick={() => addSuggestion(s)}
-              className="rounded-full border border-dashed px-3.5 py-2.5 text-sm text-muted-foreground disabled:opacity-50"
+              className="sky-box rounded-full border border-dashed px-3.5 py-2.5 text-sm text-muted-foreground disabled:opacity-50"
             >
               + {s}
             </button>

@@ -8,7 +8,7 @@ export function LevelCard({ name, image, lifetimeCoins, frame }: { name: string;
   const heading = `Nivå ${level} · ${title}`;
   const left = `${formatCoins(Math.max(0, lifetimeCoins) - start)} av ${formatCoins(next - start)} mynt till nivå ${level + 1}`;
   return (
-    <section aria-label="Nivå" className="flex items-center gap-3 rounded-xl border p-3">
+    <section aria-label="Nivå" className="sky-box flex items-center gap-3 rounded-xl border p-3">
       <MemberAvatar name={name} image={image} size="lg" frame={frame} />
       <div className="min-w-0 flex-1">
         <p className="truncate font-semibold">{heading}</p>

@@ -33,7 +33,7 @@ export function BackToPart() {
   const remembered = useRememberedPart();
   const href = PARTS.find((p) => p.key === remembered)!.href;
   return (
-    <Link href={href} aria-label="Tillbaka" className="-ml-3 flex size-11 items-center justify-center rounded-lg text-muted-foreground">
+    <Link href={href} aria-label="Tillbaka" className="on-sky-muted -ml-3 flex size-11 items-center justify-center rounded-lg text-muted-foreground">
       <ArrowLeft className="size-5" />
     </Link>
   );
