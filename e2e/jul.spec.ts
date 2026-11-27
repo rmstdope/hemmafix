@@ -1,6 +1,6 @@
 import type { Page } from "@playwright/test";
 import { PASS_MS } from "../src/lib/sky";
-import { logIn, seedChore, seedDone, seedRooms } from "./support/family";
+import { holdLooks, logIn, seedChore, seedDone, seedRooms } from "./support/family";
 import { chooseFromMenu } from "./support/menu";
 import { body, flightAt, grant, hydrated, openButik, paintedMidFlight, part, pausedClock, pieceTops, wear, WHITE } from "./support/sky";
 import { expect, test } from "./support/test";
@@ -158,6 +158,35 @@ test("the home settings pages wear it too, and switching away afterwards removes
   await page.getByRole("group", { name: "Visa" }).getByRole("button", { name: "Butik" }).click();
   await page.getByRole("button", { name: "Svart" }).click();
   await expect(page.getByRole("button", { name: "Svart, används" })).toBeVisible();
+  await expect(body(page)).not.toHaveCSS("background-color", SKY);
+});
+
+test("a page left before its marks arrived does not keep the sky once the person switches away", async ({ page, context }) => {
+  const anna = await logIn(context, "anna", "adult");
+  await wearJul(anna.id);
+  await page.goto("/jag");
+  await hydrated(page);
+  // Hemmet opens, but its marks cannot arrive until the person has left it again: Next keeps the
+  // page in the document, hidden, and the marks stream into it there.
+  const release = await holdLooks();
+  try {
+    const landed = page.waitForEvent("requestfinished", (r) => r.url().includes("/hemmet?") && !r.headers()["next-router-prefetch"]);
+    await chooseFromMenu(page, "Hemmet");
+    // Hemmet is the page shown, its own content loaded or not; its marks are still held back.
+    const shown = page.getByRole("heading", { name: "Hemmet" }).or(page.locator("main [aria-busy=true]"));
+    await expect(shown.locator("visible=true").first()).toBeVisible();
+    await page.goBack();
+    await expect(page).toHaveURL(/\/jag$/);
+    await release();
+    await landed;
+  } finally {
+    await release();
+  }
+  await hydrated(page);
+  await page.getByRole("group", { name: "Visa" }).getByRole("button", { name: "Butik" }).click();
+  await page.getByRole("button", { name: "Svart" }).click();
+  await expect(page.getByRole("button", { name: "Svart, används" })).toBeVisible();
+  await expect(page.locator('[data-look-own="jul"]')).toHaveCount(0);
   await expect(body(page)).not.toHaveCSS("background-color", SKY);
 });
 
