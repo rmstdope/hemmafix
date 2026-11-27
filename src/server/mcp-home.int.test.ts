@@ -1,6 +1,7 @@
 import { beforeAll, beforeEach, describe, expect, it } from "vitest";
-import { db, pg } from "@/db";
+import { db } from "@/db";
 import { chore, floor, household, membership, room, user } from "@/db/schema";
+import { listenForHomes } from "../../test/integration/notifications";
 
 process.env.ALLOWED_EMAILS = "anna@example.com, bo@example.com";
 process.env.BETTER_AUTH_SECRET = "integration-secret-not-for-production-0123456789";
@@ -29,16 +30,14 @@ const call = async (userId: string, name: string, args: Record<string, unknown> 
 const textOf = (r: { content: { text: string }[] }) => r.content[0]!.text;
 
 let homeId: string;
-const notified: string[] = [];
+let homes: Awaited<ReturnType<typeof listenForHomes>>;
 beforeAll(async () => {
-  await pg.listen("hemmafix_tasks", (payload) => {
-    notified.push(payload);
-  });
+  homes = await listenForHomes();
 });
 beforeEach(async () => {
   await db.delete(user);
   await db.delete(household);
-  notified.length = 0;
+  await homes.told(); // forget what the test before announced
   [{ id: homeId }] = (await db.insert(household).values({ name: "Hemma" }).returning({ id: household.id })) as [{ id: string }];
   await db.insert(user).values([
     { id: "anna", name: "Anna", email: "anna@example.com", emailVerified: true },
@@ -50,7 +49,6 @@ beforeEach(async () => {
   ]);
   await db.insert(floor).values({ householdId: homeId, name: "1", position: 1 });
 });
-const settle = () => new Promise((r) => setTimeout(r, 200));
 
 describe("renaming the home", () => {
   it("renames it and tells the open devices", async () => {
@@ -59,8 +57,7 @@ describe("renaming the home", () => {
     expect(textOf(res)).toBe("Hemmet heter nu Villa Solgläntan.");
     const [h] = await db.select().from(household);
     expect(h!.name).toBe("Villa Solgläntan");
-    await settle();
-    expect(notified).toEqual([homeId]);
+    expect(await homes.told()).toEqual([homeId]);
   });
 
   it("refuses a child and an address removed from the allowlist, changing nothing", async () => {
@@ -74,16 +71,14 @@ describe("renaming the home", () => {
     expect(textOf(removed)).toContain("inte längre tillgång");
     const [h] = await db.select().from(household);
     expect(h!.name).toBe("Hemma");
-    await settle();
-    expect(notified).toEqual([]);
+    expect(await homes.told()).toEqual([]);
   });
 
   it("answers an empty name with the app's Swedish message and tells nobody", async () => {
     const res = await call("anna", "byt_namn_pa_hemmet", { namn: "  " });
     expect(res.isError).toBe(true);
     expect(textOf(res)).toBe("Hemmet behöver ett namn");
-    await settle();
-    expect(notified).toEqual([]);
+    expect(await homes.told()).toEqual([]);
   });
 });
 
@@ -125,8 +120,7 @@ describe("floors", () => {
 
   it("tell the open devices after each change", async () => {
     await call("anna", "lagg_till_vaning");
-    await settle();
-    expect(notified).toEqual([homeId]);
+    expect(await homes.told()).toEqual([homeId]);
   });
 });
 
@@ -193,19 +187,17 @@ describe("mistakes Claude can make", () => {
       expect(res.isError, tool).toBe(true);
       expect(textOf(res), tool).toBe(expected);
     }
-    await settle();
-    expect(notified).toEqual([]);
+    expect(await homes.told()).toEqual([]);
   });
 
   it("are told when a floor cannot move further, and nobody is notified", async () => {
     await call("anna", "lagg_till_vaning");
     const [top, bottom] = await listFloors(homeId);
-    notified.length = 0;
+    await homes.told();
     expect(textOf(await call("anna", "flytta_vaning", { vaning_id: top!.id, riktning: "up" }))).toBe("Våningen är redan överst.");
     expect(textOf(await call("anna", "flytta_vaning", { vaning_id: bottom!.id, riktning: "down" }))).toBe("Våningen är redan nederst.");
     expect((await listFloors(homeId)).map((f) => f.id)).toEqual([top!.id, bottom!.id]);
-    await settle();
-    expect(notified).toEqual([]);
+    expect(await homes.told()).toEqual([]);
   });
 });
 
@@ -215,8 +207,7 @@ describe("live updates", () => {
     const [top, bottom] = await listFloors(homeId);
     await call("anna", "lagg_till_rum", { namn: "Kök", vaning_id: bottom!.id });
     const [kok] = await listRooms(homeId);
-    await settle();
-    notified.length = 0;
+    await homes.told();
     const writes: [string, Record<string, unknown>][] = [
       ["byt_namn_pa_hemmet", { namn: "Nytt" }],
       ["lagg_till_vaning", {}],
@@ -228,16 +219,12 @@ describe("live updates", () => {
       ["ta_bort_vaning", { vaning_id: bottom!.id }],
     ];
     for (const [tool, args] of writes) {
-      notified.length = 0;
       const res = await call("anna", tool, args);
       expect(res.isError, `${tool}: ${textOf(res)}`).toBeFalsy();
-      await settle();
-      expect(notified, tool).toEqual([homeId]);
+      expect(await homes.told(), tool).toEqual([homeId]);
     }
-    notified.length = 0;
     await call("anna", "lista_vaningar_och_rum");
-    await settle();
-    expect(notified).toEqual([]);
+    expect(await homes.told()).toEqual([]);
   });
 });
 
