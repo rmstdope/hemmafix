@@ -20,48 +20,17 @@ afterAll(async () => {
 });
 
 describe("verify-app reset", () => {
-  it("clears the routines, keeps them cleared, and status counts them", { timeout: 30_000 }, async () => {
+  // One home holding everything, so status and reset start once for all tables, not once per group:
+  // every start re-checks the database and its migrations.
+  it("clears routines, lists, coins and rewards, keeps them cleared and keeps the logins", { timeout: 30_000 }, async () => {
     await verifyApp("status"); // creates and migrates the scratch database
     const sql = postgres(databaseUrl(scratch), { max: 1 });
     try {
       const [home] = await sql`insert into household (name) values ('Hemma') returning id`;
       const [r] = await sql`insert into routine (household_id, name) values (${home!.id}, 'Tom rutin') returning id`;
       await sql`insert into routine_task (routine_id, title) values (${r!.id}, 'Damma')`;
-      expect(JSON.parse(await verifyApp("status")).routines).toBe("1");
-
-      await verifyApp("reset");
-
-      expect(JSON.parse(await verifyApp("status")).routines).toBe("0");
-      expect(await sql`select 1 from routine_task`).toHaveLength(0);
-      const [after] = await sql`select routines_seeded_at from household`;
-      expect(after!.routines_seeded_at).not.toBeNull();
-    } finally {
-      await sql.end();
-    }
-  });
-
-  it("clears the lists and their items, and status counts them", { timeout: 30_000 }, async () => {
-    await verifyApp("status");
-    const sql = postgres(databaseUrl(scratch), { max: 1 });
-    try {
-      const [home] = await sql`insert into household (name) values ('Hemma') returning id`;
       const [l] = await sql`insert into list (household_id, name) values (${home!.id}, 'Ölkväll') returning id`;
       await sql`insert into list_item (list_id, text, rank) values (${l!.id}, 'Chips', 1)`;
-      expect(JSON.parse(await verifyApp("status")).lists).toBe("1");
-
-      await verifyApp("reset");
-
-      expect(JSON.parse(await verifyApp("status")).lists).toBe("0");
-      expect(await sql`select 1 from list_item`).toHaveLength(0);
-    } finally {
-      await sql.end();
-    }
-  });
-  it("clears coins, purchases, badges, chests and recap marks, and keeps the logins", { timeout: 30_000 }, async () => {
-    await verifyApp("status");
-    const sql = postgres(databaseUrl(scratch), { max: 1 });
-    try {
-      const [home] = await sql`insert into household (name) values ('Hemma') returning id`;
       const [u] = await sql`insert into "user" (id, name, email) values ('u-coins', 'Mia', 'mia@example.com') returning id`;
       await sql`insert into account (id, account_id, provider_id, user_id) values ('a-coins', 'g1', 'google', ${u!.id})`;
       await sql`insert into membership (user_id, household_id, role, frame, theme, coin_look) values (${u!.id}, ${home!.id}, 'adult', 'f', 'x', 'c')`;
@@ -71,17 +40,23 @@ describe("verify-app reset", () => {
       await sql`insert into badge_award (household_id, user_id, key, coins) values (${home!.id}, ${u!.id}, 'first', 25)`;
       await sql`insert into daily_chest (household_id, user_id, day, coins) values (${home!.id}, ${u!.id}, '2026-11-24', 5)`;
       await sql`insert into week_recap_seen (user_id, week_start) values (${u!.id}, '2026-11-23')`;
-      const before = JSON.parse(await verifyApp("status"));
-      expect([before.look_purchases, before.reward_purchases, before.rewards, before.chests, before.badges]).toEqual(["1", "1", "1", "1", "1"]);
+      const counted = ["routines", "lists", "look_purchases", "reward_purchases", "rewards", "chests", "badges"];
+      const counts = async () => {
+        const status = JSON.parse(await verifyApp("status"));
+        return Object.fromEntries(counted.map((key) => [key, status[key]]));
+      };
+      const all = (n: string) => Object.fromEntries(counted.map((key) => [key, n]));
+      expect(await counts()).toEqual(all("1"));
 
       await verifyApp("reset");
 
-      const after = JSON.parse(await verifyApp("status"));
-      expect([after.look_purchases, after.reward_purchases, after.rewards, after.chests, after.badges]).toEqual(["0", "0", "0", "0", "0"]);
+      expect(await counts()).toEqual(all("0"));
+      const [after] = await sql`select routines_seeded_at from household`;
+      expect(after!.routines_seeded_at).not.toBeNull();
       const [m] = await sql`select frame, theme, coin_look from membership where user_id = ${u!.id}`;
       expect(m).toEqual({ frame: null, theme: null, coin_look: null });
 
-      for (const table of ["look_purchase", "reward", "reward_purchase", "badge_award", "daily_chest", "week_recap_seen"]) {
+      for (const table of ["routine_task", "list_item", "look_purchase", "reward", "reward_purchase", "badge_award", "daily_chest", "week_recap_seen"]) {
         expect(await sql`select 1 from ${sql(table)}`, table).toHaveLength(0);
       }
       expect(await sql`select 1 from "user" where id = 'u-coins'`).toHaveLength(1);
