@@ -41,6 +41,9 @@ test("a page left by soft navigation stops matching every page-wide mark", async
   const bar = test.info().project.name === "mobile" ? "4rem" : "0px";
   const onAPart = { "data-look-own": 1, "data-look-own-coin": 1, "data-look-scope": 1, "data-parts-bar": 1 };
 
+  // No live updates: a refresh still on its way when the session ends, below, would redirect
+  // before the press.
+  await page.route("**/api/events", (route) => route.abort());
   await page.goto("/jag");
   await hydrated(page);
   await expect(page.locator('[data-look-own="jul"][data-look-own-coin="silver"]')).toHaveCount(1);
