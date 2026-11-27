@@ -117,6 +117,22 @@ test("the tab is kept on reload and when going to Listor and back; a fresh openi
   await expect(tab(page, /^Nu,/)).toHaveAttribute("aria-selected", "true");
 });
 
+test("a tapped tab survives a tick off and a reload", async ({ page, context }) => {
+  await logIn(context, "anna", "adult");
+  await seedBoard();
+  await page.goto("/");
+  await tab(page, /^Senare,/).click();
+  await expect(page).toHaveURL(/[?&]flik=senare\b/);
+
+  await item(page, "Laga").getByRole("button", { name: "Markera som klar" }).click();
+  // The count comes from the server's render, so the action's refresh has landed.
+  await expect(tab(page, /^Senare,/)).toHaveText("Senare1");
+  await expect(page).toHaveURL(/[?&]flik=senare\b/);
+
+  await page.reload();
+  await expect(tab(page, /^Senare,/)).toHaveAttribute("aria-selected", "true");
+});
+
 test("Klart senaste veckan is a fold on Nu only", async ({ page, context }) => {
   const anna = await logIn(context, "anna", "adult");
   const rooms = await seedRooms("Kök");
