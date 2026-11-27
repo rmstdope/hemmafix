@@ -207,7 +207,7 @@ function BuySheet({
             startTransition(async () => {
               const result = await buyReward(reward.id);
               if (result.ok) {
-                if (result.badges || result.levelUp) offerCelebrations({ badges: result.badges ?? [], levelUp: result.levelUp });
+                if (result.report) offerCelebrations(result.report);
                 return onClose();
               }
               if (result.error === NOT_ENOUGH) return setError(NOT_ENOUGH);

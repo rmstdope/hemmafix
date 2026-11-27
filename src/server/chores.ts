@@ -11,7 +11,6 @@ import { assertCan, can, type Role } from "@/lib/permissions";
 import { earlyDoneMessage, isNotYetDue, lockedMessage } from "@/lib/early-tick";
 import { laterThan } from "@/lib/postpone";
 import { SAVE_FAILED } from "@/lib/routine-texts";
-import type { BadgeKey } from "@/lib/badges";
 import { levelFor } from "@/lib/levels";
 import { rollChestCoins } from "@/lib/chest";
 import { findTemplate } from "@/lib/chore-templates";
@@ -29,7 +28,7 @@ import {
   undoPostponeInput,
   type BoardFilter,
 } from "@/lib/validation";
-import { awardBadges } from "./badges";
+import { awardBadges, type Won } from "./badges";
 import { sumEarned, type Reader } from "./earned";
 import type { Actor } from "./household";
 
@@ -267,11 +266,36 @@ async function lockForMove(tx: Tx, actor: Actor, id: string) {
   return row;
 }
 
+// ---------------------------------------------------------------------------
+// What moving, ticking off and undoing report. src/app/actions.ts passes a report on to the app as
+// it is, so a new thing to tell the person is a field here and in the component that shows it.
+// ---------------------------------------------------------------------------
+
+/** What a tick-off offers to celebrate: the day's chest, badges just won and a level just reached. */
+export type CompleteReport = Won & {
+  kind: "done";
+  chestId: string | null;
+  chestCoins: number | null;
+  /** Said to the person when the tick gave no coins because the chore was not yet due. */
+  notice: string | null;
+};
+
+/**
+ * An undo that would leave the person below zero asks first and writes nothing. One that went
+ * ahead says the debt it left, if any.
+ */
+export type UndoReport = { kind: "asked"; confirm: UndoDebt } | { kind: "undone"; debt: UndoDebt | null };
+
+/** What Ångra needs after a move. */
+export type MoveReport = { kind: "moved"; postponed: { from: string; version: string } };
+
+export type TaskReport = CompleteReport | UndoReport | MoveReport;
+
 /**
  * Moves an open instance to a later day. Only that day changes, so a recurring task comes back
  * one interval after it is done, as ever. Resolves with what Ångra needs.
  */
-export async function postponeInstance(actor: Actor, id: string, day: string) {
+export async function postponeInstance(actor: Actor, id: string, day: string): Promise<MoveReport> {
   assertCan(actor, "task:postpone");
   const input = postponeInput.parse({ id, day });
 
@@ -286,7 +310,7 @@ export async function postponeInstance(actor: Actor, id: string, day: string) {
       .set({ dueDate: input.day })
       .where(eq(choreInstance.id, input.id))
       .returning({ version: instanceVersion });
-    return { postponed: { from: row.dueDate, version: `${moved!.version}.${row.choreVersion}` } };
+    return { kind: "moved", postponed: { from: row.dueDate, version: `${moved!.version}.${row.choreVersion}` } };
   });
 }
 
@@ -328,16 +352,6 @@ export async function deleteChore(actor: Actor, id: string) {
 // ---------------------------------------------------------------------------
 // Ticking off (everyone)
 // ---------------------------------------------------------------------------
-
-/** What a tick-off offers to celebrate: the day's chest, badges just won and a level just reached. */
-export type CompleteReport = {
-  chestId: string | null;
-  chestCoins: number | null;
-  badges: BadgeKey[];
-  levelUp: { level: number; title: string } | null;
-  /** Said to the person when the tick gave no coins because the chore was not yet due. */
-  notice: string | null;
-};
 
 /**
  * Ticks off an open instance. For a recurring task the next instance is created at once,
@@ -426,7 +440,7 @@ export async function completeInstance(
       .returning({ id: dailyChest.id, coins: dailyChest.coins });
     return { chest: chest ?? null, badges, levelUp, notice };
   });
-  return { chestId: chest?.id ?? null, chestCoins: chest?.coins ?? null, badges, levelUp, notice };
+  return { kind: "done", chestId: chest?.id ?? null, chestCoins: chest?.coins ?? null, badges, levelUp, notice };
 }
 
 /** Opens the actor's own chest, which credits its coins. Opening again changes nothing. */
@@ -451,7 +465,7 @@ export async function uncompleteInstance(
   actor: Actor,
   id: string,
   { confirmDebt = false }: { confirmDebt?: boolean } = {},
-): Promise<{ confirm: UndoDebt } | { debt: UndoDebt } | undefined> {
+): Promise<UndoReport> {
   const target = instanceIdInput.parse(id);
 
   return db.transaction(async (tx) => {
@@ -469,7 +483,7 @@ export async function uncompleteInstance(
       // Lock the task too, so a tick and an undo of the same task take turns.
       .for("update");
     if (!row || row.archivedAt) throw new UserError("Uppgiften finns inte längre");
-    if (!row.completedAt) return;
+    if (!row.completedAt) return { kind: "undone", debt: null };
     if (row.completedById !== actor.userId) assertCan(actor, "task:uncomplete-others");
 
     const [later] = await tx
@@ -491,14 +505,14 @@ export async function uncompleteInstance(
     // A tick that gave nothing takes nothing back, and one whose person is gone has no balance.
     const ticker = row.completedById;
     const given = row.coins ?? 0;
-    let debt: UndoDebt | undefined;
+    let debt: UndoDebt | null = null;
     if (ticker && given > 0) {
       await tx.execute(sql`select pg_advisory_xact_lock(hashtext('hemmafix:coins:' || ${ticker}))`);
       const after = (await balanceOf(actor.householdId, ticker, tx)) - given;
       if (after < 0) {
         const [who] = await tx.select({ name: user.name }).from(user).where(eq(user.id, ticker));
         debt = { own: ticker === actor.userId, name: (who?.name ?? "").split(" ")[0] ?? "", balance: after };
-        if (!confirmDebt) return { confirm: debt };
+        if (!confirmDebt) return { kind: "asked", confirm: debt };
       }
     }
 
@@ -511,7 +525,7 @@ export async function uncompleteInstance(
       .update(choreInstance)
       .set({ completedAt: null, completedById: null, doneTitle: null, doneRoomId: null, coins: null, tickedOn: null })
       .where(eq(choreInstance.id, target));
-    return debt && { debt };
+    return { kind: "undone", debt };
   });
 }
 

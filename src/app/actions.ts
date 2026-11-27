@@ -5,7 +5,6 @@ import { unstable_rethrow } from "next/navigation";
 import { z } from "zod";
 import { UserError } from "@/lib/errors";
 import { SAVE_FAILED } from "@/lib/routine-texts";
-import type { UndoDebt } from "@/lib/debt";
 import type { Role } from "@/lib/permissions";
 import { getCurrentMember, type CurrentMember } from "@/server/dal";
 import * as home from "@/server/household";
@@ -17,65 +16,43 @@ import * as highFives from "@/server/high-fives";
 import * as looks from "@/server/looks";
 import * as weeks from "@/server/weeks";
 import * as rewards from "@/server/rewards";
+import type { Won } from "@/server/badges";
 import type { ItemView, ListOrder } from "@/lib/lists";
 
-export type ActionState = {
+/** Everything an action reports back to the app: a task's own reports, and what a purchase won. */
+type Report = chores.TaskReport | Won;
+
+/** The one thing added to a report on its way to the app: a level-up also says who reached it. */
+type ReachedBy = { levelUp?: (NonNullable<Won["levelUp"]> & Pick<CurrentMember, "name" | "image">) | null };
+
+export type ActionState<R extends Report = never> = {
   ok: boolean;
   error?: string;
   id?: string;
   count?: number;
-  /** The day's chest a tick-off offered, and what is in it (completeInstance only). */
-  chestId?: string;
-  chestCoins?: number;
-  /** An undo that would leave the person below zero asks first and writes nothing (uncompleteInstance only). */
-  confirm?: UndoDebt;
-  /** Badges the tick-off just won, and the level it reached (completeInstance only). */
-  badges?: string[];
-  levelUp?: { level: number; title: string; name: string; image: string | null };
-  /** Said to the person after a tick that gave no coins because the chore was not yet due (completeInstance only). */
-  notice?: string;
-  /** What Ångra needs after a move (postponeInstance only). */
-  postponed?: { from: string; version: string };
+  /** What the server function reports, as it is (see its type for what each field means). */
+  report?: R & ReachedBy;
 };
 
 const LOGGED_OUT = "Du är utloggad – ladda om sidan och logga in igen.";
 
+type ActOptions = { notify?: boolean; refreshPage?: boolean; refreshOnError?: boolean };
+
 /**
- * Runs `fn` as the logged-in member, then tells the household's other devices and refreshes
- * this one. Mistakes the person can fix (invalid input, not allowed, already exists) come
- * back as `{ ok: false, error }`; anything else is a bug and is thrown.
+ * Runs `fn` as the logged-in member and, if it `changed` something, tells the household's other
+ * devices and refreshes this one. Mistakes the person can fix (invalid input, not allowed, already
+ * exists) come back as `{ ok: false, error }`; anything else is a bug and is thrown.
  */
-async function act(
-  fn: (member: CurrentMember) => Promise<unknown>,
-  {
-    notify = true,
-    refreshPage = true,
-    refreshOnError = false,
-  }: { notify?: boolean; refreshPage?: boolean; refreshOnError?: boolean } = {},
-): Promise<ActionState> {
+async function perform<T>(
+  fn: (member: CurrentMember) => Promise<T>,
+  { notify = true, refreshPage = true, refreshOnError = false }: ActOptions,
+  changed: (out: T) => boolean = () => true,
+): Promise<{ ok: false; error: string } | { ok: true; out: T; member: CurrentMember }> {
   const member = await getCurrentMember();
   if (!member) return { ok: false, error: LOGGED_OUT };
-  let extra: Partial<ActionState> = {};
+  let out: T;
   try {
-    const out = await fn(member);
-    // Asked, not done: nothing changed, so nobody is told and nothing is refreshed.
-    if (out && typeof out === "object" && "confirm" in out) return { ok: true, confirm: out.confirm as UndoDebt };
-    // Only what a tick-off (chest, badges, level) and a move report goes back; the rest stays on the server.
-    if (out && typeof out === "object") {
-      const { chestId, chestCoins, badges, levelUp, notice, postponed } = out as {
-        postponed?: ActionState["postponed"];
-        chestId?: string;
-        chestCoins?: number;
-        badges?: string[];
-        levelUp?: { level: number; title: string } | null;
-        notice?: string | null;
-      };
-      if (notice) extra = { notice };
-      if (postponed) extra = { postponed };
-      if (chestId && chestCoins !== undefined) extra = { ...extra, chestId, chestCoins };
-      if (badges?.length) extra = { ...extra, badges };
-      if (levelUp) extra = { ...extra, levelUp: { ...levelUp, name: member.name, image: member.image } };
-    }
+    out = await fn(member);
   } catch (e) {
     // A refusal that means the page is behind (the row moved or went) brings the fresh list with it.
     if (refreshOnError && e instanceof UserError) refresh();
@@ -83,9 +60,33 @@ async function act(
     if (e instanceof z.ZodError) return { ok: false, error: e.issues[0]?.message ?? "Ogiltiga uppgifter" };
     throw e;
   }
-  if (notify) await chores.notifyHouseholdChanged(member.householdId);
-  if (refreshPage) refresh();
-  return { ok: true, ...extra };
+  if (changed(out)) {
+    if (notify) await chores.notifyHouseholdChanged(member.householdId);
+    if (refreshPage) refresh();
+  }
+  return { ok: true, out, member };
+}
+
+/** `perform` for an action with nothing to report: whatever `fn` resolves with stays on the server. */
+async function act(fn: (member: CurrentMember) => Promise<unknown>, options: ActOptions = {}): Promise<ActionState> {
+  const done = await perform(fn, options);
+  return done.ok ? { ok: true } : done;
+}
+
+/**
+ * `perform` for an action whose report goes back to the app. The whole object is sent, so `fn` must
+ * resolve with exactly what the app may see, never a row. One that only asked has changed nothing.
+ */
+async function actAndReport<R extends Report>(
+  fn: (member: CurrentMember) => Promise<R>,
+  options: ActOptions = {},
+): Promise<ActionState<R>> {
+  const done = await perform(fn, options, (report) => !("kind" in report && report.kind === "asked"));
+  if (!done.ok) return done;
+  const { out, member } = done;
+  const reached: ReachedBy =
+    "levelUp" in out && out.levelUp ? { levelUp: { ...out.levelUp, name: member.name, image: member.image } } : {};
+  return { ok: true, report: { ...out, ...reached } };
 }
 
 // ---------------------------------------------------------------------------
@@ -254,11 +255,11 @@ export async function editChore(
 }
 
 export async function completeInstance(id: string) {
-  return act((m) => chores.completeInstance(m, id));
+  return actAndReport((m) => chores.completeInstance(m, id));
 }
 
 export async function postponeInstance(id: string, day: string) {
-  return act((m) => chores.postponeInstance(m, id, day), { refreshOnError: true });
+  return actAndReport((m) => chores.postponeInstance(m, id, day), { refreshOnError: true });
 }
 
 export async function undoPostpone(id: string, back: { to: string; version: string }) {
@@ -270,7 +271,7 @@ export async function openChest(id: string) {
 }
 
 export async function uncompleteInstance(id: string, confirmDebt = false) {
-  return act((m) => chores.uncompleteInstance(m, id, { confirmDebt }));
+  return actAndReport((m) => chores.uncompleteInstance(m, id, { confirmDebt }));
 }
 
 export async function assignInstance(id: string, assigneeId: string | null) {
@@ -302,7 +303,7 @@ export async function closeWeekRecap() {
 
 /** Buys a look with coins and starts using it. */
 export async function buyLook(kind: string, key: string) {
-  return act((m) => looks.buyLook(m, kind, key));
+  return actAndReport((m) => looks.buyLook(m, kind, key));
 }
 
 /** Switches to a look the person owns (or the free default of its kind). */
@@ -327,7 +328,7 @@ export async function deleteReward(id: string) {
 }
 
 export async function buyReward(id: string) {
-  return act((m) => rewards.buyReward(m, id));
+  return actAndReport((m) => rewards.buyReward(m, id));
 }
 
 export async function cancelPurchase(id: string) {
