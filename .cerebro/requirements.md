@@ -163,3 +163,6 @@ REL-1  Every merge to main is released as the image that was tested, and it come
 REL-2  A release that does not come up healthy is rolled back to the previous image, so every
        migration also works with the previous release's code.
        Proven by: src/db/migrations.int.test.ts
+REL-3  A merge that changes only files under docs/ starts no release, and its pull request's
+       required checks pass without running.
+       Proven by: nothing yet
