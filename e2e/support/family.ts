@@ -123,6 +123,24 @@ export async function closeDatabase() {
   await client.end();
 }
 
+/**
+ * Holds back every read of the person's looks (their theme and coin marks) until the returned
+ * function is called, by locking the table those reads wait on. A page then shows without its marks.
+ * Releasing twice is harmless, so a test can also release in `finally`.
+ */
+export async function holdLooks(): Promise<() => Promise<void>> {
+  const lock = await client.reserve();
+  await lock`begin`;
+  await lock`lock table look_purchase in access exclusive mode`;
+  let held = true;
+  return async () => {
+    if (!held) return;
+    held = false;
+    await lock`rollback`;
+    lock.release();
+  };
+}
+
 /** The household's floors (created on demand), top floor first. */
 export async function floors() {
   const householdId = await homeId();
