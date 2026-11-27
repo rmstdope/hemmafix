@@ -1,5 +1,5 @@
-# Every pull request and push to main: lint, types, unit tests, integration tests and
-# migrations against a real Postgres, a production build, and end-to-end tests of that build
+# Every pull request and push to main: lint, types, unit tests, repository checks, integration
+# tests and migrations against a real Postgres, a production build, and end-to-end tests of that build
 # in a browser, split into shards that run side by side. Main publishes only the exact image that
 # passed the smoke test, plus the deployment manifest rmstdope-infra reads (artifact `deployment-manifest`).
 #
@@ -63,6 +63,8 @@ jobs:
       - run: pnpm run typecheck
         if: steps.changes.outputs.run != 'false'
       - run: pnpm run test
+        if: steps.changes.outputs.run != 'false'
+      - run: pnpm run test:repo
         if: steps.changes.outputs.run != 'false'
       - name: Integration tests (server code against Postgres)
         if: steps.changes.outputs.run != 'false'

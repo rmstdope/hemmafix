@@ -59,10 +59,13 @@ delete from membership where user_id = (select id from "user" where email = 'adr
 
 ## Tester
 
-Tre nivåer, alla körs i CI på varje PR och måste passera innan något publiceras. Undantaget är
+Fyra nivåer, alla körs i CI på varje PR och måste passera innan något publiceras. Undantaget är
 en ändring som bara rör `docs/`: se [deploy/README.md](deploy/README.md).
 
 - **Enhetstester** (`src/**/*.test.ts`): ren logik, ingen databas.
+- **Repokontroller** (`test/repo/**/*.test.ts`): det som håller ihop bygge och driftsättning:
+  `scripts/ci-needed.sh`, de fel i CI-flödet som annars inte skulle märkas och att
+  Node-versionen är densamma överallt.
 - **Integrationstester** (`src/**/*.int.test.ts`): serverkod mot en riktig Postgres,
   inklusive inloggningskrokarna i `src/server/auth.ts`. Varje testfil får en egen
   nymigrerad databas (kopierad från en mall), så filerna kör parallellt utan att se
@@ -102,6 +105,7 @@ planerat underhåll med en databasdump först, inte en vanlig release.
 | `pnpm dev` | Utvecklingsserver |
 | `pnpm build` | Produktionsbygge (standalone) |
 | `pnpm test` | Enhetstester (Vitest) |
+| `pnpm test:repo` | Repokontroller (se *Tester*) |
 | `pnpm test:int` | Integrationstester mot Postgres (se *Tester*) |
 | `pnpm test:e2e` | End-to-end-tester mot det senaste bygget |
 | `pnpm e2e` | Bygg och kör end-to-end-testerna |
