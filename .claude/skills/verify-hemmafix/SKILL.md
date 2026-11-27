@@ -78,8 +78,9 @@ so they log in once and every look after reuses it.
 - **Start every look with `verify-app reset`**, then `verify-app status`: whatever an earlier look,
   or a review of an outside pull request, left in the home is gone, and the home is named
   **Familjen (verifiering)**. `status` shows every member with their role, whether they can log in,
-  until when their login lasts, and how many floors, rooms, chores, routines, lists, registered clients and
-  connections there are. Put its output in each report. If the helper refuses because the database
+  until when their login lasts, and under `rows` how many rows each table of the home's contents holds
+  (`floor`, `chore`, `oauth_client`, `app_connection_use` and every other table but the logins, the
+  members and the server's own). Put its output in each report. If the helper refuses because the database
   holds a migration this tree does not know, that is a blocker: ask the navigator, and never drop the
   database yourself.
 - **No working login** (no member with `logs_in` true and a `login_until` in the future): ask the

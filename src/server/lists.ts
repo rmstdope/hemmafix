@@ -5,7 +5,7 @@ import { list, listItem, membership } from "@/db/schema";
 import { UserError } from "@/lib/errors";
 import type { ItemView, ListOrder } from "@/lib/lists";
 import { assertCan } from "@/lib/permissions";
-import { listId, listItemId, listItemText, listName, listOrder, restoredItems } from "@/lib/validation";
+import { flag, listId, listItemId, listItemText, listName, listOrder, restoredItems } from "@/lib/validation";
 import type { Tx } from "./chores";
 import type { Actor } from "./household";
 
@@ -152,12 +152,13 @@ export async function editItem(actor: Actor, id: string, itemId: string, text: s
 
 /** Ticks an item into Klart, or unticks it back to the top of the open items. */
 export async function setItemDone(actor: Actor, id: string, itemId: string, done: boolean) {
+  const ticked = flag.parse(done);
   await change(actor, id, async (tx, target) => {
     const item = await lockItem(tx, target, itemId);
-    if (done === Boolean(item.doneAt)) return;
+    if (ticked === Boolean(item.doneAt)) return;
     await tx
       .update(listItem)
-      .set(done ? { doneAt: new Date() } : { doneAt: null, rank: await nextRank(tx, target) })
+      .set(ticked ? { doneAt: new Date() } : { doneAt: null, rank: await nextRank(tx, target) })
       .where(eq(listItem.id, item.id));
   });
 }
