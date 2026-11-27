@@ -22,6 +22,12 @@ const RULES: Record<Action, "V" | "V+B"> = {
   "reward:manage": "V",
   "reward:give": "V",
   "app:connect": "V",
+  "coins:spend": "V+B",
+  "look:choose": "V+B",
+  "purchase:cancel": "V+B",
+  "note:close": "V+B",
+  "list:order": "V+B",
+  "high-five:take-back": "V+B",
 };
 
 describe("can", () => {

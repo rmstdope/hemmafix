@@ -4,7 +4,7 @@ import { z } from "zod";
 import { db } from "@/db";
 import { reward, rewardPurchase, user } from "@/db/schema";
 import { UserError } from "@/lib/errors";
-import { ForbiddenError, assertCan } from "@/lib/permissions";
+import { ForbiddenError, assertCan, can } from "@/lib/permissions";
 import { giveRecipients, rewardInput, type RewardInput } from "@/lib/rewards";
 import { balanceOf, listFamily } from "./chores";
 import type { Actor } from "./household";
@@ -68,8 +68,9 @@ export async function deleteReward(actor: Actor, id: string) {
 // Buying
 // ---------------------------------------------------------------------------
 
-/** Spends the actor's coins on a reward; an adult is asked to give it. Exactly enough is enough. */
+/** Spends the actor's coins on a reward; someone who may give rewards is asked to. Exactly enough is enough. */
 export async function buyReward(actor: Actor, id: string): Promise<Won> {
+  assertCan(actor, "coins:spend");
   const target = idOrGone(id, GONE_REWARD);
   return db.transaction(async (tx) => {
     // One spend at a time per person, whatever it buys (looks take the same lock, src/server/looks.ts).
@@ -90,6 +91,7 @@ export async function buyReward(actor: Actor, id: string): Promise<Won> {
 
 /** The buyer takes a waiting purchase back: the row goes and the coins return. */
 export async function cancelPurchase(actor: Actor, id: string) {
+  assertCan(actor, "purchase:cancel");
   const target = idOrGone(id, GONE_PURCHASE);
   const removed = await db
     .delete(rewardPurchase)
@@ -149,9 +151,9 @@ export async function listMyPurchases(actor: Actor): Promise<PurchaseView[]> {
 
 export type GoldRow = { id: string; buyerName: string; name: string; price: number; createdAt: Date };
 
-/** Waiting purchases the actor is asked to give, the newest last; always empty for a child. */
+/** Waiting purchases the actor is asked to give, the newest last; empty if they may give none. */
 export async function listGoldRows(actor: Actor): Promise<GoldRow[]> {
-  if (actor.role !== "adult") return [];
+  if (!can(actor.role, "reward:give")) return [];
   const [waiting, family] = await Promise.all([
     db
       .select({

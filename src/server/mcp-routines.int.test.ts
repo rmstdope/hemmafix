@@ -1,7 +1,8 @@
 import { and, eq } from "drizzle-orm";
 import { beforeAll, beforeEach, describe, expect, it } from "vitest";
-import { db, pg } from "@/db";
+import { db } from "@/db";
 import { chore, choreInstance, floor, household, membership, room, routine, routineTask, user } from "@/db/schema";
+import { listenForHomes } from "../../test/integration/notifications";
 
 process.env.ALLOWED_EMAILS = "anna@example.com, bo@example.com";
 process.env.BETTER_AUTH_SECRET = "integration-secret-not-for-production-0123456789";
@@ -31,16 +32,14 @@ const textOf = (r: { content: { text: string }[] }) => r.content[0]!.text;
 let homeId: string;
 let roomId: string;
 let otherHomeRoutine: string;
-const notified: string[] = [];
+let homes: Awaited<ReturnType<typeof listenForHomes>>;
 beforeAll(async () => {
-  await pg.listen("hemmafix_tasks", (payload) => {
-    notified.push(payload);
-  });
+  homes = await listenForHomes();
 });
 beforeEach(async () => {
   await db.delete(user);
   await db.delete(household);
-  notified.length = 0;
+  await homes.told(); // forget what the test before announced
   [{ id: homeId }] = (await db.insert(household).values({ name: "Hemma" }).returning({ id: household.id })) as [{ id: string }];
   const [other] = await db.insert(household).values({ name: "Grannen" }).returning({ id: household.id });
   await db.insert(user).values([
@@ -58,7 +57,6 @@ beforeEach(async () => {
   // The home already holds its ready-made routines once seeded; start every test from a known set.
   await db.update(household).set({ routinesSeededAt: new Date() }).where(eq(household.id, homeId));
 });
-const settle = () => new Promise((r) => setTimeout(r, 200));
 const idIn = (s: string) => /id ([0-9a-f-]{36})/.exec(s)![1]!;
 
 const makeRoutine = async (name = "Städa", tasks = ["Dammsug", "Torka"]) => {
@@ -71,13 +69,11 @@ const makeRoutine = async (name = "Städa", tasks = ["Dammsug", "Torka"]) => {
 describe("listing routines", () => {
   it("shows routines, their tasks and ids; read-only, so nothing is announced", async () => {
     const id = await makeRoutine();
-    await settle();
-    notified.length = 0;
+    await homes.told();
     const res = await call("anna", "visa_rutiner");
     expect(res.isError).toBeFalsy();
     expect(textOf(res)).toMatch(new RegExp(`^Städa \\[${id}\\]\\n- Dammsug \\[[0-9a-f-]{36}\\] – 10 mynt\\n- Torka \\[[0-9a-f-]{36}\\] – 10 mynt$`));
-    await settle();
-    expect(notified).toEqual([]);
+    expect(await homes.told()).toEqual([]);
   });
 
   it("says so when the home has none", async () => {
@@ -96,9 +92,9 @@ describe("managing routines", () => {
       "Rutinen Storstäda togs bort. Uppgifter som redan lagts till i hemmet finns kvar.",
     );
     expect(await db.select().from(routine).where(eq(routine.id, id))).toHaveLength(0);
-    await settle();
-    expect(notified.length).toBeGreaterThan(0);
-    expect(new Set(notified)).toEqual(new Set([homeId]));
+    const told = await homes.told();
+    expect(told.length).toBeGreaterThan(0);
+    expect(new Set(told)).toEqual(new Set([homeId]));
   });
 
   it("answers the app's errors in Swedish and changes nothing", async () => {
@@ -181,8 +177,7 @@ describe("adding a routine to a room", () => {
     expect(instances.map((i) => i.dueDate)).toEqual(["2026-12-01", "2026-12-01"]);
     // The routine is a template: still there, untouched.
     expect(await db.select().from(routineTask).where(eq(routineTask.routineId, id))).toHaveLength(2);
-    await settle();
-    expect(notified.length).toBeGreaterThan(0);
+    expect((await homes.told()).length).toBeGreaterThan(0);
   });
 
   it("adds one-off tasks with a due date and no person", async () => {
@@ -216,12 +211,10 @@ describe("adding a routine to a room", () => {
     expect(stranger.isError).toBe(true);
     expect(textOf(stranger)).toBe("Personen finns inte i hemmet");
     expect(await db.select().from(chore)).toHaveLength(0);
-    await settle();
     // Only the setup writes were announced; none of the refusals.
-    const before = notified.length;
+    await homes.told();
     await call("anna", "lagg_till_rutin_i_hemmet", { routineId: id, roomId, kind: "once", assigneeId: "nobody" });
-    await settle();
-    expect(notified.length).toBe(before);
+    expect(await homes.told()).toEqual([]);
   });
 });
 
@@ -248,8 +241,7 @@ describe("who may", () => {
 
   it("refuse a child on every tool, changing nothing", async () => {
     const id = await makeRoutine();
-    await settle();
-    notified.length = 0;
+    await homes.told();
     for (const [name, args] of tools) {
       const res = await call("bo", name, { ...args, ...(name.includes("rutin") && "routineId" in args ? { routineId: id } : {}) });
       expect(res.isError, name).toBe(true);
@@ -257,8 +249,7 @@ describe("who may", () => {
     }
     expect(await db.select().from(chore)).toHaveLength(0);
     expect((await db.select().from(routine).where(eq(routine.id, id)))[0]!.name).toBe("Städa");
-    await settle();
-    expect(notified).toEqual([]);
+    expect(await homes.told()).toEqual([]);
   });
 
   it("refuse an address removed from the allowlist", async () => {
