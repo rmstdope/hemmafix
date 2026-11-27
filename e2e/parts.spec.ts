@@ -113,7 +113,8 @@ test("a notice leaves the + free", async ({ page, context }) => {
   await page.getByRole("button", { name: "Ta bort uppgiften" }).click();
   const notice = page.locator("[data-sonner-toast]").first();
   await expect(notice).toBeVisible();
-  // Once it has slid into place: it rises from below, so it settles when it stops moving.
+  // Once it has slid into place: it rises from below once mounted, and settles when it stops moving.
+  await expect(notice).toHaveAttribute("data-mounted", "true");
   let last = -1;
   await expect
     .poll(async () => {
