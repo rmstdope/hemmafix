@@ -13,6 +13,13 @@ const optionalText = (max: number) =>
     .nullish()
     .transform((v) => v ?? null);
 
+/** The refusal for an argument no page of the app would send. */
+export const INVALID_INPUT = "Ogiltiga uppgifter";
+/** A yes or no sent by the app: anything but a boolean is refused, never read as truthy. */
+export const flag = z.boolean({ error: INVALID_INPUT });
+/** A submitted form. Only the action sees one, so it is parsed there; its fields further in. */
+export const formInput = z.instanceof(FormData, { error: INVALID_INPUT });
+
 export const isoDate = z.iso.date({ error: "Ogiltigt datum" });
 
 export const choreTitle = z.string().trim().min(1, "Skriv vad som ska göras").max(200, "Max 200 tecken");
@@ -141,6 +148,8 @@ export type EditChoreInput = z.infer<typeof editChoreInput>;
 
 export const instanceId = z.uuid();
 export const choreId = z.uuid();
+/** The ticks whose high five notes are closed at once, capped like the other id lists. */
+export const instanceIds = z.array(instanceId, { error: INVALID_INPUT }).max(1000, INVALID_INPUT);
 /** Skjut upp: an open instance and its new day. */
 export const postponeInput = z.object({ id: instanceId, day: isoDate });
 /** Ångra after Skjut upp: the old day, and the row versions the move left behind. */

@@ -3,7 +3,7 @@
 import { eq } from "drizzle-orm";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { db } from "@/db";
-import { chore, choreInstance, household, lookPurchase, oauthClient, oauthRefreshToken, room } from "@/db/schema";
+import { chore, choreInstance, highFive, household, lookPurchase, oauthClient, oauthRefreshToken, room } from "@/db/schema";
 import type { CurrentMember } from "@/server/dal";
 import { createFamily } from "../../test/integration/factories";
 import { addDays, todayIso } from "@/lib/dates";
@@ -356,6 +356,95 @@ describe("when logged out", () => {
     ];
     expect(results.every((r) => !r.ok)).toBe(true);
     expect((await lists.getList(f.adult, id))!.name).toBe("Inköp");
+  });
+});
+
+// A browser can send anything: the parameter types are not checked at run time.
+describe("an argument of the wrong type", () => {
+  const INVALID = { ok: false, error: "Ogiltiga uppgifter" };
+  beforeEach(() => as(f.adult));
+
+  it.each([["yes"], [1], [null], [undefined]])("is refused as a list item's tick: %j", async (done) => {
+    const { id } = await lists.createList(f.adult, "Inköp");
+    const item = "00000000-0000-4000-8000-000000000001";
+    await lists.addItem(f.adult, id, item, "Mjölk");
+    const before = (await lists.getList(f.adult, id))!.items;
+
+    expect(await actions.setListItemDone(id, item, done as unknown as boolean)).toEqual(INVALID);
+    // The whole item: a falsy value read as "untick" would move its rank.
+    expect((await lists.getList(f.adult, id))!.items).toEqual(before);
+  });
+
+  // Null would otherwise read as "ask first", and "no" as "go ahead".
+  it.each([["no"], [0], [null]])("is refused as the confirmation of an undo that leaves a debt: %j", async (confirm) => {
+    const t = await weeklyTask("Diska");
+    await actions.completeInstance(t.instanceId);
+    const [own] = await db.select().from(choreInstance).where(eq(choreInstance.id, t.instanceId));
+    await db
+      .insert(lookPurchase)
+      .values({ householdId: f.homeId, userId: f.adult.userId, kind: "coin", key: "silver", price: own!.coins! });
+
+    expect(await actions.uncompleteInstance(t.instanceId, confirm as unknown as boolean)).toEqual(INVALID);
+    expect((await db.select().from(choreInstance).where(eq(choreInstance.id, t.instanceId)))[0]!.completedAt).not.toBeNull();
+  });
+
+  const aTick = async () => {
+    const t = await weeklyTask("Diska");
+    await chores.completeInstance(f.child, t.instanceId);
+    return t.instanceId;
+  };
+
+  it.each([["no"], [1], [null], [undefined]])("is refused as giving a high five: %j", async (on) => {
+    const id = await aTick();
+
+    expect(await actions.setHighFive(id, on as unknown as boolean)).toEqual(INVALID);
+    expect(await db.select().from(highFive)).toEqual([]);
+  });
+
+  it.each([["yes"], [0], [null]])("is refused as taking a high five back: %j", async (on) => {
+    const id = await aTick();
+    await actions.setHighFive(id, true);
+
+    expect(await actions.setHighFive(id, on as unknown as boolean)).toEqual(INVALID);
+    expect(await db.select().from(highFive)).toHaveLength(1);
+  });
+
+  const ID = "00000000-0000-4000-8000-000000000001";
+  it.each([
+    ["a single id", ID],
+    ["a number", 1],
+    ["null", null],
+    ["undefined", undefined],
+    ["something with a length", { length: 0 }],
+    ["more ids than a home has notes", Array.from({ length: 1001 }, () => ID)],
+  ])("is refused as the notes to close: %s", async (_what, ids) => {
+    expect(await actions.closeHighFiveNotes(ids as unknown as string[])).toEqual(INVALID);
+  });
+
+  it("takes as many notes to close as the cap allows", async () => {
+    expect(await actions.closeHighFiveNotes(Array.from({ length: 1000 }, () => ID))).toEqual(OK);
+  });
+
+  // Object.fromEntries would read the list of pairs as a filled-in form.
+  const NOT_FORMS: [string, unknown][] = [
+    ["a string", "name=Hall"],
+    ["null", null],
+    ["undefined", undefined],
+    ["a plain object", { name: "Hall" }],
+    ["a list of pairs", [["title", "Diska"]]],
+  ];
+
+  it.each(NOT_FORMS)("is refused as a form: %s", async (_what, sent) => {
+    const data = sent as FormData;
+    const t = await weeklyTask();
+
+    expect(await actions.renameHousehold({ ok: false }, data)).toEqual(INVALID);
+    expect(await actions.addRoom({ ok: false }, data)).toEqual(INVALID);
+    expect(await actions.addRoutine({ ok: false }, data)).toEqual(INVALID);
+    expect(await actions.createChore({ ok: false }, data)).toEqual(INVALID);
+    expect(await actions.editChore(t.instanceId, { ok: false }, data)).toEqual(INVALID);
+    expect(await db.select().from(chore)).toHaveLength(1);
+    expect(await db.select().from(room).where(eq(room.householdId, f.homeId))).toHaveLength(2);
   });
 });
 

@@ -4,7 +4,7 @@ import { db } from "@/db";
 import { chore, choreInstance, highFive, user } from "@/db/schema";
 import { UserError } from "@/lib/errors";
 import { assertCan } from "@/lib/permissions";
-import { instanceId as instanceIdInput } from "@/lib/validation";
+import { flag, instanceId as instanceIdInput, instanceIds } from "@/lib/validation";
 import type { Actor } from "./household";
 
 const firstName = (name: string) => name.split(" ")[0] ?? name;
@@ -14,9 +14,10 @@ const firstName = (name: string) => name.split(" ")[0] ?? name;
  * other people's ticks (src/server/chores.ts), so only they may cheer them.
  */
 export async function setHighFive(actor: Actor, id: string, on: boolean) {
-  if (!on) assertCan(actor, "high-five:take-back");
+  const give = flag.parse(on);
+  if (!give) assertCan(actor, "high-five:take-back");
   const target = instanceIdInput.parse(id);
-  if (!on) {
+  if (!give) {
     await db.delete(highFive).where(and(eq(highFive.instanceId, target), eq(highFive.userId, actor.userId)));
     return;
   }
@@ -98,7 +99,7 @@ export async function listHighFiveNotes(actor: Actor): Promise<HighFiveNote[]> {
 /** The doer closes the notes about their own ticks; the high fives themselves stay counted. */
 export async function closeHighFiveNotes(actor: Actor, ids: string[]) {
   assertCan(actor, "note:close");
-  const targets = ids.map((i) => instanceIdInput.parse(i));
+  const targets = instanceIds.parse(ids);
   if (targets.length === 0) return;
   await db
     .update(highFive)
