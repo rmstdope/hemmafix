@@ -104,7 +104,7 @@ export function OpenBoard({
       send({ id, day }, () => postponeInstance(id, day), ({ report }) => {
         if (!report) return;
         const { postponed } = report;
-        toast(movedText(title, day), {
+        toast(movedText(title, day, today), {
           action: {
             label: "Ångra",
             onClick: () => {

@@ -17,10 +17,11 @@ const tab = (page: Page, name: string) => page.getByRole("tab", { name: new RegE
 const dayTab = (page: Page, n: number) => (n === 1 ? tab(page, "Imorgon") : tab(page, formatTabDayLong(inDays(n))));
 const more = (page: Page, title: string) => item(page, title).getByRole("button", { name: `${title}: mer` });
 const quickDay = (page: Page, title: string, n: number) =>
-  item(page, title).getByRole("button", { name: n === 1 ? "Imorgon" : formatTabDay(inDays(n)), exact: true });
+  item(page, title).getByRole("button", { name: ["Idag", "Imorgon"][n] ?? formatTabDay(inDays(n)), exact: true });
 const pickDay = (page: Page, title: string) => item(page, title).getByRole("button", { name: "Välj dag…" });
 const dateField = (page: Page, title: string) => item(page, title).locator('input[type="date"]');
-const moved = (title: string, n: number) => `"${title}" flyttad till ${formatShortDay(inDays(n))}`;
+const moved = (title: string, n: number) =>
+  `"${title}" flyttad till ${n === 0 ? "idag" : formatShortDay(inDays(n))}`;
 const back = (title: string, n: number) => `"${title}" är tillbaka på ${formatShortDay(inDays(n))}`;
 const notice = (page: Page, text: string) => page.locator("[data-sonner-toast]").filter({ hasText: text });
 const undo = (page: Page, text: string) => notice(page, text).getByRole("button", { name: "Ångra", exact: true });
@@ -92,6 +93,36 @@ test("Ångra puts the chore back on its old day and focuses its ⌄", async ({ p
   expect(await dueDateOf("Dammsuga")).toBe(inDays(-2));
 });
 
+test("Idag keeps a late chore on Nu, no longer late, and Ångra makes it late again", async ({ page, context }) => {
+  await logIn(context, "anna", "adult");
+  await seedBoard();
+  await page.goto("/");
+  const lateDate = item(page, "Dammsuga").locator(".text-destructive", { hasText: /\d/ });
+  await expect(lateDate).toBeVisible();
+
+  await more(page, "Dammsuga").click();
+  await expect(item(page, "Dammsuga").getByRole("group", { name: /skjut upp/ }).getByRole("button")).toHaveText([
+    "Idag",
+    "Imorgon",
+    formatTabDay(inDays(2)),
+    "Välj dag…",
+  ]);
+  await quickDay(page, "Dammsuga", 0).click();
+
+  await expect(notice(page, moved("Dammsuga", 0))).toBeVisible();
+  await expect(rows(page)).toHaveText([/Dammsuga/, /Bädda/, /Vattna/]);
+  await expect(lateDate).toHaveCount(0);
+  await expect(more(page, "Dammsuga")).toBeFocused();
+  await expect(more(page, "Dammsuga")).toHaveAttribute("aria-expanded", "false");
+  await expect(page.locator("[data-lit]")).toHaveCount(0);
+  expect(await dueDateOf("Dammsuga")).toBe(inDays(0));
+
+  await undo(page, moved("Dammsuga", 0)).click();
+  await expect(notice(page, back("Dammsuga", -2))).toBeVisible();
+  await expect(lateDate).toBeVisible();
+  expect(await dueDateOf("Dammsuga")).toBe(inDays(-2));
+});
+
 test("focus goes to the row above after the last row, and to the tab when nothing is left", async ({ page, context }) => {
   await logIn(context, "anna", "adult");
   await seedBoard();
@@ -151,7 +182,7 @@ test("a tapped tab survives a postponement and a reload", async ({ page, context
   await expect(tab(page, "Senare")).toHaveAttribute("aria-selected", "true");
 });
 
-test("Välj dag… opens the device's picker, from the day after the chore's own", async ({ page, context }) => {
+test("Välj dag… opens the device's picker, from today for a late chore and else after its own day", async ({ page, context }) => {
   await logIn(context, "anna", "adult");
   await seedBoard();
   // Headless Chromium has no picker to look at, so count the asks for it.
@@ -163,7 +194,7 @@ test("Välj dag… opens the device's picker, from the day after the chore's own
   await page.goto("/");
 
   await more(page, "Dammsuga").click();
-  await expect(dateField(page, "Dammsuga")).toHaveAttribute("min", inDays(1));
+  await expect(dateField(page, "Dammsuga")).toHaveAttribute("min", inDays(0));
   // The field lies over the button, so a tap lands on it and a phone opens its picker by itself.
   await dateField(page, "Dammsuga").click();
   await expect(page.locator("body")).toHaveAttribute("data-pickers", "1");
@@ -178,7 +209,7 @@ test("Välj dag… opens the device's picker, from the day after the chore's own
   await expect(item(page, "Dammsuga").getByText("Skjut upp")).toBeVisible();
 
   // A picker that lets a day through anyway moves nothing.
-  await dateField(page, "Dammsuga").fill(inDays(0));
+  await dateField(page, "Dammsuga").fill(inDays(-1));
   await expect(item(page, "Dammsuga").getByText("Skjut upp")).toBeVisible();
   await expect(notice(page, "flyttad")).toHaveCount(0);
 
@@ -192,6 +223,19 @@ test("Välj dag… opens the device's picker, from the day after the chore's own
   await expect(dateField(page, "Byta")).toHaveAttribute("min", inDays(6));
 });
 
+test("picking today for a late chore is the same move as Idag", async ({ page, context }) => {
+  await logIn(context, "anna", "adult");
+  await seedBoard();
+  await page.goto("/");
+  await more(page, "Dammsuga").click();
+
+  await dateField(page, "Dammsuga").fill(inDays(0));
+
+  await expect(notice(page, moved("Dammsuga", 0))).toBeVisible();
+  await expect(more(page, "Dammsuga")).toHaveAttribute("aria-expanded", "false");
+  expect(await dueDateOf("Dammsuga")).toBe(inDays(0));
+});
+
 test("the four buttons share a 300 px row and stay narrow on a wide window", { tag: RUN_ONCE }, async ({
   page,
   context,
@@ -202,7 +246,7 @@ test("the four buttons share a 300 px row and stay narrow on a wide window", { t
   await page.goto("/");
   await more(page, "Dammsuga").click();
 
-  const buttons = [1, 2, 3].map((n) => quickDay(page, "Dammsuga", n)).concat(pickDay(page, "Dammsuga"));
+  const buttons = [0, 1, 2].map((n) => quickDay(page, "Dammsuga", n)).concat(pickDay(page, "Dammsuga"));
   await expect(buttons[3]!).toBeVisible();
   const boxes = await Promise.all(buttons.map(async (b) => (await b.boundingBox())!));
   expect(new Set(boxes.map((b) => Math.round(b.y))).size).toBe(1);
