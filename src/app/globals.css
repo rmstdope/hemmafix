@@ -209,23 +209,16 @@
 }
 
 /*
- * Jul changes the page as well as the buttons: a night sky behind the content. The second selector
- * is the moment before the person's marks have streamed in, on a device that remembers they use Jul
- * (components/jul/sky-hint.ts). Rows, sheets and the tab bar keep their own colours, so only what
- * sits straight on the page is marked: `on-sky` and `on-sky-muted` text turns light, an open `sky-toggle` button white, a `sky-box`
- * (something with no background of its own) gets a card's, `sky-lit` is the lit tab or switch, and
- * `done-mark` a ticked box. Without Jul these classes do nothing.
+ * A sky theme (Jul, Kalas) changes the page as well as the buttons: a dark sky behind the content.
+ * The data-sky selectors are the moment before the person's marks have streamed in, on a device
+ * that remembers they use it (components/sky/hint.ts). Rows, sheets and the tab bar keep their own
+ * colours, so only what sits straight on the page is marked: `on-sky` and `on-sky-muted` text turns
+ * light, an open `sky-toggle` button white, a `sky-box` (something with no background of its own)
+ * gets a card's, `sky-lit` is the lit tab or switch, and `tick-box` and `done-mark` the circle that
+ * is ticked and the one that was. Without a sky theme these classes do nothing.
  */
-:root:has([data-look-own="jul"]),
-:root[data-sky="jul"]:has([data-look-scope]):not(:has([data-look-own])) {
-  --sky: #0f1f3d;
-  --primary: #c0262d;
-  --primary-foreground: #fff;
-  --ring: #c0262d;
-
-  &.dark {
-    --sky: #0b1630;
-  }
+:root:has([data-look-own="jul"], [data-look-own="kalas"]),
+:root:is([data-sky="jul"], [data-sky="kalas"]):has([data-look-scope]):not(:has([data-look-own])) {
   body {
     background-color: var(--sky);
   }
@@ -257,6 +250,19 @@
     background-color: var(--primary);
     color: var(--primary-foreground);
   }
+}
+
+/* Jul: a night sky and red controls; a done circle is green. */
+:root:has([data-look-own="jul"]),
+:root[data-sky="jul"]:has([data-look-scope]):not(:has([data-look-own])) {
+  --sky: #0f1f3d;
+  --primary: #c0262d;
+  --primary-foreground: #fff;
+  --ring: #c0262d;
+
+  &.dark {
+    --sky: #0b1630;
+  }
   .done-mark {
     background-color: #15803d;
     color: #fff;
@@ -272,15 +278,50 @@
   --sky: #0b1630;
 }
 
+/* Kalas: a party sky and pink controls, the tick circles' borders too. */
+:root:has([data-look-own="kalas"]),
+:root[data-sky="kalas"]:has([data-look-scope]):not(:has([data-look-own])) {
+  --sky: #2a1846;
+  --primary: #e0307a;
+  --primary-foreground: #fff;
+  --ring: #e0307a;
+
+  &.dark {
+    --sky: #1a0e2e;
+  }
+  .tick-box,
+  .done-mark {
+    border: 2px solid var(--primary);
+  }
+}
+[data-look-theme="kalas"] {
+  --sky: #2a1846;
+  --primary: #e0307a;
+  --primary-foreground: #fff;
+  --ring: #e0307a;
+}
+.dark [data-look-theme="kalas"] {
+  --sky: #1a0e2e;
+}
+
 /*
- * Jul's snow and presents (components/jul/sky.tsx). Each stands in a track as tall as the sky, so
- * one fall is the track's own height whatever holds it. Still, every piece is where its --y puts
- * it; falling, the negative --delay starts it there, so nothing begins at the top all at once.
+ * A sky theme's pieces (components/sky/sky.tsx). Each stands in a track as tall as the sky, so one
+ * crossing is the track's own height whatever holds it. Still, every piece is where its --x and --y
+ * put it; moving, the negative --delay starts it there, so nothing begins at an edge all at once.
  */
-[data-fall] {
+[data-fall],
+[data-rise] {
   position: absolute;
   top: 0;
   bottom: 0;
+}
+[data-fall] {
+  left: calc(var(--x) * 1%);
+}
+/* A balloon is wide enough to be kept inside the right edge, and its string makes it tall. */
+[data-rise] {
+  left: calc((100% - var(--size)) * var(--x) / 100);
+  width: var(--size);
 }
 [data-piece] {
   position: absolute;
@@ -288,12 +329,20 @@
   display: block;
   width: var(--size);
   height: var(--size);
+}
+[data-fall] > [data-piece] {
   background-color: var(--colour);
   rotate: calc(var(--turn) * var(--y) / 100);
 }
-[data-piece="flake"] {
+[data-piece="flake"],
+[data-piece="dot"] {
   border-radius: 9999px;
+}
+[data-piece="flake"] {
   opacity: 0.85;
+}
+[data-piece="square"] {
+  border-radius: 1px;
 }
 [data-piece="present"] {
   border-radius: 3px;
@@ -302,23 +351,39 @@
     linear-gradient(90deg, transparent 40%, #fde68a 40% 60%, transparent 60%),
     linear-gradient(transparent 40%, #fde68a 40% 60%, transparent 60%);
 }
-[data-preview-sleigh] {
+[data-piece="balloon"] {
+  height: calc(var(--size) * 69 / 28);
+}
+[data-preview-sleigh],
+[data-preview-bunch] {
   display: none;
 }
 @media (prefers-reduced-motion: no-preference) {
   [data-fall] {
-    animation: jul-fall var(--seconds) var(--delay) linear infinite;
+    animation: sky-fall var(--seconds) var(--delay) linear infinite;
+  }
+  [data-rise] {
+    animation: sky-rise var(--seconds) var(--delay) linear infinite;
   }
   [data-piece] {
     top: 0;
-    animation: jul-turn var(--seconds) var(--delay) linear infinite;
+  }
+  [data-fall] > [data-piece] {
+    animation: sky-turn var(--seconds) var(--delay) linear infinite;
+  }
+  [data-piece="balloon"] {
+    animation: balloon-sway 2.4s var(--delay) ease-in-out infinite alternate;
   }
   [data-preview-sleigh] {
     display: block;
     animation: jul-preview-flight 6s linear infinite;
   }
+  [data-preview-bunch] {
+    display: block;
+    animation: kalas-preview-rise 6s linear infinite;
+  }
 }
-@keyframes jul-fall {
+@keyframes sky-fall {
   from {
     transform: translateY(calc(-1 * var(--size)));
   }
@@ -326,11 +391,30 @@
     transform: translateY(100%);
   }
 }
-@keyframes jul-turn {
+@keyframes sky-turn {
   from {
     rotate: 0deg;
   }
   to {
+    rotate: var(--turn);
+  }
+}
+/* From below the sky until the string has left its top. */
+@keyframes sky-rise {
+  from {
+    transform: translateY(100%);
+  }
+  to {
+    transform: translateY(calc(var(--size) * -69 / 28));
+  }
+}
+@keyframes balloon-sway {
+  from {
+    translate: -6px;
+    rotate: calc(-1 * var(--turn));
+  }
+  to {
+    translate: 6px;
     rotate: var(--turn);
   }
 }
@@ -342,6 +426,19 @@
   66%,
   to {
     transform: translateX(100%);
+  }
+}
+/* Up through the preview in four of every six seconds: its own height and the screen's. */
+@keyframes kalas-preview-rise {
+  from {
+    transform: translateY(0) rotate(-3deg);
+  }
+  33% {
+    transform: translate(-6px, -9.5rem) rotate(3deg);
+  }
+  66%,
+  to {
+    transform: translate(4px, -20rem) rotate(-2deg);
   }
 }
 

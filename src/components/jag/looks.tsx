@@ -5,12 +5,13 @@ import { buyLook, chooseLook, type ActionState } from "@/app/actions";
 import { useOfferCelebrations } from "@/components/coin-shower";
 import { formatCoins } from "@/lib/coins";
 import { buyLookLabel, coinsLeft, LOOKS_TITLES, LOOK_KINDS, looksOf, previewMotionText, previewText, type Look } from "@/lib/looks";
+import { skyTheme } from "@/lib/sky";
 import { cn } from "@/lib/utils";
 import { attempt } from "../attempt";
 import { CoinDot } from "../coin-pill";
-import { JulPreview, JulSwatch } from "../jul/preview";
 import { MemberAvatar } from "../member-avatar";
 import { Sheet } from "../sheet";
+import { SCENES } from "../sky/scenes";
 
 type Props = {
   name: string;
@@ -30,7 +31,11 @@ function Visual({ look, name, image, large }: { look: Look; name: string; image:
       </span>
     );
   }
-  if (look.key === "jul") return large ? <JulPreview /> : <JulSwatch />;
+  const sky = skyTheme(look.key);
+  if (sky) {
+    const { Swatch, Preview } = SCENES[sky];
+    return large ? <Preview /> : <Swatch />;
+  }
   return (
     <span data-look-theme={look.key} className={cn("flex items-center justify-center rounded-lg", large ? "h-10 w-32" : "size-8")}>
       <span className={cn("rounded-md bg-primary text-xs font-semibold text-primary-foreground", large ? "px-4 py-2" : "size-8")}>

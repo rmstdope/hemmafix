@@ -17,7 +17,7 @@ import { unlockSound } from "./coin-sound";
 import { MemberAvatar } from "./member-avatar";
 import { rememberPart, useRememberedPart } from "./part-links";
 import { StreakPill } from "./streak-pill";
-import { setSkyHint } from "./jul/sky-hint";
+import { setSkyHint } from "./sky/hint";
 
 const itemClass =
   "flex min-h-11 w-full cursor-default items-center gap-3 rounded-lg px-3 text-sm outline-none select-none data-[highlighted]:bg-muted data-[disabled]:opacity-50";
@@ -167,7 +167,7 @@ export function UserMenu({
                 onClick={() =>
                   startTransition(async () => {
                     await authClient.signOut();
-                    setSkyHint(false);
+                    setSkyHint(null);
                     router.replace("/login");
                   })
                 }

@@ -7,7 +7,7 @@ describe("the catalogue", () => {
   it("sells the agreed frames", () =>
     expect(of("frame")).toEqual([["Ingen ram", 0], ["Guldram", 150], ["Grön ram", 150], ["Rosa ram", 150], ["Himmelsram", 300]]));
   it("sells the agreed themes", () =>
-    expect(of("theme")).toEqual([["Svart", 0], ["Lila", 200], ["Skog", 200], ["Hallon", 200], ["Jul", 300]]));
+    expect(of("theme")).toEqual([["Svart", 0], ["Lila", 200], ["Skog", 200], ["Hallon", 200], ["Jul", 300], ["Kalas", 300]]));
   it("sells the agreed coins", () =>
     expect(of("coin")).toEqual([["Guld", 0], ["Silver", 100], ["Diamant", 250], ["Stjärna", 400]]));
   it("has three kinds, each starting with its free default", () => {
@@ -26,7 +26,8 @@ describe("texts", () => {
     expect(previewText("theme")).toBe("Så här ser Hemmafix ut för dig.");
     expect(previewText("coin")).toBe("Så här ser dina mynt ut.");
   });
-  it("says what moves, for Jul only", () => {
+  it("says what moves, for Jul and Kalas only", () => {
+    expect(previewMotionText(findLook("theme", "kalas")!)).toBe("Glitter faller, ballonger stiger och ett ballongknippe flyger förbi.");
     expect(previewMotionText(findLook("theme", "jul")!)).toBe("Snö och paket faller, och tomtens släde flyger förbi.");
     expect(previewMotionText(findLook("theme", "lila")!)).toBeNull();
     expect(previewMotionText(findLook("coin", "silver")!)).toBeNull();
