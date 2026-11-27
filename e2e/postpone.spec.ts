@@ -142,7 +142,7 @@ test("a tapped tab survives a postponement and a reload", async ({ page, context
   await quickDay(page, "Byta", 8).click();
   await expect(notice(page, moved("Byta", 8))).toBeVisible();
   await expect.poll(() => dueDateOf("Byta")).toBe(inDays(8));
-  await expect(rows(page)).toHaveText([/Rensa/, /Putsa/, /Byta/, /Frosta/]);
+  await expect(rows(page)).toHaveText([/Frosta/, /Rensa/, /Putsa/, /Byta/]);
   await expect(page).toHaveURL(/[?&]flik=senare\b/);
 
   await page.reload();
