@@ -3,6 +3,7 @@ import { eq } from "drizzle-orm";
 import { choreInstance } from "../src/db/schema";
 import { db, logIn, seedChore, seedDone, seedRooms } from "./support/family";
 import { chooseFromMenu } from "./support/menu";
+import { RUN_ONCE } from "./support/tags";
 import { expect, test } from "./support/test";
 
 const parts = (page: Page) => page.getByRole("navigation", { name: "Delar" });
@@ -69,7 +70,7 @@ test("the Jag tab and the switch are reached with Tab and work with Enter and Sp
   await expect(switchPart(page, "Framsteg")).toHaveAttribute("aria-pressed", "true");
 });
 
-test("on a 300px phone the two parts stay on one line and nothing overflows", async ({ page, context }) => {
+test("on a 300px phone the two parts stay on one line and nothing overflows", { tag: RUN_ONCE }, async ({ page, context }) => {
   await logIn(context, "anna", "adult");
   await page.setViewportSize({ width: 300, height: 640 });
   await go(page, "/jag");
@@ -130,7 +131,7 @@ test("an open Jag follows a tick made on another device, live", async ({ page, c
   await other.close();
 });
 
-test("on a 300px phone the level card fits", async ({ page, context }) => {
+test("on a 300px phone the level card fits", { tag: RUN_ONCE }, async ({ page, context }) => {
   await logIn(context, "bo", "child");
   await page.setViewportSize({ width: 300, height: 640 });
   await go(page, "/jag");

@@ -1,4 +1,5 @@
 import { createHash, randomBytes } from "node:crypto";
+import { RUN_ONCE } from "./support/tags";
 import { expect, test } from "./support/test";
 import { E2E_BASE_URL } from "./support/env";
 import { captureRedirectToClaude, expectSentToClaudeOnce, REDIRECT_URI } from "./support/claude";
@@ -194,13 +195,13 @@ test("a broken or expired link shows an explanation and no buttons", async ({ pa
   await expect(page.getByRole("button")).toHaveCount(0);
 });
 
-test("the MCP address refuses a call without an access token", async ({ request }) => {
+test("the MCP address refuses a call without an access token", { tag: RUN_ONCE }, async ({ request }) => {
   const res = await request.post("/mcp", { data: { jsonrpc: "2.0", id: 1, method: "tools/list" } });
   expect(res.status()).toBe(401);
   expect(res.headers()["www-authenticate"]).toContain(`${E2E_BASE_URL}/.well-known/oauth-protected-resource/mcp`);
 });
 
-test("the MCP address refuses an access token it did not issue", async ({ request }) => {
+test("the MCP address refuses an access token it did not issue", { tag: RUN_ONCE }, async ({ request }) => {
   const res = await request.post("/mcp", {
     headers: { authorization: "Bearer not-a-real-token" },
     data: { jsonrpc: "2.0", id: 1, method: "tools/list" },

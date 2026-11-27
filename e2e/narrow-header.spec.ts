@@ -1,6 +1,7 @@
 import type { Locator, Page } from "@playwright/test";
 import { household } from "../src/db/schema";
 import { db, logIn, seedDone, seedRooms, seedStreak } from "./support/family";
+import { RUN_ONCE } from "./support/tags";
 import { expect, test } from "./support/test";
 
 /** Room the select's own arrow takes inside its padding box, in Chromium. */
@@ -71,7 +72,7 @@ for (const { name, lines } of [
   { name: NAME, lines: 1 },
   { name: LONG_NAME, lines: 2 },
 ]) {
-  test(`at 390 px a ${name.length}-character home name is whole, under the header row`, async ({ page, context }) => {
+  test(`at 390 px a ${name.length}-character home name is whole, under the header row`, { tag: RUN_ONCE }, async ({ page, context }) => {
     await logIn(context, "anna", "adult");
     await openHome(page, name, 390);
     const p = await headerParts(page, name);
@@ -90,7 +91,7 @@ for (const { name, lines } of [
   });
 }
 
-test("on a 300 px phone a long home name wraps between the heading and the controls", async ({ page, context }) => {
+test("on a 300 px phone a long home name wraps between the heading and the controls", { tag: RUN_ONCE }, async ({ page, context }) => {
   await logIn(context, "anna", "adult");
   await openHome(page, LONG_NAME, 300);
   const p = await headerParts(page, LONG_NAME);
@@ -108,7 +109,7 @@ for (const { name, lines } of [
   { name: NAME, lines: 1 },
   { name: WIDE_NAME, lines: 2 },
 ]) {
-  test(`from 640 px a name of ${lines} line(s) stays beside the filter`, async ({ page, context }) => {
+  test(`from 640 px a name of ${lines} line(s) stays beside the filter`, { tag: RUN_ONCE }, async ({ page, context }) => {
     await logIn(context, "anna", "adult");
     await openHome(page, name, 640);
     const p = await headerParts(page, name);
@@ -131,7 +132,7 @@ const PAGES = [
 ];
 
 for (const { path, heading: name, controls: least, label = name } of PAGES) {
-  test(`on a 300 px phone the ${label} header keeps the heading clear and the home name whole`, async ({ page, context }) => {
+  test(`on a 300 px phone the ${label} header keeps the heading clear and the home name whole`, { tag: RUN_ONCE }, async ({ page, context }) => {
     const anna = await logIn(context, "anna", "adult");
     await db.update(household).set({ name: LONG_HOME });
     // A long streak and a big balance make the picture's pills as wide as a real family's.
@@ -167,7 +168,7 @@ for (const { path, heading: name, controls: least, label = name } of PAGES) {
   });
 }
 
-test("on a 300 px phone Gjort's two filters show their whole choice", async ({ page, context }) => {
+test("on a 300 px phone Gjort's two filters show their whole choice", { tag: RUN_ONCE }, async ({ page, context }) => {
   await logIn(context, "anna", "adult");
   await logIn(await context.browser()!.newContext(), "bo", "child");
   await page.setViewportSize({ width: 300, height: 700 });
@@ -305,7 +306,7 @@ async function openPage(page: Page, path: string, name: string, width: number) {
 }
 
 for (const width of [320, 390]) {
-  test(`at ${width} px a new member's Listor header is one row, with the home name under it`, async ({ page, context }) => {
+  test(`at ${width} px a new member's Listor header is one row, with the home name under it`, { tag: RUN_ONCE }, async ({ page, context }) => {
     await logIn(context, "anna", "adult");
     await openPage(page, "/listor", VERIFY_NAME, width);
     expectOneRow(await pageHeader(page, "Listor", VERIFY_NAME));
@@ -315,7 +316,7 @@ for (const width of [320, 390]) {
 // A new member's controls miss the 300 px row by about a pixel with one system's emoji and make it
 // with another's, so only the rich member, who is far too wide, pins the dropped form.
 for (const width of [300, 320]) {
-  test(`at ${width} px a rich member's Listor controls drop under the home name`, async ({ page, context }) => {
+  test(`at ${width} px a rich member's Listor controls drop under the home name`, { tag: RUN_ONCE }, async ({ page, context }) => {
     const anna = await logIn(context, "anna", "adult");
     await seedRichMember(anna.id);
     await openPage(page, "/listor", VERIFY_NAME, width);
@@ -323,14 +324,14 @@ for (const width of [300, 320]) {
   });
 }
 
-test("at 320 px the longest home name wraps between words on Listor", async ({ page, context }) => {
+test("at 320 px the longest home name wraps between words on Listor", { tag: RUN_ONCE }, async ({ page, context }) => {
   await logIn(context, "anna", "adult");
   await openPage(page, "/listor", LONG_NAME, 320);
   expectOneRow(await pageHeader(page, "Listor", LONG_NAME), 2);
 });
 
 for (const rich of [false, true]) {
-  test(`from 300 to 400 px a ${rich ? "rich" : "new"} member's Listor header never breaks a word or overlaps`, async ({ page, context }) => {
+  test(`from 300 to 400 px a ${rich ? "rich" : "new"} member's Listor header never breaks a word or overlaps`, { tag: RUN_ONCE }, async ({ page, context }) => {
     const anna = await logIn(context, "anna", "adult");
     if (rich) await seedRichMember(anna.id);
     await openPage(page, "/listor", VERIFY_NAME, 300);
@@ -358,7 +359,7 @@ for (const { path, title, label } of [
   { path: "/jag", title: "Jag", label: "Jag" },
   { path: REMOVED_LIST, title: "Listor", label: "a removed list" },
 ]) {
-  test(`at 320 px ${label} has the home name under its header row`, async ({ page, context }) => {
+  test(`at 320 px ${label} has the home name under its header row`, { tag: RUN_ONCE }, async ({ page, context }) => {
     await logIn(context, "anna", "adult");
     await openPage(page, path, VERIFY_NAME, 320);
     expectOneRow(await pageHeader(page, title, VERIFY_NAME));
@@ -369,7 +370,7 @@ for (const { name, lines } of [
   { name: NAME, lines: 1 },
   { name: WIDE_NAME, lines: 2 },
 ]) {
-  test(`from 640 px a Listor name of ${lines} line(s) stays beside the sort button`, async ({ page, context }) => {
+  test(`from 640 px a Listor name of ${lines} line(s) stays beside the sort button`, { tag: RUN_ONCE }, async ({ page, context }) => {
     await logIn(context, "anna", "adult");
     await openPage(page, "/listor", name, 640);
     const heading = page.getByRole("heading", { level: 1, name: "Listor" });

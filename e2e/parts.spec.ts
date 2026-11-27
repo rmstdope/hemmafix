@@ -2,6 +2,7 @@ import { filterSelect } from "./support/board";
 import type { Page } from "@playwright/test";
 import { logIn, seedChore, seedRooms } from "./support/family";
 import { chooseFromMenu, menuButton, menuItem } from "./support/menu";
+import { RUN_ONCE } from "./support/tags";
 import { expect, test } from "./support/test";
 
 const parts = (page: Page) => page.getByRole("navigation", { name: "Delar" });
@@ -120,7 +121,7 @@ test("the bar is only on the parts: not on login", async ({ page }) => {
   await expect(parts(page)).toHaveCount(0);
 });
 
-test("at 320px the three tabs share the bar and nothing overflows", async ({ page, context }) => {
+test("at 320px the three tabs share the bar and nothing overflows", { tag: RUN_ONCE }, async ({ page, context }) => {
   await logIn(context, "anna", "adult");
   await page.setViewportSize({ width: 320, height: 640 });
   await page.goto("/");
@@ -132,7 +133,7 @@ test("at 320px the three tabs share the bar and nothing overflows", async ({ pag
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth)).toBe(true);
 });
 
-test("a notice sits above the bar at 620px, where sonner's own phone mode is off", async ({ page, context }) => {
+test("a notice sits above the bar at 620px, where sonner's own phone mode is off", { tag: RUN_ONCE }, async ({ page, context }) => {
   await logIn(context, "anna", "adult");
   const { Kök } = await seedRooms("Kök");
   await seedChore({ title: "Diska", roomId: Kök!.id });

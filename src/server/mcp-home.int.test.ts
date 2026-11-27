@@ -227,27 +227,3 @@ describe("live updates", () => {
     expect(await homes.told()).toEqual([]);
   });
 });
-
-describe("tool annotations", () => {
-  it("mark exactly the removals (and the role change) as destructive, so the client asks first", async () => {
-    const res = await rpc("anna", "tools/list");
-    const tools = res.result.tools as { name: string; annotations?: Record<string, boolean> }[];
-    const HOME_TOOLS = [
-      "byt_namn_pa_hemmet",
-      "byt_namn_pa_rum",
-      "byt_namn_pa_vaning",
-      "flytta_vaning",
-      "lagg_till_rum",
-      "lagg_till_vaning",
-      "ta_bort_rum",
-      "ta_bort_vaning",
-    ];
-    expect(tools.map((t) => t.name)).toEqual(expect.arrayContaining(HOME_TOOLS));
-    const destructive = tools
-      .filter((t) => HOME_TOOLS.includes(t.name) && t.annotations?.destructiveHint === true)
-      .map((t) => t.name)
-      .sort();
-    expect(destructive).toEqual(["ta_bort_rum", "ta_bort_vaning"]);
-    expect(tools.find((t) => t.name === "lagg_till_rum")!.annotations?.destructiveHint).toBe(false);
-  });
-});

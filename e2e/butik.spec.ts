@@ -3,6 +3,7 @@ import { eq } from "drizzle-orm";
 import { choreInstance, reward } from "../src/db/schema";
 import { E2E_BASE_URL } from "./support/env";
 import { db, logIn, seedDone, seedRooms } from "./support/family";
+import { RUN_ONCE } from "./support/tags";
 import { expect, test } from "./support/test";
 
 const pill = (page: Page) => page.getByRole("button", { name: /^[\d\s\u00a0]+ mynt$/ });
@@ -155,7 +156,7 @@ test("an adult who does not give gives the coins back, and the buyer's row says 
   await boContext.close();
 });
 
-test("on a 300px phone a long reward name wraps and nothing overflows", async ({ page, context }) => {
+test("on a 300px phone a long reward name wraps and nothing overflows", { tag: RUN_ONCE }, async ({ page, context }) => {
   const bo = await logIn(context, "bo", "child");
   await db.insert(reward).values({
     householdId: await homeOf(bo.id),
