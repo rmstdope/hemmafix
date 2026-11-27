@@ -6,6 +6,7 @@ import { addDays, todayIso } from "@/lib/dates";
 import { UserError } from "@/lib/errors";
 import { DEFAULT_COINS } from "@/lib/coins";
 import { ForbiddenError } from "@/lib/permissions";
+import { moveTask } from "@/lib/postpone";
 import { nextDueDate } from "@/lib/recurrence";
 import { bringDueToday, createFamily } from "../../test/integration/factories";
 import {
@@ -616,6 +617,27 @@ describe("listOpenInstances", () => {
 
   it("combines the filters", async () => {
     expect(await titles({ roomId: f.kitchen.id, who: "none" })).toEqual(["Torka bänken"]);
+  });
+
+  // The browser moves a postponed task before the server answers, so both must place it alike.
+  it("has a postponed task where the browser has already moved it", async () => {
+    const day = addDays(todayIso(), 6);
+    // Added in an order that neither titles nor rooms follow, around the day the task moves to.
+    await createChore(f.adult, once("Örat", { dueDate: day }));
+    const moved = await createChore(f.adult, once("Mattan", { roomId: f.bathroom.id, dueDate: todayIso() }));
+    await createChore(f.adult, once("Akvariet", { dueDate: day }));
+    const cleared = await createChore(f.adult, once("Zonen", { dueDate: day }));
+    await createChore(f.adult, once("Balkongen"));
+    const [zonen] = await openOf("Zonen");
+    await editChore(f.adult, zonen!.id, once("Zonen"));
+    const before = await open();
+    const [task] = before.filter((i) => i.choreId === moved.id);
+
+    await postponeInstance(f.adult, task!.id, day);
+
+    const after = await open();
+    expect(moveTask(before, task!.id, day).map((i) => i.title)).toEqual(after.map((i) => i.title));
+    expect(after.at(-1)!.choreId).toBe(cleared.id);
   });
 
   it("is the same list for children, who may filter too", async () => {
