@@ -254,6 +254,7 @@ test("scrolled down on a phone, no pill shows the badge's coins while its card i
       }
     }).observe(document, { subtree: true, childList: true, characterData: true, attributes: true });
   });
+  await page.clock.install();
   await page.goto("/");
   await expect(pill(page)).toHaveText("0");
   await page.evaluate(() => window.scrollTo(0, document.body.scrollHeight));
@@ -263,8 +264,9 @@ test("scrolled down on a phone, no pill shows the badge's coins while its card i
 
   await expect(badgeCard(page)).toBeVisible({ timeout: 5_000 });
   // Once the tick is saved the shower hands back to the server's total, at once or after SETTLE_MS (1.5 s).
-  await saved;
-  await page.waitForTimeout(2_000);
+  await (await saved).finished();
+  await expect(page.getByText(/Klart senaste veckan/)).toBeAttached();
+  await page.clock.runFor(2_000);
   const duringCard = await page.evaluate(() => (window as unknown as { duringCard: string[] }).duringCard);
   expect(duringCard).toContain("10");
   expect(duringCard).not.toContain("35");
