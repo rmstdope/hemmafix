@@ -1,6 +1,7 @@
 import type { Page } from "@playwright/test";
+import { dailyChest } from "../src/db/schema";
 import { nuEmpty } from "./support/board";
-import { logIn, seedChore, seedRooms } from "./support/family";
+import { db, logIn, seedChore, seedRooms } from "./support/family";
 import { RUN_ONCE } from "./support/tags";
 import { expect, test } from "./support/test";
 
@@ -60,9 +61,13 @@ test("a chest closed unopened with Esc opens itself and its coins are credited a
   await page.keyboard.press("Escape");
   await expect(card(page)).toBeHidden();
   await expect(page.locator("main")).toBeFocused();
-  await expect(pill(page)).toHaveText(/^(15|16|17|18|19|20)$/, { timeout: 5_000 });
-  await expect(page.getByRole("status")).toHaveText(/^Du fick (5|6|7|8|9|10) mynt$/);
-  const total = Number(await pill(page).innerText());
+  const said = page.getByRole("status");
+  await expect(said).toHaveText(/^Du fick (5|6|7|8|9|10) mynt$/);
+  // The total comes from what is said: the pill is still counting while the coins fly.
+  const total = 10 + Number(/\d+/.exec(await said.innerText())![0]);
+  await expect(pill(page)).toHaveText(String(total), { timeout: 5_000 });
+  // The pill counts before the server has answered, and a reload would drop a request still unsent.
+  await expect.poll(async () => (await db.select().from(dailyChest))[0]?.openedAt).toBeTruthy();
   await page.reload();
   await expect(pill(page)).toHaveText(String(total));
 });
