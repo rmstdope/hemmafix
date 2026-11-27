@@ -2,7 +2,7 @@
 // Used by the `verify-hemmafix` skill and declared as `launch_web` in .cerebro/project.conf.
 //
 //   node --env-file=.env scripts/verify-app.mjs serve                 migrate, then serve the build on :3000
-//   node --env-file=.env scripts/verify-app.mjs status                who is in the home, and the logins that still work
+//   node --env-file=.env scripts/verify-app.mjs status                who is in the home, the logins that still work, row counts
 //   node --env-file=.env scripts/verify-app.mjs role <email> <adult|child>
 //   node --env-file=.env scripts/verify-app.mjs member <name> <adult|child>   a family member who never logs in
 //   node --env-file=.env scripts/verify-app.mjs reset                 empty the home; keep the logins
@@ -27,6 +27,9 @@ const PORT = "3000"; // the only local port Google redirects back to
 // Its own name, so a page showing it is known to be the verify home and not the dev or real one.
 const HOME_NAME = "Familjen (verifiering)";
 const LOCAL_HOSTS = new Set(["localhost", "127.0.0.1", "[::1]", "::1"]);
+// What `reset` keeps: the logins, the home and its members, and the server's own rows (it seeds
+// oauth_resource once per process). Every other table is the home's contents, a new one included.
+const KEPT_TABLES = ["user", "account", "session", "verification", "household", "membership", "jwks", "badge_epoch", "oauth_resource"];
 
 function verifyUrl() {
   const raw = process.env.DATABASE_URL;
@@ -49,6 +52,13 @@ async function withSql(url, fn) {
   } finally {
     await sql.end();
   }
+}
+
+/** The tables holding the home's contents: asked of the database, so no new table is missed. */
+async function contentTables(sql) {
+  const rows = await sql`select tablename from pg_tables
+    where schemaname = 'public' and tablename not in ${sql(KEPT_TABLES)} order by tablename`;
+  return rows.map((row) => row.tablename);
 }
 
 async function ensureDatabase(quiet = false) {
@@ -109,12 +119,12 @@ async function status() {
       select u.name, u.email, m.role, exists(select 1 from account a where a.user_id = u.id) as logs_in,
              (select max(s.expires_at) from session s where s.user_id = u.id and s.expires_at > now()) as login_until
       from membership m join "user" u on u.id = m.user_id order by u.created_at`;
-    const [counts] = await sql`select (select count(*) from floor) floors, (select count(*) from room) rooms,
-      (select count(*) from chore) chores, (select count(*) from routine) routines, (select count(*) from list) lists, (select count(*) from oauth_client) registered_clients,
-      (select count(*) from app_connection_use) connections,
-      (select count(*) from look_purchase) look_purchases, (select count(*) from reward_purchase) reward_purchases,
-      (select count(*) from reward) rewards, (select count(*) from daily_chest) chests, (select count(*) from badge_award) badges`;
-    console.log(JSON.stringify({ homes: homes.map((h) => h.name), members, ...counts }, null, 2));
+    const rows = {};
+    for (const table of await contentTables(sql)) {
+      const [{ count }] = await sql`select count(*)::int as count from ${sql(table)}`;
+      rows[table] = count;
+    }
+    console.log(JSON.stringify({ homes: homes.map((h) => h.name), members, rows }, null, 2));
   });
 }
 
@@ -145,10 +155,9 @@ async function member(name, newRole) {
 async function reset() {
   await withSql(await ensureDatabase(true), async (sql) => {
     await sql.begin(async (tx) => {
-      // The home's contents, everyone's coins, purchases and badges, and every connected app go (and the ready-made routines stay away: the home counts as seeded); users, accounts, sessions and the home stay.
-      await tx`truncate chore_instance, chore, room, floor, routine, list,
-        look_purchase, reward_purchase, reward, badge_award, daily_chest, week_recap_seen, app_connection_use, app_token, oauth_consent,
-        oauth_access_token, oauth_refresh_token, oauth_client_assertion, oauth_client_resource, oauth_client cascade`;
+      // The home's contents go: chores and rooms, coins, purchases and badges, every connected app
+      // (and the ready-made routines stay away: the home counts as seeded).
+      await tx`truncate ${tx(await contentTables(tx))} cascade`;
       await tx`delete from "user" u where not exists (select 1 from account a where a.user_id = u.id)`;
       await tx`update membership set role = 'adult', frame = null, theme = null, coin_look = null, updated_at = now()`;
       const homes = await tx`update household set name = ${HOME_NAME}, routines_seeded_at = now(), updated_at = now() returning id`;

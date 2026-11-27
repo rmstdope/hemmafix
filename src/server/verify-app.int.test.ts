@@ -40,25 +40,26 @@ describe("verify-app reset", () => {
       await sql`insert into badge_award (household_id, user_id, key, coins) values (${home!.id}, ${u!.id}, 'first', 25)`;
       await sql`insert into daily_chest (household_id, user_id, day, coins) values (${home!.id}, ${u!.id}, '2026-11-24', 5)`;
       await sql`insert into week_recap_seen (user_id, week_start) values (${u!.id}, '2026-11-23')`;
-      const counted = ["routines", "lists", "look_purchases", "reward_purchases", "rewards", "chests", "badges"];
-      const counts = async () => {
-        const status = JSON.parse(await verifyApp("status"));
-        return Object.fromEntries(counted.map((key) => [key, status[key]]));
-      };
-      const all = (n: string) => Object.fromEntries(counted.map((key) => [key, n]));
-      expect(await counts()).toEqual(all("1"));
+      // A table the script has never heard of, as the next schema change would add.
+      await sql`create table later_table (household_id uuid references household)`;
+      await sql`insert into later_table values (${home!.id})`;
+      const counted = ["routine", "list", "look_purchase", "reward_purchase", "reward", "daily_chest", "badge_award", "later_table"];
+      const rows = async () => JSON.parse(await verifyApp("status")).rows as Record<string, number>;
+      const before = await rows();
+      expect(before).toMatchObject(Object.fromEntries(counted.map((table) => [table, 1])));
+      for (const kept of ["user", "account", "session", "household", "membership"]) expect(before).not.toHaveProperty(kept);
 
       await verifyApp("reset");
 
-      expect(await counts()).toEqual(all("0"));
+      // Every table of the home's contents is empty, but for the new home's one floor.
+      const after_rows = await rows();
+      expect(after_rows).toEqual({ ...Object.fromEntries(Object.keys(before).map((table) => [table, 0])), floor: 1 });
       const [after] = await sql`select routines_seeded_at from household`;
       expect(after!.routines_seeded_at).not.toBeNull();
       const [m] = await sql`select frame, theme, coin_look from membership where user_id = ${u!.id}`;
       expect(m).toEqual({ frame: null, theme: null, coin_look: null });
 
-      for (const table of ["routine_task", "list_item", "look_purchase", "reward", "reward_purchase", "badge_award", "daily_chest", "week_recap_seen"]) {
-        expect(await sql`select 1 from ${sql(table)}`, table).toHaveLength(0);
-      }
+      expect(await sql`select 1 from later_table`).toHaveLength(0);
       expect(await sql`select 1 from "user" where id = 'u-coins'`).toHaveLength(1);
       expect(await sql`select 1 from account where id = 'a-coins'`).toHaveLength(1);
     } finally {
