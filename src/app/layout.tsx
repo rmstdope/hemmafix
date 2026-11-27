@@ -34,11 +34,13 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
       <body className="min-h-full flex flex-col bg-background text-foreground">
         <ThemeProvider attribute="class" defaultTheme="system" enableSystem disableTransitionOnChange>
           {children}
-          {/* At the bottom, as the agreed mockups draw notices: at the top they covered the field they were about. */}
+          {/* At the bottom, as the agreed mockups draw notices: at the top they covered the field they were about.
+              On a phone a notice spans the width, so it sits above the round + (FloatingAdd: 1rem over the
+              bar, 3.5rem tall) rather than over it, where the + could not be tapped until it faded. */}
           <Toaster
             position="bottom-center"
             offset={{ bottom: "calc(var(--parts-bar-h) + env(safe-area-inset-bottom) + 1.5rem)" }}
-            mobileOffset={{ bottom: "calc(var(--parts-bar-h) + env(safe-area-inset-bottom) + 0.5rem)" }}
+            mobileOffset={{ bottom: "calc(var(--parts-bar-h) + env(safe-area-inset-bottom) + 5rem)" }}
           />
         </ThemeProvider>
       </body>

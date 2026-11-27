@@ -104,6 +104,34 @@ test("a notice sits above the bar on a phone", async ({ page, context }) => {
   }
 });
 
+test("a notice leaves the + free", async ({ page, context }) => {
+  await logIn(context, "anna", "adult");
+  const { Kök } = await seedRooms("Kök");
+  await seedChore({ title: "Diska", roomId: Kök!.id });
+  await page.goto("/");
+  await page.getByRole("button", { name: "Mer" }).click();
+  await page.getByRole("button", { name: "Ta bort uppgiften" }).click();
+  const notice = page.locator("[data-sonner-toast]").first();
+  await expect(notice).toBeVisible();
+  // Once it has slid into place: it rises from below once mounted, and settles when it stops moving.
+  await expect(notice).toHaveAttribute("data-mounted", "true");
+  let last = -1;
+  await expect
+    .poll(async () => {
+      const y = (await notice.boundingBox())!.y;
+      const settled = y === last;
+      last = y;
+      return settled;
+    })
+    .toBe(true);
+  // Above the + rather than over it: covered, it cannot be tapped until the notice fades, and a
+  // notice under the pointer never fades.
+  const n = (await notice.boundingBox())!;
+  const plus = (await page.getByRole("button", { name: "Ny uppgift" }).boundingBox())!;
+  const overlaps = n.x < plus.x + plus.width && plus.x < n.x + n.width && n.y < plus.y + plus.height && plus.y < n.y + n.height;
+  expect(overlaps).toBe(false);
+});
+
 test("← from Hemmet still returns to Listor after a visit to a routine page", async ({ page, context }) => {
   await logIn(context, "anna", "adult");
   await page.goto("/listor");
