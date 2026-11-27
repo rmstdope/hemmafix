@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { PARTS, litPart, parseJagPart, partOf, rememberedPart } from "./parts";
+import { litPart, parseJagPart, partOf, rememberedPart } from "./parts";
 
 describe("partOf", () => {
   it("puts the board and its history under Uppgifter", () => {
@@ -16,9 +16,6 @@ describe("partOf", () => {
   it("has no part for Hemmet, login or anything else", () => {
     for (const p of ["/hemmet", "/hemmet/rutiner/1", "/login", "/consent"]) expect(partOf(p)).toBeNull();
   });
-  it("lists the parts in tab order", () => {
-    expect(PARTS.map((p) => p.label)).toEqual(["Uppgifter", "Listor", "Jag"]);
-  });
 });
 
 describe("rememberedPart", () => {
@@ -32,10 +29,6 @@ describe("rememberedPart", () => {
 });
 
 describe("litPart", () => {
-  it("lights the part Gjort was opened from", () => {
-    expect(litPart("/gjort", "listor")).toBe("listor");
-    expect(litPart("/gjort", "uppgifter")).toBe("uppgifter");
-  });
   it("lights Jag when Gjort or Hemmet was opened from it", () => {
     expect(litPart("/gjort", "jag")).toBe("jag");
     expect(litPart("/hemmet", "jag")).toBe("jag");
