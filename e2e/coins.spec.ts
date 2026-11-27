@@ -1,7 +1,5 @@
 import type { Page } from "@playwright/test";
-import { eq } from "drizzle-orm";
-import { choreInstance } from "../src/db/schema";
-import { db, logIn, logInWithChestTaken, seedChore, seedDone, seedRooms } from "./support/family";
+import { logIn, logInWithChestTaken, seedChore, seedDone, seedRooms } from "./support/family";
 import { menuButton } from "./support/menu";
 import { expect, test } from "./support/test";
 
@@ -111,8 +109,7 @@ test("opening the picture menu closes the bubble and the other way round", async
 test("large totals are written in full; the pill is on Listor and, on desktop, on Gjort", async ({ page, context }, info) => {
   const bo = await logIn(context, "bo", "child");
   const rooms = await seedRooms("Kök");
-  for (let i = 0; i < 125; i++) await seedDone({ title: `Gjort ${i}`, roomId: rooms["Kök"]!.id, completedById: bo.id });
-  await db.update(choreInstance).set({ coins: 10 }).where(eq(choreInstance.completedById, bo.id));
+  await seedDone({ title: "Storstädning", roomId: rooms["Kök"]!.id, completedById: bo.id, coins: 1_250 });
   await page.goto("/");
   await expect(pill(page)).toHaveAccessibleName("1 250 mynt");
   await page.goto("/listor");
