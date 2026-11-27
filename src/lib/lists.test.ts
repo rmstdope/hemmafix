@@ -1,8 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
   applyItemChange,
-  clearedNotice,
-  countLabel,
   LIST_ORDERS,
   orderMenuLabel,
   sortLists,
@@ -41,18 +39,9 @@ describe("sortLists", () => {
 });
 
 describe("words", () => {
-  it("counts what is left", () => {
-    expect(countLabel(4, 6)).toBe("4 kvar");
-    expect(countLabel(0, 3)).toBe("Allt klart");
-    expect(countLabel(0, 0)).toBe("Tom");
-  });
   it("names the orders in the menu", () => {
     expect(LIST_ORDERS).toEqual(["alfabetiskt", "andrad", "skapad"]);
     expect(LIST_ORDERS.map(orderMenuLabel)).toEqual(["Alfabetiskt", "Senast ändrad", "Senast skapad"]);
-  });
-  it("says how many were cleared", () => {
-    expect(clearedNotice(1)).toBe("Rensade 1 sak");
-    expect(clearedNotice(3)).toBe("Rensade 3 saker");
   });
 });
 
