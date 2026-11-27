@@ -83,8 +83,9 @@ jobs:
           fi
 
   # The end-to-end suite, split over machines so that the verdict comes in minutes: each shard
-  # runs its share one test at a time, with its own Postgres and server. The shards together are
-  # the whole suite; `e2e` below is the required check that stands for all of them.
+  # runs its share two tests at a time, each with a server and database of its own on the shard's
+  # Postgres. The shards together are the whole suite; `e2e` below is the required check that
+  # stands for all of them. Few shards, so that runs that overlap queue less for runners.
   e2e-shard:
     runs-on: ubuntu-latest
     timeout-minutes: 20
@@ -92,7 +93,7 @@ jobs:
       # A failure in one shard must not stop the tests in the others.
       fail-fast: false
       matrix:
-        shard: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
+        shard: [1, 2, 3, 4, 5, 6]
     services:
       postgres:
         image: postgres:17-alpine
