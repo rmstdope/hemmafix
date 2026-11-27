@@ -1,6 +1,8 @@
 import type { Page } from "@playwright/test";
+import { isNotNull } from "drizzle-orm";
+import { listItem } from "../src/db/schema";
 import { E2E_BASE_URL } from "./support/env";
-import { logIn, seedList } from "./support/family";
+import { db, logIn, seedList } from "./support/family";
 import { menuItem } from "./support/menu";
 import { RUN_ONCE } from "./support/tags";
 import { expect, test } from "./support/test";
@@ -172,6 +174,9 @@ test("items are added first, ticked into Klart, unticked and cleared with Ångra
   await expect(open(page)).toHaveText([/Mjölk/]);
   await expect(page.getByRole("button", { name: "Mjölk: bocka av" })).toBeFocused();
   await expect(page.getByText("Allt är avbockat.")).toHaveCount(0);
+  // The page shows each change at once, but the saves go one at a time behind Ångra's, and a
+  // reload drops those not yet sent. So wait until the two Bröd are all that is ticked.
+  await expect.poll(async () => (await db.select().from(listItem).where(isNotNull(listItem.doneAt))).map((i) => i.text)).toEqual(["Bröd", "Bröd"]);
 
   // Klart stays folded or open as left, also after a reload.
   await reload(page);
