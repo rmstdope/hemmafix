@@ -93,7 +93,7 @@ Four levels, all run in CI on every pull request that changes anything outside `
   (an accidental import of `src/db` fails loudly).
 - **Repository checks** (`test/repo/**/*.test.ts`, `pnpm test:repo`): what holds the build and deploy
   setup together: `scripts/ci-needed.sh`, the mistakes in `ci.yml` that would pass unnoticed, the
-  end-to-end shard split, and the Node version stated more than once. Unit tests read no files and start no processes.
+  end-to-end shard split and workers, and the Node version stated more than once. Unit tests read no files and start no processes.
 - **Integration** (`src/**/*.int.test.ts`, `pnpm test:int`): server code against a real Postgres,
   including the login hooks in `src/server/auth.ts`. Each file gets its own freshly migrated
   database. Mock as little as possible.

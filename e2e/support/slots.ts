@@ -1,6 +1,6 @@
 // Which server and database each of Playwright's workers has to itself. Pure: `env.ts` applies it.
 
-/** Each worker takes two ports, and a worktree's port block holds ten. */
+/** Each worker takes two ports, and a worktree's block holds ten (`port_block_size` in `.cerebro/project.conf`). */
 const MAX_WORKERS = 5;
 
 /**
