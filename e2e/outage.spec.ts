@@ -19,9 +19,14 @@ test("an open page stays as it was while the server is unreachable, and catches 
   // The server stops answering: every new request is refused, as during a restart.
   await page.route("**/*", (route) => route.abort("connectionrefused"));
   // Coming back to the tab is one of the things that asks for fresh data.
-  await page.evaluate(() => document.dispatchEvent(new Event("visibilitychange")));
-  // A refresh fires 150 ms after the event; give a fallback navigation ample time to happen.
-  await page.waitForTimeout(2000);
+  const comeBack = () => page.evaluate(() => document.dispatchEvent(new Event("visibilitychange")));
+  // Twice, each time until the refresh has found the server gone: only a page that stayed can ask
+  // again, and a fallback navigation after the first has by then had time to replace it.
+  for (let i = 0; i < 2; i++) {
+    const refused = page.waitForEvent("requestfailed", (r) => r.url().endsWith("/healthz"));
+    await comeBack();
+    await refused;
+  }
 
   await expect(page).toHaveURL(/\/hemmet$/);
   await expect(field).toHaveValue("Gäst");
@@ -29,7 +34,7 @@ test("an open page stays as it was while the server is unreachable, and catches 
   // Meanwhile someone adds a room; once the server answers again the page shows it.
   await seedRooms("Tvättstuga");
   await page.unroute("**/*");
-  await page.evaluate(() => document.dispatchEvent(new Event("visibilitychange")));
+  await comeBack();
 
   await expect(page.getByRole("list", { name: "Rum" }).getByText("Tvättstuga")).toBeVisible();
   await expect(field).toHaveValue("Gäst");
@@ -54,6 +59,8 @@ for (const [down, refuse] of [
       await refuse(route);
       failed();
     });
+    // The page's own wait before it opens a new stream is run by hand below.
+    await page.clock.install();
     await page.goto("/hemmet");
     await streamFailed;
     const field = page.getByRole("textbox", { name: "Nytt rum" });
@@ -63,9 +70,14 @@ for (const [down, refuse] of [
     await page.unroute("**/api/events");
 
     // Nothing is clicked and the tab never leaves view: only the stream coming back refreshes.
-    await expect(page.getByRole("list", { name: "Rum" }).getByText("Tvättstuga")).toBeVisible({
-      timeout: 15_000,
-    });
+    // The clock is moved past the 5 s reconnect delay until it does, since the page may not have
+    // seen the failure yet; a refused connection is retried by the browser, in its own time.
+    await expect(async () => {
+      await page.clock.runFor(5_000);
+      await expect(page.getByRole("list", { name: "Rum" }).getByText("Tvättstuga")).toBeVisible({
+        timeout: 500,
+      });
+    }).toPass({ timeout: 15_000 });
     await expect(field).toHaveValue("Gäst");
   });
 }
