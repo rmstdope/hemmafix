@@ -94,7 +94,7 @@ test("the page is a party sky with white rows, light headings and pink controls,
     await expect(lit).toHaveCSS("color", "rgb(255, 255, 255)");
   } else {
     await expect(lit).toHaveCSS("color", PINK);
-    await expect(page.locator("[data-parts-bar]")).toHaveCSS("background-color", WHITE);
+    await expect(page.getByRole("navigation", { name: "Delar" }).locator("visible=true")).toHaveCSS("background-color", WHITE);
   }
 
   // An empty day keeps its words in a white box.
