@@ -32,13 +32,13 @@ som bara rör `docs/` (skisser och dokument):
 
 Annars gäller:
 
-1. **checks**: lint, typkontroll, enhetstester, migreringar mot en tom Postgres,
-   kontroll att schema och migreringar stämmer, produktionsbygge.
-2. **e2e**: end-to-end-testerna, delade i tio delar (`e2e-shard`) som körs samtidigt på var sin
-   maskin, med egen Postgres och server, ett test i taget. Kontrollen `e2e` är grön bara om alla
-   delar är det. Playwright fördelar testfilerna själv, så en ny testfil behöver inte läggas till
-   någonstans. GitHub kör ett begränsat antal jobb samtidigt (20 på ett gratiskonto), så flera
-   körningar på en gång får vänta på varandra.
+1. **checks**: lint, typkontroll, enhetstester, integrationstester, migreringar mot en tom
+   Postgres, kontroll att schema och migreringar stämmer.
+2. **e2e**: produktionsbygge och end-to-end-tester av det, delade i tio delar (`e2e-shard`) som
+   körs samtidigt på var sin maskin, med eget bygge, egen Postgres och server, ett test i taget.
+   Kontrollen `e2e` är grön bara om alla delar är det. Playwright fördelar testfilerna själv, så
+   en ny testfil behöver inte läggas till någonstans. GitHub kör ett begränsat antal jobb
+   samtidigt (20 på ett gratiskonto), så flera körningar på en gång får vänta på varandra.
 3. **production-image**: bygger imagen (`GIT_SHA` inbakad) och röktestar exakt den
    (hälsa, `release.json`, migreringar, omstart, snabb stopp).
 4. **publish** (bara `main`): pushar den testade imagen till
