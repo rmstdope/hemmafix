@@ -6,6 +6,7 @@ import { z } from "zod";
 import { UserError } from "@/lib/errors";
 import { SAVE_FAILED } from "@/lib/routine-texts";
 import type { Role } from "@/lib/permissions";
+import { formInput, INVALID_INPUT } from "@/lib/validation";
 import { getCurrentMember, type CurrentMember } from "@/server/dal";
 import * as home from "@/server/household";
 import * as chores from "@/server/chores";
@@ -57,7 +58,7 @@ async function perform<T>(
     // A refusal that means the page is behind (the row moved or went) brings the fresh list with it.
     if (refreshOnError && e instanceof UserError) refresh();
     if (e instanceof UserError) return { ok: false, error: e.message };
-    if (e instanceof z.ZodError) return { ok: false, error: e.issues[0]?.message ?? "Ogiltiga uppgifter" };
+    if (e instanceof z.ZodError) return { ok: false, error: e.issues[0]?.message ?? INVALID_INPUT };
     throw e;
   }
   if (changed(out)) {
@@ -94,12 +95,15 @@ async function actAndReport<R extends Report>(
 // ---------------------------------------------------------------------------
 
 export async function renameHousehold(_prev: ActionState, formData: FormData): Promise<ActionState> {
-  return act((m) => home.renameHousehold(m, String(formData.get("name") ?? "")));
+  return act((m) => home.renameHousehold(m, String(formInput.parse(formData).get("name") ?? "")));
 }
 
 export async function addRoom(_prev: ActionState, formData: FormData): Promise<ActionState> {
-  const floorId = formData.get("floorId");
-  return act((m) => home.addRoom(m, String(formData.get("name") ?? ""), floorId ? String(floorId) : null));
+  return act((m) => {
+    const form = formInput.parse(formData);
+    const floorId = form.get("floorId");
+    return home.addRoom(m, String(form.get("name") ?? ""), floorId ? String(floorId) : null);
+  });
 }
 
 export async function addFloor() {
@@ -172,8 +176,9 @@ export async function removeRoutineTask(routineId: string, taskId: string) {
 export async function addRoutine(_prev: ActionState, formData: FormData): Promise<ActionState> {
   let count = 0;
   const result = await act(async (m) => {
+    const form = formInput.parse(formData);
     try {
-      count = (await routines.addRoutineToHome(m, Object.fromEntries(formData))).count;
+      count = (await routines.addRoutineToHome(m, Object.fromEntries(form))).count;
     } catch (e) {
       if (e instanceof UserError || e instanceof z.ZodError) throw e;
       // The transaction rolled back, so nothing was added: say so the agreed way.
@@ -242,7 +247,7 @@ export async function setListOrder(order: ListOrder) {
 // ---------------------------------------------------------------------------
 
 export async function createChore(_prev: ActionState, formData: FormData): Promise<ActionState> {
-  return act((m) => chores.createChore(m, Object.fromEntries(formData)));
+  return act((m) => chores.createChore(m, Object.fromEntries(formInput.parse(formData))));
 }
 
 /** Edits a task from one of its open instances (the row the form was opened on). */
@@ -251,7 +256,7 @@ export async function editChore(
   _prev: ActionState,
   formData: FormData,
 ): Promise<ActionState> {
-  return act((m) => chores.editChore(m, instanceId, Object.fromEntries(formData)));
+  return act((m) => chores.editChore(m, instanceId, Object.fromEntries(formInput.parse(formData))));
 }
 
 export async function completeInstance(id: string) {
