@@ -4,7 +4,7 @@ import type { Page } from "@playwright/test";
 import { formatDue, todayIso } from "../src/lib/dates";
 import { nextDueDate } from "../src/lib/recurrence";
 import { E2E_BASE_URL } from "./support/env";
-import { logIn, seedChore, seedRooms } from "./support/family";
+import { logIn, logInWithChestTaken, seedChore, seedRooms } from "./support/family";
 import { expect, test } from "./support/test";
 
 const today = () => todayIso();
@@ -47,7 +47,8 @@ test("an adult in a home without rooms is asked to add rooms first", async ({ pa
 });
 
 test("an adult adds a recurring task from a template; ticking it off brings the next one", async ({ page, context }) => {
-  await logIn(context, "anna", "adult");
+  // With the day's chest still to come, its card would open over the tabs after the tick-off.
+  await logInWithChestTaken(context, "anna", "adult");
   await seedRooms("Kök", "Vardagsrum");
   await page.goto("/");
 
