@@ -63,7 +63,7 @@ Fyra nivåer, alla körs i CI på varje PR och måste passera innan något publi
 en ändring som bara rör `docs/`: se [deploy/README.md](deploy/README.md).
 
 - **Enhetstester** (`src/**/*.test.ts`): ren logik, ingen databas.
-- **Repokontroller** (`test/repo/*.test.ts`): det som håller ihop bygge och driftsättning:
+- **Repokontroller** (`test/repo/**/*.test.ts`): det som håller ihop bygge och driftsättning:
   `scripts/ci-needed.sh`, de fel i CI-flödet som annars inte skulle märkas och att
   Node-versionen är densamma överallt.
 - **Integrationstester** (`src/**/*.int.test.ts`): serverkod mot en riktig Postgres,

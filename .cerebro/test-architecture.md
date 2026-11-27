@@ -7,7 +7,7 @@ Agreed with the navigator 2026-11-27.
   Not here:        the database, files, processes, the network, the real clock
   Enough is:       every branch of a decision once
 
-## Repository checks   test/repo/*.test.ts, pnpm test:repo
+## Repository checks   test/repo/**/*.test.ts, pnpm test:repo
   Belongs here:    what holds the build and deploy setup together — a script that decides something, the CI workflow's mistakes that would pass unnoticed, a fact the repository states twice
   Not here:        the app's own logic; a line of a file restated, where breaking it shows itself in a run
   Enough is:       every answer of a script once; each silent failure of the workflow once; each repeated fact once, against the real tree and not on made-up input
