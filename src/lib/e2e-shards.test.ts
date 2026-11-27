@@ -1,4 +1,7 @@
-import { describe, expect, it } from "vitest";
+import { readFileSync } from "node:fs";
+import type { FullConfig, Suite, TestCase, TestRun } from "@playwright/test/reporter";
+import { describe, expect, it, vi } from "vitest";
+import BalancedShards from "../../e2e/support/balanced-shards";
 import { DEFAULT_SECONDS, splitIntoShards } from "../../e2e/support/shard-split";
 
 type Item = { key: string; project: string; seconds?: number; together?: string };
@@ -61,5 +64,111 @@ describe("splitting the end-to-end tests into shards", () => {
   it("keeps the tests' own order within a shard", () => {
     const tests = [item("a", 1), item("b", 5), item("c", 3)];
     expect(keys(split(tests, 1))).toEqual([["a", "b", "c"]]);
+  });
+});
+
+type Planned = { title: string; project?: string; status?: "passed" | "skipped"; serial?: string };
+
+/** As much of Playwright's suite as the reporter reads: one file per `serial` name or test. */
+function planned(tests: Planned[]) {
+  const suites = new Map<string, Suite>();
+  const modes = new Map<Suite, "serial" | "default">();
+  const all = tests.map(({ title, project = "mobile", status = "passed", serial }) => {
+    const name = serial ?? "x.spec.ts";
+    let parent = suites.get(`${project} ${name}`);
+    if (!parent) {
+      parent = { project: () => ({ name: project }) } as unknown as Suite;
+      suites.set(`${project} ${name}`, parent);
+      modes.set(parent, serial ? "serial" : "default");
+    }
+    return {
+      parent,
+      expectedStatus: status,
+      titlePath: () => ["", project, name, title],
+    } as unknown as TestCase;
+  });
+  return { all, modes };
+}
+
+/** The titles each shard of `total` runs, as the reporter leaves them. */
+async function run(tests: Planned[], total: number, times: Record<string, number> = {}) {
+  const shards: string[][] = [];
+  for (let current = 1; current <= total; current++) {
+    const { all, modes } = planned(tests);
+    const excluded = new Set<TestCase | Suite>();
+    const testRun = {
+      mode: (suite: Suite) => modes.get(suite)!,
+      skipSharding: vi.fn(),
+      exclude: (test: TestCase | Suite) => excluded.add(test),
+    };
+    await new BalancedShards({ times }).preprocess({
+      config: { shard: { current, total } } as FullConfig,
+      suite: { allTests: () => all } as unknown as Suite,
+      testRun: testRun as unknown as TestRun,
+    });
+    expect(testRun.skipSharding).toHaveBeenCalledOnce();
+    shards.push(all.filter((t) => !excluded.has(t)).map((t) => t.titlePath().slice(1).join(" ")));
+  }
+  return shards;
+}
+
+describe("the sharding reporter", () => {
+  it("leaves a run without shards alone", async () => {
+    const testRun = { skipSharding: vi.fn(), exclude: vi.fn() };
+    await new BalancedShards().preprocess({
+      config: { shard: null } as FullConfig,
+      suite: { allTests: () => planned([{ title: "a" }]).all } as unknown as Suite,
+      testRun: testRun as unknown as TestRun,
+    });
+    expect(testRun.skipSharding).not.toHaveBeenCalled();
+    expect(testRun.exclude).not.toHaveBeenCalled();
+  });
+
+  it("takes over from Playwright's split and runs every test in exactly one shard", async () => {
+    const tests = ["a", "b", "c", "d", "e"].flatMap((title) => [{ title }, { title, project: "desktop" }]);
+    const shards = await run(tests, 3);
+    expect(shards.flat().sort()).toEqual(
+      tests.map((t) => `${"project" in t ? t.project : "mobile"} x.spec.ts ${t.title}`).sort(),
+    );
+  });
+
+  // The times are looked up without the project.
+  it("weighs each test by its listed time", async () => {
+    const shards = await run(
+      ["slow", "a", "b", "c"].map((title) => ({ title })),
+      2,
+      { "x.spec.ts › slow": 10 },
+    );
+    expect(shards).toEqual([["mobile x.spec.ts slow"], ["a", "b", "c"].map((t) => `mobile x.spec.ts ${t}`)]);
+  });
+
+  it("gives a skipped test no weight", async () => {
+    const shards = await run(
+      [{ title: "a", status: "skipped" }, { title: "b" }, { title: "c" }],
+      2,
+      { "x.spec.ts › a": 10 },
+    );
+    expect(shards.map((s) => s.length).sort()).toEqual([1, 2]);
+    expect(shards.find((s) => s.length === 1)).not.toEqual(["mobile x.spec.ts a"]);
+  });
+
+  it("keeps a serial suite's tests in one shard", async () => {
+    const shards = await run(
+      [{ title: "first", serial: "s.spec.ts" }, { title: "other" }, { title: "second", serial: "s.spec.ts" }],
+      2,
+    );
+    expect(shards).toContainEqual(["mobile s.spec.ts first", "mobile s.spec.ts second"]);
+  });
+
+  it("prints nothing, so it does not replace a reporter that does", () => {
+    expect(new BalancedShards().printsToStdio()).toBe(false);
+  });
+
+  // Locally too, so a shard can be reproduced on a developer's machine.
+  it("is first in both reporter lists, and CI prints each test's time", () => {
+    const text = readFileSync("playwright.config.ts", "utf8");
+    expect(text).toMatch(
+      /reporter: process\.env\.CI\s*\? \[sharding, \["list"\], \["github"\], \["html", \{ open: "never" \}\]\]\s*: \[sharding, \["list"\]\],/,
+    );
   });
 });

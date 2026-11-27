@@ -8,6 +8,9 @@ import { databaseUrl } from "./test/database.mjs";
  * web server gets its own freshly migrated database and a throwaway secret; tests share it,
  * so they run one at a time and reset the database before each test.
  */
+/** Splits a `--shard` run by the time each test takes. */
+const sharding = ["./e2e/support/balanced-shards.ts"] as const;
+
 export default defineConfig({
   testDir: "./e2e",
   fullyParallel: false,
@@ -17,7 +20,10 @@ export default defineConfig({
   retries: process.env.CI ? 1 : 0,
   failOnFlakyTests: !!process.env.CI,
   globalTeardown: "./e2e/support/global-teardown.ts",
-  reporter: process.env.CI ? [["github"], ["html", { open: "never" }]] : [["list"]],
+  // `list` in CI too: its per-test times are what `test-times.json` is refreshed from.
+  reporter: process.env.CI
+    ? [sharding, ["list"], ["github"], ["html", { open: "never" }]]
+    : [sharding, ["list"]],
   use: {
     baseURL: E2E_BASE_URL,
     locale: "sv-SE",

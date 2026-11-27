@@ -6,7 +6,7 @@ export type ShardTest = {
   /** How long it takes; unknown weighs `DEFAULT_SECONDS`. */
   seconds: number | undefined;
   /** Tests with the same value run in the same shard. */
-  together?: string;
+  together?: unknown;
 };
 
 /** About the average of the tests too quick to be listed in `test-times.json`. */
@@ -26,8 +26,7 @@ export function splitIntoShards<T>(tests: T[], total: number, info: (test: T) =>
   for (const test of tests) {
     const { key, project, seconds = DEFAULT_SECONDS, together } = info(test);
     const id = `${key}\n${project}`;
-    // A suite runs in each project on its own, so the project is part of what holds it together.
-    const unitKey = together === undefined ? test : `${together}\n${project}`;
+    const unitKey = together ?? test;
     const unit = units.get(unitKey);
     if (!unit) units.set(unitKey, { id, seconds, tests: [test] });
     else {
