@@ -14,6 +14,7 @@ import { SAVE_FAILED } from "@/lib/routine-texts";
 import { levelFor } from "@/lib/levels";
 import { rollChestCoins } from "@/lib/chest";
 import { findTemplate } from "@/lib/chore-templates";
+import { byOpenOrder } from "@/lib/open-order";
 import { nextDueDate, type Recurrence } from "@/lib/recurrence";
 import { STREAK_CAP, streakOf, tickDay, withStreakBonus } from "@/lib/streak";
 import {
@@ -609,6 +610,8 @@ export type InstanceView = {
   dueDate: string | null;
   /** When the occurrence was made: tasks of one day are listed oldest first. */
   createdAt: Date;
+  /** When an edit last removed the due date; read only while there is none. */
+  undatedSince: Date | null;
   assigneeId: string | null;
   seriesAssigneeId: string | null;
   recurrence: Recurrence | null;
@@ -641,6 +644,7 @@ const instanceColumns = {
   floorName: floor.name,
   dueDate: choreInstance.dueDate,
   createdAt: choreInstance.createdAt,
+  undatedSince: choreInstance.undatedSince,
   assigneeId: choreInstance.assigneeId,
   seriesAssigneeId: chore.assigneeId,
   recurrenceUnit: chore.recurrenceUnit,
@@ -696,14 +700,9 @@ export async function listOpenInstances(actor: Actor, filter: BoardFilter): Prom
       filter.floorId ? eq(room.floorId, filter.floorId) : undefined,
       who,
     ),
-  ).orderBy(
-    sql`${choreInstance.dueDate} asc nulls last`,
-    // The undated wait from when they were added, or from when their date was removed.
-    sql`coalesce(case when ${choreInstance.dueDate} is null then ${choreInstance.undatedSince} end, ${choreInstance.createdAt})`,
-    asc(choreInstance.createdAt),
-    asc(choreInstance.id),
   );
-  return rows.map((r) => toView(r as Row));
+  // Ordered here and not in the query: the browser sorts with the same function after a move.
+  return rows.map((r) => toView(r as Row)).sort(byOpenOrder);
 }
 
 /**

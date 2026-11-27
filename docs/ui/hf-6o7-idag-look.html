@@ -1,0 +1,168 @@
+<!doctype html>
+<!--
+  The house frame of a detailed drawing (cb-buko; the agreed look is docs/ui/cb-buko-tabs.html and
+  cb-buko-states.html). scripts/ux-sheet fills the two marker lines below; nothing else writes here.
+  Every class starts with `ux-' and only `body' is styled by element, so what is drawn inside a tab
+  keeps the product's own look.
+-->
+<html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>How does &quot;Idag&quot; sit among the choices? · Planning a late chore for today</title>
+<style>
+  body{margin:0;padding:1px 8px;background:#f4f4f5}
+  .ux-page{max-width:980px;margin:14px auto 30px;background:#fff;border:1px solid #e4e4e7;border-radius:10px}
+  .ux-head,.ux-tabs,.ux-intro{font-family:system-ui,-apple-system,sans-serif;line-height:normal;text-align:left;color:#18181b}
+  .ux-head{padding:14px 16px 0}
+  .ux-work{font-size:12px;color:#71717a;text-transform:uppercase;letter-spacing:.04em}
+  .ux-heading{margin:2px 0 10px;font-size:19px}
+  .ux-tabrow{position:relative}
+  .ux-tabrow::before,.ux-tabrow::after{content:"";position:absolute;top:0;bottom:1px;width:44px;pointer-events:none;opacity:0}
+  .ux-tabrow::before{left:0;background:linear-gradient(to left,rgba(255,255,255,0),#fff)}
+  .ux-tabrow::after{right:0;background:linear-gradient(to right,rgba(255,255,255,0),#fff)}
+  .ux-tabrow.ux-more-left::before,.ux-tabrow.ux-more-right::after{opacity:1}
+  .ux-tabs{display:flex;gap:4px;border-bottom:1px solid #e4e4e7;padding:0 16px;overflow-x:auto}
+  .ux-tab{flex:none;border:0;border-radius:0;background:none;margin:0;font:inherit;font-size:14px;padding:8px 12px;color:#52525b;border-bottom:2px solid transparent;cursor:pointer;white-space:nowrap}
+  .ux-tab[aria-selected="true"]{color:#18181b;border-bottom-color:#7c3aed;font-weight:600}
+  .ux-tag{display:inline-block;font-size:11px;border-radius:999px;padding:1px 7px;margin-left:6px;font-weight:600}
+  .ux-rec{background:#ede9fe;color:#5b21b6}
+  .ux-agreed{background:#dcfce7;color:#166534}
+  .ux-panel[hidden]{display:none!important}
+  .ux-intro{padding:12px 16px 4px}
+  .ux-name{margin:0;font-size:16px}
+  .ux-cost{margin:3px 0 0;font-size:13px;color:#52525b}
+  .ux-why{margin:3px 0 0;font-size:13px;color:#5b21b6}
+  .ux-draw{padding:12px 16px 16px}
+</style></head><body>
+
+<style>
+.ph{width:300px;box-sizing:border-box;background:#fafafa;border:1px solid #e4e4e7;border-radius:14px;padding:12px;font-family:system-ui,-apple-system,sans-serif;color:#18181b}
+.wrapx{display:flex;gap:24px;flex-wrap:wrap;align-items:flex-start}
+.capx{font-size:13px;color:#555;margin:6px 0 0;max-width:300px}
+.hdr{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px}.hdr .tt{font-size:20px;font-weight:600}
+.small{font-size:12px;color:#71717a}
+.tot{display:flex;align-items:center;gap:5px;font-weight:600;font-size:14px;background:#fef3c7;border:1px solid #fcd34d;border-radius:999px;padding:3px 10px 3px 4px}
+.av{width:32px;height:32px;border-radius:50%;background:#a5b4fc;color:#fff;font-size:12px;display:flex;align-items:center;justify-content:center}
+.rt{display:flex;gap:8px;align-items:center}
+.gh{font-size:12px;font-weight:600;color:#71717a;text-transform:uppercase;letter-spacing:.03em;margin:12px 0 6px}
+.gh.red{color:#dc2626}
+ul.l{list-style:none;margin:0;padding:0}
+.it{border:1px solid #e4e4e7;border-radius:12px;background:#fff;margin-bottom:8px}
+.rw{display:flex;gap:10px;align-items:flex-start;padding:8px 6px 8px 10px}
+.ck{width:44px;height:44px;border-radius:50%;border:1px solid #d4d4d8;flex:none;display:flex;align-items:center;justify-content:center;color:#c4c4c8;font-size:18px;box-sizing:border-box}
+.bd{flex:1;min-width:0}
+.l1{display:flex;align-items:flex-start;gap:4px;min-height:24px}
+.t{flex:1;min-width:0;font-weight:500;font-size:15px;line-height:20px;padding-top:2px}
+.tr{flex:none;width:40px;height:28px;display:flex;align-items:center;justify-content:center;color:#71717a;border-radius:8px;font-size:15px;margin-top:-3px}
+.l2{display:flex;align-items:flex-end;gap:8px;margin-top:4px;padding-right:4px}
+.m{flex:1;min-width:0;font-size:12px;color:#71717a;line-height:16px}
+.m .od{color:#dc2626;font-weight:500}
+.badge{flex:none;display:flex;align-items:center;gap:4px;font-size:12px;font-weight:600;background:#fef3c7;border:1px solid #fcd34d;border-radius:999px;height:22px;box-sizing:border-box;padding:0 8px 0 4px;white-space:nowrap}
+.coin{width:12px;height:12px;border-radius:50%;background:radial-gradient(circle at 35% 35%,#fde68a,#f59e0b 70%,#b45309);box-shadow:inset 0 0 0 1.5px #d97706;display:inline-block;flex:none}
+.coin.b{width:16px;height:16px}
+.pn{border-top:1px solid #e4e4e7;padding:10px 12px;display:flex;flex-direction:column;gap:8px}
+.pr{display:flex;align-items:center;gap:8px;font-size:13px;color:#71717a}.pr .lb{width:104px;flex:none}
+.sel{height:40px;flex:1;min-width:0;border:1px solid #d4d4d8;border-radius:8px;padding:0 10px;display:flex;align-items:center;justify-content:space-between;font-size:14px;color:#18181b;box-sizing:border-box}
+.seg2{display:grid;grid-template-columns:1fr 1fr;gap:3px;background:#f4f4f5;border-radius:8px;padding:3px;font-size:13px}
+.seg2 span{height:34px;display:flex;align-items:center;justify-content:center;border-radius:6px;color:#71717a}.seg2 .on{background:#fff;color:#18181b;font-weight:600;box-shadow:0 1px 2px #0002}
+.acts{display:flex;justify-content:flex-end;gap:4px}.gb{height:40px;padding:0 10px;display:flex;align-items:center;gap:5px;font-size:14px;color:#3f3f46;border-radius:8px}.gb.red{color:#dc2626}
+.pp{display:flex;flex-direction:column;gap:6px}.pp .lb{font-size:13px;color:#71717a}
+.chips{display:grid;grid-template-columns:repeat(4,1fr);gap:4px}
+.chip{height:40px;border:1px solid #d4d4d8;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:13px;color:#18181b;background:#fff;white-space:nowrap;padding:0 2px}
+.chip.pick{color:#3f3f46}
+.chip.hot{background:#18181b;color:#fff;border-color:#18181b;font-weight:600}
+.big{height:40px;border-radius:8px;background:#18181b;color:#fff;font-weight:600;font-size:14px;display:flex;align-items:center;justify-content:center}
+.chips3{display:grid;grid-template-columns:repeat(3,1fr);gap:4px}
+.toast{background:#18181b;color:#fff;border-radius:10px;padding:10px 12px;font-size:13px;display:flex;justify-content:space-between;align-items:center;gap:8px;margin-top:10px}
+.toast b{color:#fff;font-weight:600;white-space:nowrap}
+.cal{border:1px solid #d4d4d8;border-radius:10px;background:#fff;padding:8px;font-size:12px;margin-top:4px;box-shadow:0 4px 12px #0002}
+.cal .g{display:grid;grid-template-columns:repeat(7,1fr);gap:2px;text-align:center}
+.cal .g span{height:26px;display:flex;align-items:center;justify-content:center;border-radius:6px}
+.cal .x{color:#d4d4d8;text-decoration:line-through}
+.cal .s{background:#18181b;color:#fff;font-weight:600}
+.cal .td{outline:1.5px solid #18181b}
+.hl{outline:2px dashed #e11d48;outline-offset:2px}
+</style>
+
+<div class="ux-page">
+<header class="ux-head">
+<div class="ux-work">Planning a late chore for today</div>
+<h1 class="ux-heading">How does &quot;Idag&quot; sit among the choices?</h1>
+</header>
+<div class="ux-tabrow"><div class="ux-tabs" role="tablist">
+<button type="button" class="ux-tab" role="tab" data-ux-tab="A" id="ux-tab-A" aria-controls="ux-panel-A" aria-selected="true" tabindex="0">A — Idag as a plain first choice<span class="ux-tag ux-rec">Recommended</span><span class="ux-tag ux-agreed">Agreed</span></button>
+<button type="button" class="ux-tab" role="tab" data-ux-tab="B" id="ux-tab-B" aria-controls="ux-panel-B" aria-selected="false" tabindex="-1">B — Idag stands out</button>
+<button type="button" class="ux-tab" role="tab" data-ux-tab="C" id="ux-tab-C" aria-controls="ux-panel-C" aria-selected="false" tabindex="-1">C — Its own button above the days</button>
+</div></div>
+<section class="ux-panel" role="tabpanel" id="ux-panel-A" aria-labelledby="ux-tab-A">
+<div class="ux-intro">
+<h2 class="ux-name">A — Idag as a plain first choice<span class="ux-tag ux-rec">Recommended</span><span class="ux-tag ux-agreed">Agreed</span></h2>
+<p class="ux-cost">Nothing new to learn; &quot;Idag&quot; is no louder than the other days.</p>
+<p class="ux-why">Recommended: The same row of four as every other chore, so it reads at once; only the days differ.</p>
+</div>
+<div class="ux-draw">
+<div class="wrapx"><div><div class="ph"><div class="hdr"><div><div class="tt">Uppgifter</div><div class="small">Familjen K</div></div><div class="rt"><div class="tot"><span class="coin b"></span>40</div><div class="av">HK</div></div></div><div class="gh red">Försenade</div><ul class="l"><li class="it"><div class="rw"><span class="ck">✓</span><div class="bd"><div class="l1"><span class="t">Vattna blommorna</span><span class="tr">⌃</span></div><div class="l2"><span class="m">Vardagsrum · <span class="od">I måndags</span> · Lisa</span><span class="badge"><span class="coin"></span>5</span></div></div></div><div class="pn"><div class="pp hl"><span class="lb">Skjut upp</span><div class="chips"><span class="chip">Idag</span><span class="chip">Imorgon</span><span class="chip">Sön 29</span><span class="chip pick">Välj dag…</span></div></div><div class="seg2"><span class="on">Den här gången</span><span>Alla gånger</span></div><div class="pr"><span class="lb">Vem gör den?</span><span class="sel">Lisa <span>▾</span></span></div><div class="acts"><span class="gb">✎ Ändra</span><span class="gb red">🗑 Ta bort uppgiften</span></div></div></li></ul><div class="gh">Idag</div><ul class="l"><li class="it"><div class="rw"><span class="ck">✓</span><div class="bd"><div class="l1"><span class="t">Bädda sängen</span><span class="tr">⌄</span></div><div class="l2"><span class="m">Sovrum</span><span class="badge"><span class="coin"></span>0</span></div></div></div></li></ul></div><p class="capx">A late chore (due Monday) opened by an adult. Today is Friday 27 November. The four choices are “Idag”, “Imorgon”, “Sön 29”, “Välj dag…”: the late chore’s days now start at today.</p></div><div><div class="ph"><div class="hdr"><div><div class="tt">Uppgifter</div><div class="small">Familjen K</div></div><div class="rt"><div class="tot"><span class="coin b"></span>40</div><div class="av">HK</div></div></div><div class="gh">Idag</div><ul class="l"><li class="it"><div class="rw"><span class="ck">✓</span><div class="bd"><div class="l1"><span class="t">Dammsuga hallen</span><span class="tr">⌃</span></div><div class="l2"><span class="m">Hall · Erik</span><span class="badge"><span class="coin"></span>20</span></div></div></div><div class="pn"><div class="pp"><span class="lb">Skjut upp</span><div class="chips"><span class="chip">Imorgon</span><span class="chip">Sön 29</span><span class="chip">Mån 30</span><span class="chip pick">Välj dag…</span></div></div><div class="seg2"><span class="on">Den här gången</span><span>Alla gånger</span></div><div class="pr"><span class="lb">Vem gör den?</span><span class="sel">Erik <span>▾</span></span></div><div class="acts"><span class="gb">✎ Ändra</span><span class="gb red">🗑 Ta bort uppgiften</span></div></div></li></ul></div><p class="capx">For comparison: a chore due today keeps what it has now, “Imorgon”, “Sön 29”, “Mån 30”.</p></div></div>
+</div>
+</section>
+<section class="ux-panel" role="tabpanel" id="ux-panel-B" aria-labelledby="ux-tab-B" hidden>
+<div class="ux-intro">
+<h2 class="ux-name">B — Idag stands out</h2>
+<p class="ux-cost">The late row looks different from every other row&#39;s choices; a dark button can read as &quot;the right answer&quot;.</p>
+</div>
+<div class="ux-draw">
+<div class="wrapx"><div><div class="ph"><div class="hdr"><div><div class="tt">Uppgifter</div><div class="small">Familjen K</div></div><div class="rt"><div class="tot"><span class="coin b"></span>40</div><div class="av">HK</div></div></div><div class="gh red">Försenade</div><ul class="l"><li class="it"><div class="rw"><span class="ck">✓</span><div class="bd"><div class="l1"><span class="t">Vattna blommorna</span><span class="tr">⌃</span></div><div class="l2"><span class="m">Vardagsrum · <span class="od">I måndags</span> · Lisa</span><span class="badge"><span class="coin"></span>5</span></div></div></div><div class="pn"><div class="pp hl"><span class="lb">Skjut upp</span><div class="chips"><span class="chip hot">Idag</span><span class="chip">Imorgon</span><span class="chip">Sön 29</span><span class="chip pick">Välj dag…</span></div></div><div class="seg2"><span class="on">Den här gången</span><span>Alla gånger</span></div><div class="pr"><span class="lb">Vem gör den?</span><span class="sel">Lisa <span>▾</span></span></div><div class="acts"><span class="gb">✎ Ändra</span><span class="gb red">🗑 Ta bort uppgiften</span></div></div></li></ul><div class="gh">Idag</div><ul class="l"><li class="it"><div class="rw"><span class="ck">✓</span><div class="bd"><div class="l1"><span class="t">Bädda sängen</span><span class="tr">⌄</span></div><div class="l2"><span class="m">Sovrum</span><span class="badge"><span class="coin"></span>0</span></div></div></div></li></ul></div><p class="capx">Same four choices, but “Idag” is filled dark, nudging toward today, the likely choice for a late chore.</p></div><div><div class="ph"><div class="hdr"><div><div class="tt">Uppgifter</div><div class="small">Familjen K</div></div><div class="rt"><div class="tot"><span class="coin b"></span>40</div><div class="av">HK</div></div></div><div class="gh">Idag</div><ul class="l"><li class="it"><div class="rw"><span class="ck">✓</span><div class="bd"><div class="l1"><span class="t">Dammsuga hallen</span><span class="tr">⌃</span></div><div class="l2"><span class="m">Hall · Erik</span><span class="badge"><span class="coin"></span>20</span></div></div></div><div class="pn"><div class="pp"><span class="lb">Skjut upp</span><div class="chips"><span class="chip">Imorgon</span><span class="chip">Sön 29</span><span class="chip">Mån 30</span><span class="chip pick">Välj dag…</span></div></div><div class="seg2"><span class="on">Den här gången</span><span>Alla gånger</span></div><div class="pr"><span class="lb">Vem gör den?</span><span class="sel">Erik <span>▾</span></span></div><div class="acts"><span class="gb">✎ Ändra</span><span class="gb red">🗑 Ta bort uppgiften</span></div></div></li></ul></div><p class="capx">A chore due today: unchanged, no dark choice.</p></div></div>
+</div>
+</section>
+<section class="ux-panel" role="tabpanel" id="ux-panel-C" aria-labelledby="ux-tab-C" hidden>
+<div class="ux-intro">
+<h2 class="ux-name">C — Its own button above the days</h2>
+<p class="ux-cost">One more line in the panel, and the late row&#39;s days line up differently from every other row.</p>
+</div>
+<div class="ux-draw">
+<div class="wrapx"><div><div class="ph"><div class="hdr"><div><div class="tt">Uppgifter</div><div class="small">Familjen K</div></div><div class="rt"><div class="tot"><span class="coin b"></span>40</div><div class="av">HK</div></div></div><div class="gh red">Försenade</div><ul class="l"><li class="it"><div class="rw"><span class="ck">✓</span><div class="bd"><div class="l1"><span class="t">Vattna blommorna</span><span class="tr">⌃</span></div><div class="l2"><span class="m">Vardagsrum · <span class="od">I måndags</span> · Lisa</span><span class="badge"><span class="coin"></span>5</span></div></div></div><div class="pn"><div class="pp hl"><span class="lb">Skjut upp</span><div class="big">Gör den idag</div><div class="chips3"><span class="chip">Imorgon</span><span class="chip">Sön 29</span><span class="chip pick">Välj dag…</span></div></div><div class="seg2"><span class="on">Den här gången</span><span>Alla gånger</span></div><div class="pr"><span class="lb">Vem gör den?</span><span class="sel">Lisa <span>▾</span></span></div><div class="acts"><span class="gb">✎ Ändra</span><span class="gb red">🗑 Ta bort uppgiften</span></div></div></li></ul><div class="gh">Idag</div><ul class="l"><li class="it"><div class="rw"><span class="ck">✓</span><div class="bd"><div class="l1"><span class="t">Bädda sängen</span><span class="tr">⌄</span></div><div class="l2"><span class="m">Sovrum</span><span class="badge"><span class="coin"></span>0</span></div></div></div></li></ul></div><p class="capx">A full-width “Gör den idag” above the other days, which stay three: “Imorgon”, “Sön 29”, “Välj dag…”.</p></div><div><div class="ph"><div class="hdr"><div><div class="tt">Uppgifter</div><div class="small">Familjen K</div></div><div class="rt"><div class="tot"><span class="coin b"></span>40</div><div class="av">HK</div></div></div><div class="gh">Idag</div><ul class="l"><li class="it"><div class="rw"><span class="ck">✓</span><div class="bd"><div class="l1"><span class="t">Dammsuga hallen</span><span class="tr">⌃</span></div><div class="l2"><span class="m">Hall · Erik</span><span class="badge"><span class="coin"></span>20</span></div></div></div><div class="pn"><div class="pp"><span class="lb">Skjut upp</span><div class="chips"><span class="chip">Imorgon</span><span class="chip">Sön 29</span><span class="chip">Mån 30</span><span class="chip pick">Välj dag…</span></div></div><div class="seg2"><span class="on">Den här gången</span><span>Alla gånger</span></div><div class="pr"><span class="lb">Vem gör den?</span><span class="sel">Erik <span>▾</span></span></div><div class="acts"><span class="gb">✎ Ändra</span><span class="gb red">🗑 Ta bort uppgiften</span></div></div></li></ul></div><p class="capx">A chore due today: unchanged.</p></div></div>
+</div>
+</section>
+</div>
+<script>
+// Tabs: one panel on screen, the left and right arrow keys move between them, nothing persists.
+(function(){
+  var tabs = Array.prototype.slice.call(document.querySelectorAll('.ux-tabs > .ux-tab'));
+  if (!tabs.length) return;
+  var row = tabs[0].parentNode, wrap = row.parentNode;
+  function selected(){ return tabs.findIndex(function(t){ return t.getAttribute('aria-selected') === 'true'; }); }
+  // A faded edge on whichever side has tabs out of view.
+  function fade(){
+    wrap.classList.toggle('ux-more-left', row.scrollLeft > 1);
+    wrap.classList.toggle('ux-more-right', row.scrollLeft + row.clientWidth < row.scrollWidth - 1);
+  }
+  // Scrolls the row alone: scrollIntoView would move the page too.
+  function reveal(tab){
+    var t = tab.getBoundingClientRect(), r = row.getBoundingClientRect();
+    if (t.left < r.left) row.scrollLeft -= r.left - t.left + 16;
+    else if (t.right > r.right) row.scrollLeft += t.right - r.right + 16;
+    fade();
+  }
+  function select(i){
+    tabs.forEach(function(t, n){
+      t.setAttribute('aria-selected', n === i ? 'true' : 'false');
+      t.tabIndex = n === i ? 0 : -1;
+      document.getElementById(t.getAttribute('aria-controls')).hidden = n !== i;
+    });
+    reveal(tabs[i]);
+  }
+  tabs.forEach(function(t, i){ t.addEventListener('click', function(){ select(i); }); });
+  document.addEventListener('keydown', function(e){
+    var step = e.key === 'ArrowRight' ? 1 : e.key === 'ArrowLeft' ? -1 : 0;
+    if (!step || e.defaultPrevented || e.altKey || e.ctrlKey || e.metaKey || e.shiftKey) return;
+    // A control a drawing carries (a field, a button, a slider) keeps its own arrows.
+    if (e.target.closest && e.target.closest('.ux-draw')) return;
+    e.preventDefault();
+    var focused = tabs.indexOf(document.activeElement) >= 0;
+    var i = (selected() + step + tabs.length) % tabs.length;
+    select(i);
+    if (focused) tabs[i].focus({preventScroll: true});
+  });
+  row.addEventListener('scroll', fade);
+  window.addEventListener('resize', fade);
+  window.addEventListener('load', function(){ reveal(tabs[selected()]); });
+  reveal(tabs[selected()]);
+})();
+</script></body></html>
