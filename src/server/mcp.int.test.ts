@@ -5,6 +5,7 @@ import { badgeAward, chore, choreInstance, floor, household, lookPurchase, membe
 import { BADGE_KEYS } from "@/lib/badges";
 import { todayIso } from "@/lib/dates";
 import { completeInstance, getCoinTotal, TASKS_CHANNEL } from "./chores";
+import { listenForHomes } from "../../test/integration/notifications";
 
 process.env.ALLOWED_EMAILS = "anna@example.com, bo@example.com, eve@example.com";
 process.env.BETTER_AUTH_SECRET = "integration-secret-not-for-production-0123456789";
@@ -565,14 +566,15 @@ describe("the change-role tool", () => {
   });
 
   it("tells the family's open screens when a role changed, and only then", async () => {
-    const seen: string[] = [];
-    const sub = await pg.listen("hemmafix_tasks", (id) => void seen.push(id));
-    await changeRole("bo", "Bo", "vuxen"); // refused
-    await changeRole("anna", "Bo", "barn"); // no change
-    await changeRole("anna", "Bo", "vuxen");
-    await new Promise((r) => setTimeout(r, 200));
-    await sub.unlisten();
-    expect(seen).toEqual([homeId]);
+    const homes = await listenForHomes();
+    try {
+      await changeRole("bo", "Bo", "vuxen"); // refused
+      await changeRole("anna", "Bo", "barn"); // no change
+      await changeRole("anna", "Bo", "vuxen");
+      expect(await homes.told()).toEqual([homeId]);
+    } finally {
+      await homes.unlisten();
+    }
   });
 
   it("takes effect for the next call: a person made a child is refused", async () => {
