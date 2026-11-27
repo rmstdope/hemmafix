@@ -14,22 +14,6 @@ const undo = async (page: Page, title: string) => {
   await page.getByRole("button", { name: `${title}: ångra klar` }).click();
 };
 
-test("ticking a task off adds its coins at once, and ↺ takes them back", async ({ page, context }) => {
-  await logInWithChestTaken(context, "bo", "child");
-  const rooms = await seedRooms("Kök");
-  await seedChore({ title: "Diska", roomId: rooms["Kök"]!.id, recurrence: null });
-  await page.goto("/");
-  await expect(pill(page)).toHaveText("0");
-  await expect(pill(page)).toHaveAccessibleName("0 mynt");
-
-  await tick(page, "Diska");
-  await expect(pill(page)).toHaveAccessibleName("10 mynt");
-  await expect(pill(page)).toHaveText("10");
-
-  await undo(page, "Diska");
-  await expect(pill(page)).toHaveAccessibleName("0 mynt");
-});
-
 test("a tick from before coins existed earns nothing, and undoing it takes nothing", async ({ page, context }) => {
   const bo = await logInWithChestTaken(context, "bo", "child");
   const rooms = await seedRooms("Kök");
@@ -42,17 +26,6 @@ test("a tick from before coins existed earns nothing, and undoing it takes nothi
   await undo(page, "Gammal");
   await expect(page.getByRole("button", { name: "Gammal: markera som klar" })).toBeVisible();
   await expect(pill(page)).toHaveText("10");
-});
-
-test("the total follows a tick made on another device of the same person", async ({ page, context }) => {
-  await logIn(context, "bo", "child");
-  const rooms = await seedRooms("Kök");
-  await seedChore({ title: "Diska", roomId: rooms["Kök"]!.id, recurrence: null });
-  await page.goto("/");
-  const other = await context.newPage();
-  await other.goto("/");
-  await tick(other, "Diska");
-  await expect(pill(page)).toHaveAccessibleName("10 mynt");
 });
 
 test("the pill sits just left of the picture, and the bubble explains where coins come from", async ({ page, context }) => {

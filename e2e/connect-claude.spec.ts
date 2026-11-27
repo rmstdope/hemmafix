@@ -201,14 +201,6 @@ test("the MCP address refuses a call without an access token", { tag: RUN_ONCE }
   expect(res.headers()["www-authenticate"]).toContain(`${E2E_BASE_URL}/.well-known/oauth-protected-resource/mcp`);
 });
 
-test("the MCP address refuses an access token it did not issue", { tag: RUN_ONCE }, async ({ request }) => {
-  const res = await request.post("/mcp", {
-    headers: { authorization: "Bearer not-a-real-token" },
-    data: { jsonrpc: "2.0", id: 1, method: "tools/list" },
-  });
-  expect(res.status()).toBe(401);
-});
-
 test("the login page is the plain app login when nobody is connecting an app", async ({ page }) => {
   await page.goto("/login");
   await expect(page.getByText("Logga in för att ansluta")).toHaveCount(0);

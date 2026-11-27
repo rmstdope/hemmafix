@@ -40,7 +40,9 @@ test("ticking a first task wins Första uppgiften: in colour, with its date and 
   await page.goto("/");
   await page.getByRole("button", { name: "Diska: markera som klar" }).click();
   // The badge's card holds its 25 coins until it is closed.
-  await page.getByRole("dialog", { name: "Nytt märke!" }).getByRole("button", { name: "Fortsätt" }).click();
+  const card = page.getByRole("dialog", { name: "Nytt märke!" });
+  await card.getByRole("button", { name: "Fortsätt" }).click();
+  await expect(card).toBeHidden();
   await expect(coins(page)).toHaveAccessibleName("35 mynt");
 
   await go(page, "/jag");

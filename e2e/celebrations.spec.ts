@@ -68,18 +68,6 @@ test("a badge won is a card that waits for the coins, closes with Esc and sends 
   await expect(pill(page)).toHaveText("35");
 });
 
-test("a press outside and Fortsätt close a badge card too", async ({ page, context }) => {
-  await logInWithChestTaken(context, "bo", "child", { badges: "none" });
-  const rooms = await seedRooms("Kök", "Badrum");
-  await seedChore({ title: "Diska", roomId: rooms["Kök"]!.id, recurrence: null });
-  await page.goto("/");
-  await tick(page, "Diska");
-  await expect(badgeCard(page)).toBeVisible({ timeout: 5_000 });
-  await badgeCard(page).getByRole("button", { name: "Fortsätt" }).click();
-  await expect(badgeCard(page)).toBeHidden();
-  await expect(pill(page)).toHaveText("35", { timeout: 5_000 });
-});
-
 test("the order is shower, chest, badge, then level", async ({ page, context }) => {
   await logIn(context, "bo", "child", { badges: "none" });
   const rooms = await seedRooms("Kök", "Badrum");
