@@ -2,6 +2,7 @@ import { readFileSync } from "node:fs";
 import type { FullConfig, Suite, TestCase, TestRun } from "@playwright/test/reporter";
 import { describe, expect, it, vi } from "vitest";
 import BalancedShards from "../../e2e/support/balanced-shards";
+import { testTimes } from "../../e2e/support/refresh-test-times.mjs";
 import { DEFAULT_SECONDS, splitIntoShards } from "../../e2e/support/shard-split";
 
 type Item = { key: string; project: string; seconds?: number; together?: string };
@@ -170,5 +171,44 @@ describe("the sharding reporter", () => {
     expect(text).toMatch(
       /reporter: process\.env\.CI\s*\? \[sharding, \["list"\], \["github"\], \["html", \{ open: "never" \}\]\]\s*: \[sharding, \["list"\]\],/,
     );
+  });
+});
+
+describe("refreshing the test times from CI logs", () => {
+  const line = (mark: string, project: string, title: string, end: string) =>
+    `e2e-shard (1)\tEnd-to-end tests (production build, mobile and desktop)\t2026-11-27T07:02:02.6386696Z   ${mark}   1 [${project}] › e2e/${title}${end}`;
+
+  it("averages each test over projects and runs, under the key the reporter looks up", () => {
+    const log = [
+      line("✓", "mobile", "a.spec.ts:3:1 › a title (with brackets)", " (2.0s)"),
+      line("✓", "desktop", "a.spec.ts:3:1 › a title (with brackets)", " (4.0s)"),
+      line("✓", "mobile", "b.spec.ts:7:3 › a suite › a title", " (1.0m)"),
+      line("✓", "mobile", "b.spec.ts:9:3 › tagged @run-once", " (1600ms)"),
+    ].join("\n");
+    expect(testTimes(log)).toEqual({
+      "a.spec.ts › a title (with brackets)": 3,
+      "b.spec.ts › a suite › a title": 60,
+      "b.spec.ts › tagged": 1.6,
+    });
+  });
+
+  it("lists only the tests of 1.5 s or more, in a stable order", () => {
+    const log = [
+      line("✓", "mobile", "b.spec.ts:1:1 › slow", " (1.5s)"),
+      line("✓", "mobile", "a.spec.ts:1:1 › quick", " (1.4s)"),
+      line("✓", "mobile", "a.spec.ts:2:1 › slow", " (2.3s)"),
+    ].join("\n");
+    expect(Object.keys(testTimes(log))).toEqual(["a.spec.ts › slow", "b.spec.ts › slow"]);
+  });
+
+  // None of these says how long the test normally takes.
+  it("ignores skipped, failed and retried tests", () => {
+    const log = [
+      line("-", "desktop", "a.spec.ts:1:1 › skipped", ""),
+      line("✘", "mobile", "a.spec.ts:2:1 › failed", " (30.0s)"),
+      line("✓", "mobile", "a.spec.ts:3:1 › retried", " (retry #1) (3.0s)"),
+      "e2e-shard (1)\tRun pnpm run build\t2026-11-27T07:02:02Z ✓ Ready in 3.0s",
+    ].join("\n");
+    expect(testTimes(log)).toEqual({});
   });
 });
