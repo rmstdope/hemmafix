@@ -609,6 +609,8 @@ export type InstanceView = {
   dueDate: string | null;
   /** When the occurrence was made: tasks of one day are listed oldest first. */
   createdAt: Date;
+  /** When an edit last removed the due date; read only while there is none. */
+  undatedSince: Date | null;
   assigneeId: string | null;
   seriesAssigneeId: string | null;
   recurrence: Recurrence | null;
@@ -641,6 +643,7 @@ const instanceColumns = {
   floorName: floor.name,
   dueDate: choreInstance.dueDate,
   createdAt: choreInstance.createdAt,
+  undatedSince: choreInstance.undatedSince,
   assigneeId: choreInstance.assigneeId,
   seriesAssigneeId: chore.assigneeId,
   recurrenceUnit: chore.recurrenceUnit,
