@@ -1,4 +1,4 @@
-import { eq } from "drizzle-orm";
+import { eq, sql } from "drizzle-orm";
 import { beforeEach, describe, expect, it } from "vitest";
 import { db } from "@/db";
 import { floor, household } from "@/db/schema";
@@ -150,7 +150,7 @@ describe("rooms on floors", () => {
 
     let settled = false;
     const adding = addRoom(f.adult, "Förråd", attic.id).finally(() => (settled = true));
-    await new Promise((r) => setTimeout(r, 300));
+    await waitForBlockedSession();
     expect(settled).toBe(false);
 
     release();
@@ -169,6 +169,18 @@ describe("rooms on floors", () => {
     }
   });
 });
+
+/** Waits until a session in this database is queued behind another one's lock (a row lock included). */
+async function waitForBlockedSession() {
+  for (let i = 0; i < 200; i++) {
+    const blocked = await db.execute(
+      sql`select 1 from pg_stat_activity where datname = current_database() and wait_event_type = 'Lock'`,
+    );
+    if (blocked.length > 0) return;
+    await new Promise((resolve) => setTimeout(resolve, 10));
+  }
+  throw new Error("nobody waited for a lock");
+}
 
 describe("tasks and history on floors", () => {
   it("know their room's floor, and can be filtered on a whole floor", async () => {
