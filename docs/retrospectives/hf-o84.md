@@ -20,8 +20,11 @@ Locking the table that only the looks read (`holdLooks` in `e2e/support/family.t
 `page.goBack()` before the page had rendered made it fail every time.
 
 **Cost.** About two hours of probing before the reproduction, most of it on approaches that could
-not work: per-request network delays, and a lock held while waiting for the heading, which starved
-the app's 10-connection pool.
+not work. Per-request network delays could not split the stream. A first lock probe, before the
+rebase onto #144, never showed Hemmet's heading while the lock was held. I took that for the app's
+10-connection pool being starved, but never verified it, and after the rebase the heading does show
+under the lock. Separately, the test cannot wait for Jag to show before releasing, because Jag's own
+content reads the looks too.
 
 **Prevent by.** Amend the hf-0l9 trap entry, when it is written to `.cerebro/traps.md`: an attribute
 that a global selector reads must not be in the JSX after hydration, only set by a layout effect
