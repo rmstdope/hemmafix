@@ -145,6 +145,12 @@
     @apply font-sans;
   }
 }
+/*
+ * The `:has()` rules below read marks anywhere in the document, and Next keeps a page that was left
+ * in it, hidden. So every attribute they read is written only by PageMark
+ * (src/components/page-mark.tsx), which takes it off a page that is not shown; never write one in
+ * JSX. e2e/page-marks.spec.ts lists them and proves each comes off.
+ */
 /* Height of the bottom tab bar where there is one (phone widths, on the parts of Hemmafix only). */
 :root {
   --parts-bar-h: 0px;
