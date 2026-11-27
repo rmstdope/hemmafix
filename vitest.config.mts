@@ -29,6 +29,11 @@ export default defineConfig({
         },
       },
       {
+        // What holds the build and deploy setup together: scripts, the workflow, repeated facts.
+        extends: true,
+        test: { name: "repo", include: ["test/repo/**/*.test.ts"] },
+      },
+      {
         // Server code against a real Postgres: one fresh, migrated database per test file.
         extends: true,
         test: {
