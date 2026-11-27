@@ -14,14 +14,12 @@ import { addRoutineButtonLabel, routineAddedNotice } from "@/lib/routine-texts";
 import { cn } from "@/lib/utils";
 import { CoinBadge } from "./coin-badge";
 import { CoinStepper } from "./coin-stepper";
-import { RoomOptions } from "./room-options";
+import { fieldClass } from "./field-class";
+import { RoomField } from "./room-field";
 
 type Option = { id: string; name: string };
 type Room = Option & { floorId: string };
 type RoutineOption = Option & { tasks: { title: string; coins: number }[] };
-
-const fieldClass =
-  "h-11 w-full min-w-0 rounded-lg border border-input bg-transparent px-3 text-base md:text-sm dark:bg-input/30";
 
 const UNIT_OPTIONS: { value: RecurrenceUnit; one: string; many: string }[] = [
   { value: "day", one: "dag", many: "dagar" },
@@ -135,10 +133,6 @@ export function AddChoreForm({
   const canSubmit = isRoutine ? Boolean(draft.routineId) && (!chosen || taskCount > 0) : true;
   const plural = draft.interval !== "1";
   const recurring = draft.kind === "recurring";
-  // The chosen room may be removed while the form is open, and the live refresh then takes its
-  // option away. Left to itself the browser would fall back to the first room; it has to be chosen
-  // again instead, and "Välj rum" is required.
-  const shownRoomId = rooms.some((r) => r.id === draft.roomId) ? draft.roomId : "";
 
   return (
     <form
@@ -260,22 +254,7 @@ export function AddChoreForm({
             </>
           )}
 
-          <label className="block space-y-1 text-sm">
-            <span className="text-muted-foreground">Rum</span>
-            <select
-              name="roomId"
-              aria-label="Rum"
-              value={shownRoomId}
-              onChange={(e) => set({ roomId: e.target.value })}
-              required
-              className={fieldClass}
-            >
-              <option value="" disabled>
-                Välj rum
-              </option>
-              <RoomOptions floors={floors} rooms={rooms} />
-            </select>
-          </label>
+          <RoomField floors={floors} rooms={rooms} roomId={draft.roomId} onChange={(roomId) => set({ roomId })} />
 
           <fieldset className="space-y-2 text-sm">
             <legend className="mb-1 text-muted-foreground">Hur ofta?</legend>
