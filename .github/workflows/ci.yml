@@ -79,8 +79,6 @@ jobs:
             echo "::error::src/db/schema.ts has changes without a migration; run pnpm db:generate"
             exit 1
           fi
-      - run: pnpm run build
-        if: steps.changes.outputs.run != 'false'
 
   # The end-to-end suite, split over machines so that the verdict comes in minutes: each shard
   # runs its share one test at a time, with its own Postgres and server. The shards together are
