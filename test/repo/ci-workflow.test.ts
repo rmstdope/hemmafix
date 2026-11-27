@@ -32,6 +32,8 @@ function steps(name: string) {
 /** The jobs that do the work behind the required checks; `e2e` only gathers the shards. */
 const workingJobs = ["checks", "e2e-shard", "production-image"];
 
+// REL-3 also rests on the required check `e2e` passing after shards that skipped their steps,
+// pinned under "the required check `e2e`" below.
 describe("REL-3: a docs-only merge releases nothing", () => {
   // A run that succeeds without a deployment manifest blocks rmstdope-infra, which takes the
   // latest successful run. So there must be no run at all.
