@@ -142,7 +142,20 @@ describe("winning badges", () => {
   });
 
   it("100 uppgifter is won on the hundredth tick", async () => {
-    for (let i = 0; i < 99; i++) await tick(f.child, f.kitchen.id, 0);
+    // 99 earlier ticks, made straight in the database so the test ticks only once.
+    await createChore(f.adult, { title: "Diska", roomId: f.kitchen.id, kind: "once", coins: "0" });
+    const [open] = await listOpenInstances(f.adult, {});
+    const day = addDays(todayIso(), -1);
+    await db.insert(choreInstance).values(
+      Array.from({ length: 99 }, () => ({
+        choreId: open!.choreId,
+        householdId: f.adult.householdId,
+        completedAt: new Date(`${day}T10:00:00Z`),
+        completedById: f.child.userId,
+        coins: 0,
+        tickedOn: day,
+      })),
+    );
     expect(await won()).not.toContain("hundred");
     await tick(f.child, f.kitchen.id, 0);
     expect(await won()).toContain("hundred");
