@@ -368,9 +368,11 @@ describe("an argument of the wrong type", () => {
     const { id } = await lists.createList(f.adult, "Inköp");
     const item = "00000000-0000-4000-8000-000000000001";
     await lists.addItem(f.adult, id, item, "Mjölk");
+    const before = (await lists.getList(f.adult, id))!.items;
 
     expect(await actions.setListItemDone(id, item, done as unknown as boolean)).toEqual(INVALID);
-    expect((await lists.getList(f.adult, id))!.items[0]!.doneAt).toBeNull();
+    // The whole item: a falsy value read as "untick" would move its rank.
+    expect((await lists.getList(f.adult, id))!.items).toEqual(before);
   });
 
   // Null would otherwise read as "ask first", and "no" as "go ahead".
