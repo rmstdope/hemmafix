@@ -1,8 +1,19 @@
 import type { Page } from "@playwright/test";
-import { logIn } from "./support/family";
+import { eq } from "drizzle-orm";
+import { household, routine, routineTask } from "../src/db/schema";
+import { db, logIn } from "./support/family";
 import { expect, test } from "./support/test";
 
 const section = (page: Page) => page.getByRole("region", { name: "Rutiner" });
+/**
+ * Does a full page load and waits until the page has hydrated, so that what is typed or pressed next
+ * reaches the app: the page opens its event stream from an effect.
+ */
+const loaded = async (page: Page, load: () => Promise<unknown>) => {
+  const stream = page.waitForRequest("**/api/events");
+  await load();
+  await stream;
+};
 const openHome = async (page: Page) => {
   await page.goto("/hemmet");
   await expect(page.getByRole("heading", { name: "Rutiner", level: 2 })).toBeVisible();
@@ -93,12 +104,11 @@ test("an adult makes a routine, fills it with tasks and keeps it tidy", async ({
   await page.getByRole("button", { name: "Spara" }).click();
   await expect(page.getByRole("heading", { name: "Stor städning", level: 1 })).toBeVisible();
 
-  // The 31st task is refused.
-  for (let i = 1; i <= 29; i++) {
-    await newTask(page).fill(`Uppgift ${i}`);
-    await newTask(page).press("Enter");
-    await expect(tasks(page)).toHaveCount(i + 1);
-  }
+  // The 31st task is refused. The routine holds one task; the other 29 are seeded.
+  const [made] = await db.select({ id: routine.id }).from(routine).where(eq(routine.name, "Stor städning"));
+  await db.insert(routineTask).values(Array.from({ length: 29 }, (_, i) => ({ routineId: made!.id, title: `Uppgift ${i + 1}` })));
+  await loaded(page, () => page.reload());
+  await expect(tasks(page)).toHaveCount(30);
   await newTask(page).fill("En för mycket");
   await newTask(page).press("Enter");
   await expect(page.getByText("En rutin kan ha högst 30 uppgifter")).toBeVisible();
@@ -193,13 +203,9 @@ test("with no routines the list says so, and a new routine shows live on another
   const otherPage = await other.newPage();
   await logIn(other, "bo", "adult");
 
-  await openHome(page);
-  for (const name of ["Städa badrum", "Städa kök", "Städa sovrum"]) {
-    await section(page).getByRole("link", { name: new RegExp(name) }).click();
-    await page.getByRole("button", { name: "Ta bort rutinen" }).click();
-    await page.getByRole("dialog").getByRole("button", { name: "Ta bort", exact: true }).click();
-    await expect(page.getByRole("heading", { name: "Hemmet", level: 1 })).toBeVisible();
-  }
+  // A home that has had its ready-made routines and removed them all: marked as given, with none left.
+  await db.update(household).set({ routinesSeededAt: new Date() });
+  await loaded(page, () => openHome(page));
   await expect(page.getByText("Inga rutiner ännu.")).toBeVisible();
 
   await otherPage.goto("/hemmet");
