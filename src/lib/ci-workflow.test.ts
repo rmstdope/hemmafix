@@ -127,6 +127,24 @@ describe("the end-to-end tests", () => {
   });
 });
 
+describe("the production build", () => {
+  // Nothing there reads its output, and the shards fail on a broken build anyway.
+  it("is not run by the checks job", () => {
+    expect(block(workflow, "checks", 2)).not.toMatch(/pnpm (run )?build/);
+  });
+
+  // This is what fails a pull request that breaks the build, through the required check `e2e`.
+  it("is run by every e2e shard before its tests", () => {
+    const shard = steps("e2e-shard");
+    const builds = shard.filter((step) => step.includes("pnpm run build"));
+    expect(builds).toEqual([
+      "run: pnpm run build\n        if: steps.changes.outputs.run != 'false'",
+    ]);
+    const tests = shard.findIndex((step) => step.includes("test:e2e"));
+    expect(shard.indexOf(builds[0])).toBeLessThan(tests);
+  });
+});
+
 describe("publishing", () => {
   it("still needs every required check, on a push to main only", () => {
     const publish = block(workflow, "publish", 2);
