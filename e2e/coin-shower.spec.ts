@@ -105,6 +105,14 @@ test("with reduced motion no coins fly: the number changes at once, glows and cl
 
 test("when the tick-off is refused the number drops back and the error shows", async ({ page, context }) => {
   await page.clock.install();
+  // Notes when the pill's 1.5 s wait begins (added after the clock, so it wraps the clock's timer).
+  await page.addInitScript(() => {
+    const original = window.setTimeout;
+    window.setTimeout = ((...args: Parameters<typeof original>) => {
+      if (args[1] === 1_500) (window as unknown as { settling: boolean }).settling = true;
+      return original(...args);
+    }) as typeof original;
+  });
   await setUp(page, context);
   // Someone else has ticked it already, which this page does not know yet.
   await db.update(choreInstance).set({ completedAt: new Date() });
@@ -113,6 +121,7 @@ test("when the tick-off is refused the number drops back and the error shows", a
   await expect(pill(page)).toHaveText("0", { timeout: 5_000 });
   // The coins still land; a moment later (1.5 s) the pill goes back to the server's number.
   await expect.poll(async () => (await seen(page)).clinks).toBe(5);
+  await page.waitForFunction(() => (window as unknown as { settling?: boolean }).settling);
   await page.clock.runFor(1_500);
   await expect(pill(page)).toHaveText("0");
   // Once refused, no further coin is credited: the number never reaches the full 10.
