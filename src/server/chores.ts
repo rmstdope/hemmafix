@@ -22,6 +22,7 @@ import {
   createChoreInput,
   type CreateChoreInput,
   editChoreInput,
+  flag,
   instanceId as instanceIdInput,
   memberId as memberIdInput,
   postponeInput,
@@ -468,6 +469,7 @@ export async function uncompleteInstance(
 ): Promise<UndoReport> {
   assertCan(actor, "task:complete");
   const target = instanceIdInput.parse(id);
+  const confirmed = flag.parse(confirmDebt);
 
   return db.transaction(async (tx) => {
     const [row] = await tx
@@ -513,7 +515,7 @@ export async function uncompleteInstance(
       if (after < 0) {
         const [who] = await tx.select({ name: user.name }).from(user).where(eq(user.id, ticker));
         debt = { own: ticker === actor.userId, name: (who?.name ?? "").split(" ")[0] ?? "", balance: after };
-        if (!confirmDebt) return { kind: "asked", confirm: debt };
+        if (!confirmed) return { kind: "asked", confirm: debt };
       }
     }
 
