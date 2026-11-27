@@ -3,6 +3,7 @@ import { eq } from "drizzle-orm";
 import { room } from "../src/db/schema";
 import { todayIso } from "../src/lib/dates";
 import { db, logIn, seedChore, seedRooms } from "./support/family";
+import { RUN_ONCE } from "./support/tags";
 import { expect, test } from "./support/test";
 
 // React resets a form submitted through `action` once the action settles, errors included. These
@@ -37,7 +38,7 @@ async function expectEverythingShown(form: Locator, title: string, badrumId: str
   await expect(form.getByLabel("Nästa gång")).toHaveValue("2030-06-01");
 }
 
-test("an edit the server refuses leaves Ändra showing what was typed and chosen", async ({ page, context }) => {
+test("an edit the server refuses leaves Ändra showing what was typed and chosen", { tag: RUN_ONCE }, async ({ page, context }) => {
   await logIn(context, "anna", "adult");
   const rooms = await seedRooms("Kök", "Badrum");
   await seedChore({ title: "Diska", roomId: rooms["Kök"]!.id, dueDate: todayIso() });
@@ -53,7 +54,7 @@ test("an edit the server refuses leaves Ändra showing what was typed and chosen
   await expectEverythingShown(form, long, rooms["Badrum"]!.id);
 });
 
-test("an edit to a room removed meanwhile leaves Ändra showing what was typed and chosen", async ({
+test("an edit to a room removed meanwhile leaves Ändra showing what was typed and chosen", { tag: RUN_ONCE }, async ({
   page,
   context,
 }) => {
@@ -78,7 +79,7 @@ test("an edit to a room removed meanwhile leaves Ändra showing what was typed a
   await expect(form.getByLabel("Nästa gång")).toHaveValue("2030-06-01");
 });
 
-test("a home name the server refuses stays in the field", async ({ page, context }) => {
+test("a home name the server refuses stays in the field", { tag: RUN_ONCE }, async ({ page, context }) => {
   await logIn(context, "anna", "adult");
   await page.goto("/hemmet");
 
@@ -93,7 +94,7 @@ test("a home name the server refuses stays in the field", async ({ page, context
   await expect(name).toHaveValue(long);
 });
 
-test("a room the server refuses stays in the add-room field, and a saved one clears it", async ({
+test("a room the server refuses stays in the add-room field, and a saved one clears it", { tag: RUN_ONCE }, async ({
   page,
   context,
 }) => {

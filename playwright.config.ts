@@ -32,7 +32,7 @@ export default defineConfig({
   },
   projects: [
     { name: "mobile", use: { ...devices["Pixel 7"] } },
-    // A second viewport adds nothing to these: see `RUN_ONCE`.
+    // A second viewport adds nothing to the tagged tests: see `RUN_ONCE`.
     { name: "desktop", use: { ...devices["Desktop Chrome"] }, grepInvert: new RegExp(RUN_ONCE) },
   ],
   webServer: {

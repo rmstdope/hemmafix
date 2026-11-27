@@ -62,7 +62,7 @@ async function cookieHeader(context: BrowserContext) {
   return (await context.cookies(BASE)).map((c) => `${c.name}=${c.value}`).join("; ");
 }
 
-test("the server exits promptly on SIGTERM while a page holds an event stream", async ({ page, context }) => {
+test("the server exits promptly on SIGTERM while a page holds an event stream", { tag: RUN_ONCE }, async ({ page, context }) => {
   await withServer(async (server, exited) => {
     await logIn(context, "anna", "adult");
     const stream = page.waitForResponse((r) => r.url().endsWith("/api/events") && r.status() === 200);

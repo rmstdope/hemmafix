@@ -4,6 +4,7 @@ import { E2E_BASE_URL } from "./support/env";
 import { isNull } from "drizzle-orm";
 import { choreInstance } from "../src/db/schema";
 import { db, logIn, logInWithChestTaken, seedChore, seedRooms } from "./support/family";
+import { RUN_ONCE } from "./support/tags";
 import { expect, test } from "./support/test";
 
 const item = (page: Page, title: string) =>
@@ -86,7 +87,7 @@ test("a child sees who has the task in the details, with the badge on the right,
   await expect(page.getByRole("button", { name: "Fler mynt" })).toHaveCount(0);
 });
 
-test("a ready-made task is added at 10, and a child sees the badge but no control", async ({ page, context }) => {
+test("a ready-made task is added at 10, and a child sees the badge but no control", { tag: RUN_ONCE }, async ({ page, context }) => {
   await logIn(context, "bo", "child");
   const rooms = await seedRooms("Kök");
   await seedChore({ title: "Diska", roomId: rooms["Kök"]!.id, coins: 30, recurrence: null });
@@ -96,7 +97,7 @@ test("a ready-made task is added at 10, and a child sees the badge but no contro
   await expect(page.getByRole("button", { name: "Fler mynt" })).toHaveCount(0);
 });
 
-test("a tick earns the set amount, a changed amount counts from the next tick, and ↺ takes back what that tick gave", async ({ page, context }) => {
+test("a tick earns the set amount, a changed amount counts from the next tick, and ↺ takes back what that tick gave", { tag: RUN_ONCE }, async ({ page, context }) => {
   await logInWithChestTaken(context, "anna", "adult");
   const rooms = await seedRooms("Kök");
   await seedChore({ title: "Dammsuga", roomId: rooms["Kök"]!.id, coins: 20, recurrence: { unit: "day", interval: 1 } });
@@ -183,7 +184,7 @@ test("a routine carries an amount per task, shown in the routine and when adding
   void rooms;
 });
 
-test("a changed amount shows live on another device", async ({ page, context, browser }) => {
+test("a changed amount shows live on another device", { tag: RUN_ONCE }, async ({ page, context, browser }) => {
   await logIn(context, "anna", "adult");
   const rooms = await seedRooms("Kök");
   await seedChore({ title: "Diska", roomId: rooms["Kök"]!.id, recurrence: null });

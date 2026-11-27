@@ -1,5 +1,6 @@
 import { createHash, randomBytes } from "node:crypto";
 import type { APIRequestContext, Page } from "@playwright/test";
+import { RUN_ONCE } from "./support/tags";
 import { expect, test } from "./support/test";
 import { E2E_BASE_URL } from "./support/env";
 import { captureRedirectToClaude, expectSentToClaudeOnce, REDIRECT_URI } from "./support/claude";
@@ -122,7 +123,7 @@ test("disconnecting removes the row, says so, and moves focus to the empty line"
   await expect(page.getByText("Du har inte anslutit några appar.")).toBeFocused();
 });
 
-test("a disconnect on one device removes the row on the person's other device, without a notice", async ({ page, context, browser }) => {
+test("a disconnect on one device removes the row on the person's other device, without a notice", { tag: RUN_ONCE }, async ({ page, context, browser }) => {
   const anna = await logIn(context, "anna", "adult");
   await seedConnection({ userId: anna.id, name: "Claude" });
   await openHome(page);
@@ -140,7 +141,7 @@ test("a disconnect on one device removes the row on the person's other device, w
   await other.close();
 });
 
-test("a child never sees the section", async ({ page, context }) => {
+test("a child never sees the section", { tag: RUN_ONCE }, async ({ page, context }) => {
   await logIn(context, "bo", "child");
   await page.goto("/hemmet");
   await expect(page.getByRole("heading", { name: "Anslutna appar" })).toHaveCount(0);
@@ -203,7 +204,7 @@ const disconnectClaude = async (page: Page) => {
   await expect(page.getByText("Claude är frånkopplad")).toBeVisible();
 };
 
-test("a connected app is listed, and stops working at once when it is disconnected", async ({ page, context, request }) => {
+test("a connected app is listed, and stops working at once when it is disconnected", { tag: RUN_ONCE }, async ({ page, context, request }) => {
   await logIn(context, "anna", "adult");
   const claude = await connectClaude(page, request);
   const { access_token } = await claude.approve();
@@ -223,7 +224,7 @@ test("a connected app is listed, and stops working at once when it is disconnect
   expect(refused.headers()["www-authenticate"]).toContain(`resource_metadata="${E2E_BASE_URL}/.well-known/oauth-protected-resource/mcp"`);
 });
 
-test("an app keeps working after it refreshes its token, and a disconnect stops the refreshed token too", async ({ page, context, request }) => {
+test("an app keeps working after it refreshes its token, and a disconnect stops the refreshed token too", { tag: RUN_ONCE }, async ({ page, context, request }) => {
   await logIn(context, "anna", "adult");
   const claude = await connectClaude(page, request);
   const { refresh_token } = await claude.approve();
@@ -239,7 +240,7 @@ test("an app keeps working after it refreshes its token, and a disconnect stops 
   expect((await callMcp(request, refreshed.access_token)).status()).toBe(401);
 });
 
-test("a new connection shows up on an open Hemmet page without a reload", async ({ page, context, request, browser }) => {
+test("a new connection shows up on an open Hemmet page without a reload", { tag: RUN_ONCE }, async ({ page, context, request, browser }) => {
   await logIn(context, "anna", "adult");
   await openHome(page);
   await expect(page.getByText("Du har inte anslutit några appar.")).toBeVisible();

@@ -1,7 +1,8 @@
 import { logIn } from "./support/family";
+import { RUN_ONCE } from "./support/tags";
 import { expect, test } from "./support/test";
 
-test("the notices region has a Swedish accessible name", async ({ page, context }) => {
+test("the notices region has a Swedish accessible name", { tag: RUN_ONCE }, async ({ page, context }) => {
   await logIn(context, "anna", "adult");
   await page.goto("/");
   const region = page.locator("section[aria-live='polite']");

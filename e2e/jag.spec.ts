@@ -93,7 +93,7 @@ test("a child has Jag too, and Gjort opened from Jag goes back to it", async ({ 
 
 const levelCard = (page: Page) => page.getByRole("region", { name: "Nivå" });
 
-test("a new member is level 1 and sees what the next level takes", async ({ page, context }) => {
+test("a new member is level 1 and sees what the next level takes", { tag: RUN_ONCE }, async ({ page, context }) => {
   await logIn(context, "bo", "child");
   await go(page, "/jag");
   await expect(levelCard(page).getByText("Nivå 1 · Nybörjare")).toBeVisible();
@@ -101,7 +101,7 @@ test("a new member is level 1 and sees what the next level takes", async ({ page
   await expect(levelCard(page).getByRole("progressbar")).toHaveAttribute("aria-valuenow", "0");
 });
 
-test("the card shows the level from earned coins, and the bar fills within the level", async ({ page, context }) => {
+test("the card shows the level from earned coins, and the bar fills within the level", { tag: RUN_ONCE }, async ({ page, context }) => {
   const anna = await logIn(context, "anna", "adult");
   const rooms = await seedRooms("Kök");
   const done = await seedDone({ title: "Stor", roomId: rooms["Kök"]!.id, completedById: anna.id });
@@ -112,7 +112,7 @@ test("the card shows the level from earned coins, and the bar fills within the l
   await expect(levelCard(page).getByRole("progressbar")).toHaveAttribute("aria-valuenow", "28");
 });
 
-test("an open Jag follows a tick made on another device, live", async ({ page, context, browser }) => {
+test("an open Jag follows a tick made on another device, live", { tag: RUN_ONCE }, async ({ page, context, browser }) => {
   await logIn(context, "bo", "child");
   const rooms = await seedRooms("Kök");
   await seedChore({ title: "Diska", roomId: rooms["Kök"]!.id, recurrence: null, coins: 100 });

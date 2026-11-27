@@ -2,6 +2,7 @@ import type { Page } from "@playwright/test";
 import { eq } from "drizzle-orm";
 import { household, routine, routineTask } from "../src/db/schema";
 import { db, logIn } from "./support/family";
+import { RUN_ONCE } from "./support/tags";
 import { expect, test } from "./support/test";
 
 const section = (page: Page) => page.getByRole("region", { name: "Rutiner" });
@@ -25,7 +26,7 @@ const addRoutine = async (page: Page, name: string) => {
 const tasks = (page: Page) => page.getByRole("list", { name: "Uppgifter" }).getByRole("listitem");
 const newTask = (page: Page) => page.getByRole("textbox", { name: "Ny uppgift" });
 
-test("every home starts with three ready-made routines, between Familjen and Anslutna appar", async ({ page, context }) => {
+test("every home starts with three ready-made routines, between Familjen and Anslutna appar", { tag: RUN_ONCE }, async ({ page, context }) => {
   await logIn(context, "anna", "adult");
   await openHome(page);
 
@@ -46,7 +47,7 @@ test("every home starts with three ready-made routines, between Familjen and Ans
   await expect(tasks(page)).toHaveText(["Diska", "Torka köksbänken", "Torka av spisen", "Ta ut soporna", "Dammsuga golvet", "Moppa golvet"].map((t) => new RegExp(`^${t}`)));
 });
 
-test("an adult makes a routine, fills it with tasks and keeps it tidy", async ({ page, context }) => {
+test("an adult makes a routine, fills it with tasks and keeps it tidy", { tag: RUN_ONCE }, async ({ page, context }) => {
   await logIn(context, "anna", "adult");
   await openHome(page);
 
@@ -159,7 +160,7 @@ test("removing a routine asks first and never brings it back", async ({ page, co
   await expect(section(page).getByRole("listitem")).toHaveCount(2);
 });
 
-test("a child is sent to the main list, and a routine that is gone says so", async ({ page, context }) => {
+test("a child is sent to the main list, and a routine that is gone says so", { tag: RUN_ONCE }, async ({ page, context }) => {
   await logIn(context, "bo", "child");
   await page.goto("/hemmet/rutiner/6f1c3b0e-5f8a-4c7e-9d2a-1b3c4d5e6f70");
   await expect(page).toHaveURL(/\/$/);
@@ -175,7 +176,7 @@ test("a child is sent to the main list, and a routine that is gone says so", asy
   await adult.close();
 });
 
-test("another adult's changes show up live, also when the routine is removed", async ({ page, context }) => {
+test("another adult's changes show up live, also when the routine is removed", { tag: RUN_ONCE }, async ({ page, context }) => {
   await logIn(context, "anna", "adult");
   const other = await context.browser()!.newContext();
   const otherPage = await other.newPage();
@@ -197,7 +198,7 @@ test("another adult's changes show up live, also when the routine is removed", a
   await other.close();
 });
 
-test("with no routines the list says so, and a new routine shows live on another adult's Hemmet", async ({ page, context }) => {
+test("with no routines the list says so, and a new routine shows live on another adult's Hemmet", { tag: RUN_ONCE }, async ({ page, context }) => {
   await logIn(context, "anna", "adult");
   const other = await context.browser()!.newContext();
   const otherPage = await other.newPage();

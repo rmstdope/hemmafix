@@ -1,6 +1,7 @@
 import { filterSelect, nuEmpty } from "./support/board";
 import type { Page } from "@playwright/test";
 import { chooseFromMenu, menuItem } from "./support/menu";
+import { RUN_ONCE } from "./support/tags";
 import { expect, test } from "./support/test";
 import { E2E_BASE_URL } from "./support/env";
 import { logIn, seedChore, seedRooms } from "./support/family";
@@ -88,7 +89,7 @@ test("a child sees the tasks and ticks them off, but cannot manage anything", as
   await childContext.close();
 });
 
-test("among the recently done, a child sees only their own ticks", async ({ page, context }) => {
+test("among the recently done, a child sees only their own ticks", { tag: RUN_ONCE }, async ({ page, context }) => {
   await logIn(context, "anna", "adult");
   const childContext = await context.browser()!.newContext({ baseURL: E2E_BASE_URL, locale: "sv-SE" });
   const childPage = await childContext.newPage();

@@ -5,6 +5,7 @@ import { formatDue, todayIso } from "../src/lib/dates";
 import { E2E_BASE_URL } from "./support/env";
 import { db, logIn, seedChore, seedRooms } from "./support/family";
 import { chooseFromMenu } from "./support/menu";
+import { RUN_ONCE } from "./support/tags";
 import { expect, test } from "./support/test";
 
 const item = (page: Page, title: string) =>
@@ -60,7 +61,7 @@ test("a task ticked off before an edit keeps its old name in the history", async
   await expect(page.getByRole("main").getByRole("listitem").locator("p.font-medium")).toHaveText(["Diska"]);
 });
 
-test("a child cannot edit tasks or rename rooms", async ({ context }) => {
+test("a child cannot edit tasks or rename rooms", { tag: RUN_ONCE }, async ({ context }) => {
   await logIn(context, "anna", "adult");
   const childContext = await context.browser()!.newContext({ baseURL: E2E_BASE_URL, locale: "sv-SE" });
   const childPage = await childContext.newPage();
@@ -95,7 +96,7 @@ test("an adult renames a room, and tasks follow", async ({ page, context }) => {
   await expect(item(page, "Diska")).toContainText("Kokvrå");
 });
 
-test("a room chosen in Ändra and removed elsewhere meanwhile has to be chosen again", async ({ page, context }) => {
+test("a room chosen in Ändra and removed elsewhere meanwhile has to be chosen again", { tag: RUN_ONCE }, async ({ page, context }) => {
   await logIn(context, "anna", "adult");
   const rooms = await seedRooms("Badrum", "Kök", "Tvättstuga");
   const diska = await seedChore({ title: "Diska", roomId: rooms["Kök"]!.id, dueDate: todayIso() });

@@ -1,12 +1,13 @@
 import type { Page } from "@playwright/test";
 import { logIn, seedRooms } from "./support/family";
+import { RUN_ONCE } from "./support/tags";
 import { expect, test } from "./support/test";
 
 // During a deploy the server is briefly unreachable. A live refresh then fails, and Next's router
 // falls back to a full navigation, which turns the open page into the browser's error page and
 // loses what was being typed. These pin that the page stays and catches up afterwards.
 
-test("an open page stays as it was while the server is unreachable, and catches up after", async ({
+test("an open page stays as it was while the server is unreachable, and catches up after", { tag: RUN_ONCE }, async ({
   page,
   context,
 }) => {
@@ -46,7 +47,7 @@ for (const [down, refuse] of [
   ["answers 502", (route) => route.fulfill({ status: 502 })],
   ["refuses the connection", (route) => route.abort("connectionrefused")],
 ] as const satisfies readonly (readonly [string, Parameters<Page["route"]>[1]])[]) {
-  test(`a page whose event stream failed while the server ${down} catches up once it answers`, async ({
+  test(`a page whose event stream failed while the server ${down} catches up once it answers`, { tag: RUN_ONCE }, async ({
     page,
     context,
   }) => {

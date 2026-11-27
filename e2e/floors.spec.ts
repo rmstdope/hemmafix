@@ -1,6 +1,7 @@
 import { filterSelect } from "./support/board";
 import type { Page } from "@playwright/test";
 import { floors, logIn, seedChore, seedFloor, seedRooms } from "./support/family";
+import { RUN_ONCE } from "./support/tags";
 import { expect, test } from "./support/test";
 
 const openHome = async (page: Page) => {
@@ -10,7 +11,7 @@ const openHome = async (page: Page) => {
 const floorSection = (page: Page, label: string) => page.getByRole("region", { name: label, exact: true });
 const floorHeadings = (page: Page) => page.getByRole("heading", { level: 3 });
 
-test("a home with one floor shows no floors until a second is added", async ({ page, context }) => {
+test("a home with one floor shows no floors until a second is added", { tag: RUN_ONCE }, async ({ page, context }) => {
   await logIn(context, "anna", "adult");
   await seedRooms("Kök", "Badrum");
   await openHome(page);
@@ -25,7 +26,7 @@ test("a home with one floor shows no floors until a second is added", async ({ p
   await expect(floorSection(page, "Plan 2")).toContainText("Inga rum på Plan 2 ännu.");
 });
 
-test("an adult names, orders and removes floors, with a bathroom on each", async ({ page, context }) => {
+test("an adult names, orders and removes floors, with a bathroom on each", { tag: RUN_ONCE }, async ({ page, context }) => {
   await logIn(context, "anna", "adult");
   await seedRooms("Badrum");
   await seedFloor("2");
@@ -106,7 +107,7 @@ test("a template leaves the room to the person when the home has two of that roo
   await expect(page.getByRole("tabpanel")).toContainText("Badrum · Plan 2");
 });
 
-test("a home with one floor shows rooms without a floor", async ({ page, context }) => {
+test("a home with one floor shows rooms without a floor", { tag: RUN_ONCE }, async ({ page, context }) => {
   await logIn(context, "anna", "adult");
   const rooms = await seedRooms("Kök");
   await seedChore({ title: "Diska", roomId: rooms["Kök"]!.id });

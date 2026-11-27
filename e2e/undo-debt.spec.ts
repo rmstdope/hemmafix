@@ -63,7 +63,7 @@ test("undoing a tick whose coins are spent asks first, and Ångra ändå leaves 
   await expect(page.getByRole("button", { name: "Köp Glass för 50 mynt" })).toBeDisabled();
 });
 
-test("an adult undoing a child's spent tick is asked in the child's name", async ({ page, context }) => {
+test("an adult undoing a child's spent tick is asked in the child's name", { tag: RUN_ONCE }, async ({ page, context }) => {
   await logIn(context, "anna", "adult");
   const boContext = await context.browser()!.newContext({ baseURL: E2E_BASE_URL, locale: "sv-SE" });
   const bo = await logIn(boContext, "bo", "child");

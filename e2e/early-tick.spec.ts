@@ -1,6 +1,7 @@
 import type { Page, Request } from "@playwright/test";
 import { addDays, todayIso } from "../src/lib/dates";
 import { logIn, seedChore, seedRooms } from "./support/family";
+import { RUN_ONCE } from "./support/tags";
 import { expect, test } from "./support/test";
 
 const pill = (page: Page) => page.getByRole("button", { name: /mynt$/ });
@@ -15,7 +16,7 @@ async function seedComeback() {
   await seedChore({ title: "Köp mjölk", roomId: rooms["Kök"]!.id, dueDate: addDays(todayIso(), 1), recurrence: null });
 }
 
-test("a child sees a locked tick on a repeating chore before its day, and pressing it ticks nothing", async ({ page, context }) => {
+test("a child sees a locked tick on a repeating chore before its day, and pressing it ticks nothing", { tag: RUN_ONCE }, async ({ page, context }) => {
   await logIn(context, "bo", "child");
   await seedComeback();
   await page.goto("/?flik=imorgon");
@@ -34,7 +35,7 @@ test("a child sees a locked tick on a repeating chore before its day, and pressi
   await expect(pill(page)).toHaveText("0");
 });
 
-test("an adult may tick it early: the row says no coins first, and the tick gives none", async ({ page, context }) => {
+test("an adult may tick it early: the row says no coins first, and the tick gives none", { tag: RUN_ONCE }, async ({ page, context }) => {
   await logIn(context, "anna", "adult");
   await seedComeback();
   await page.goto("/?flik=imorgon");
@@ -51,7 +52,7 @@ test("an adult may tick it early: the row says no coins first, and the tick give
   await expect(page.getByRole("list", { name: "Klart" }).getByRole("listitem").filter({ hasText: "Diska" }).getByText("0 mynt", { exact: true })).toBeAttached();
 });
 
-test("a screen left open over midnight asks the server for the new day, which moves the rows to Nu", async ({ page, context }) => {
+test("a screen left open over midnight asks the server for the new day, which moves the rows to Nu", { tag: RUN_ONCE }, async ({ page, context }) => {
   await logIn(context, "bo", "child");
   await seedComeback();
   await page.clock.install({ time: new Date() });
@@ -66,7 +67,7 @@ test("a screen left open over midnight asks the server for the new day, which mo
   await refreshed;
 });
 
-test("further ahead, on Senare, the row names the day once", async ({ page, context }) => {
+test("further ahead, on Senare, the row names the day once", { tag: RUN_ONCE }, async ({ page, context }) => {
   await logIn(context, "bo", "child");
   const rooms = await seedRooms("Kök");
   await seedChore({ title: "Damma", roomId: rooms["Kök"]!.id, dueDate: addDays(todayIso(), 6), recurrence: { unit: "week", interval: 1 } });
