@@ -361,7 +361,7 @@ test("lists, ticks, renames and removals from others appear without a reload", a
   await other.close();
 });
 
-test("a link to a list that is not there says so", async ({ page, context }) => {
+test("a link to a list that is not there says so", { tag: RUN_ONCE }, async ({ page, context }) => {
   await logIn(context, "anna", "adult");
   await page.goto("/listor/6f1c3b0e-5f8a-4c7e-9d2a-1b3c4d5e6f70");
   await expect(page.getByText("Listan finns inte längre.")).toBeVisible();
@@ -369,7 +369,7 @@ test("a link to a list that is not there says so", async ({ page, context }) => 
   await expect(page.getByText("Listan finns inte längre.")).toBeVisible();
 });
 
-test("a save that fails is undone, says so, and keeps what was typed", async ({ page, context }) => {
+test("a save that fails is undone, says so, and keeps what was typed", { tag: RUN_ONCE }, async ({ page, context }) => {
   await logIn(context, "anna", "adult");
   const inkop = await seedList("Inköp", ["Mjölk"]);
   await go(page, `/listor/${inkop.id}`);

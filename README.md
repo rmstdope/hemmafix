@@ -78,8 +78,11 @@ en ändring som bara rör `docs/`: se [deploy/README.md](deploy/README.md).
   [deploy/README.md](deploy/README.md)); lokalt körs den i ett stycke. Delningen går test för
   test, så ett test får inte bygga på att ett annat har körts före det (en fil som måste hållas
   ihop anger `mode: "serial"`).
-  Ett test som själv sätter sin fönsterstorlek innan det laddar något, eller inte laddar någon
-  sida, märks med `RUN_ONCE` (`e2e/support/tags.ts`) och körs bara i mobilformat.
+  Ett test märkt `RUN_ONCE` (`e2e/support/tags.ts`) körs bara i mobilformat: ett som själv
+  sätter sin fönsterstorlek innan det laddar något eller inte laddar någon sida, eller ett vars
+  utfall fönsterstorleken inte kan ändra (serverregler, myntberäkning, historik), vilket kräver
+  navigatörens godkännande. Tester av layout, sidhuvud, menyer, pekskärm och smala skärmar körs i
+  båda formaten.
 
 Integration och e2e skapar databaser på servern i `TEST_DATABASE_URL` (annars
 `DATABASE_URL`), bara på localhost om man inte sätter `ALLOW_REMOTE_TEST_DB=1`. De rör

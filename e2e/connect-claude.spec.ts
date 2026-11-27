@@ -28,7 +28,7 @@ async function claudeStartsConnecting(
   return { clientId: client_id as string, verifier, url: url.toString() };
 }
 
-test("an adult approves, and Claude can then list what is left to do", async ({ page, context, request }) => {
+test("an adult approves, and Claude can then list what is left to do", { tag: RUN_ONCE }, async ({ page, context, request }) => {
   await logIn(context, "anna", "adult");
   const sent = await captureRedirectToClaude(page);
   const claude = await claudeStartsConnecting();
@@ -79,7 +79,7 @@ test("an adult approves, and Claude can then list what is left to do", async ({ 
 
 });
 
-test("the approval is asked every time, also of an app that was approved before", async ({ page, context }) => {
+test("the approval is asked every time, also of an app that was approved before", { tag: RUN_ONCE }, async ({ page, context }) => {
   await logIn(context, "anna", "adult");
   const sent = await captureRedirectToClaude(page);
   const first = await claudeStartsConnecting();
@@ -100,7 +100,7 @@ test("the approval is asked every time, also of an app that was approved before"
   expect(location.searchParams.get("error")).toBe("consent_required");
 });
 
-test("a child cannot get a code by calling the approval directly", async ({ page, context }) => {
+test("a child cannot get a code by calling the approval directly", { tag: RUN_ONCE }, async ({ page, context }) => {
   await logIn(context, "bo", "child");
   await page.goto((await claudeStartsConnecting()).url);
   await expect(page.getByRole("heading", { name: "Bara vuxna kan ansluta appar" })).toBeVisible();
@@ -137,7 +137,7 @@ test("the child page tabs through the account switch, then back to Claude", asyn
   }
 });
 
-test("an approval the server no longer accepts shows the explanation", async ({ page, context }) => {
+test("an approval the server no longer accepts shows the explanation", { tag: RUN_ONCE }, async ({ page, context }) => {
   await logIn(context, "anna", "adult");
   await page.goto((await claudeStartsConnecting()).url);
   // The signed link only lasts a few minutes: the server then refuses the approval.
@@ -150,7 +150,7 @@ test("an approval the server no longer accepts shows the explanation", async ({ 
   await expect(page.getByRole("heading", { name: "Anslutningen gick inte att slutföra" })).toBeVisible();
 });
 
-test("Avbryt sends the adult back to Claude with nothing granted", async ({ page, context }) => {
+test("Avbryt sends the adult back to Claude with nothing granted", { tag: RUN_ONCE }, async ({ page, context }) => {
   await logIn(context, "anna", "adult");
   const sent = await captureRedirectToClaude(page);
   await page.goto((await claudeStartsConnecting()).url);
@@ -162,7 +162,7 @@ test("Avbryt sends the adult back to Claude with nothing granted", async ({ page
   expect(sent[0]!.searchParams.get("code")).toBeNull();
 });
 
-test("a child cannot connect an app", async ({ page, context }) => {
+test("a child cannot connect an app", { tag: RUN_ONCE }, async ({ page, context }) => {
   await logIn(context, "bo", "child");
   const sent = await captureRedirectToClaude(page);
   await page.goto((await claudeStartsConnecting()).url);
@@ -176,7 +176,7 @@ test("a child cannot connect an app", async ({ page, context }) => {
   expect(sent[0]!.searchParams.get("error")).toBe("access_denied");
 });
 
-test("someone not logged in is asked to log in to connect Claude", async ({ page }) => {
+test("someone not logged in is asked to log in to connect Claude", { tag: RUN_ONCE }, async ({ page }) => {
   await page.goto((await claudeStartsConnecting()).url);
 
   await expect(page).toHaveURL(/\/login\?/);
@@ -184,7 +184,7 @@ test("someone not logged in is asked to log in to connect Claude", async ({ page
   await expect(page.getByRole("button", { name: "Logga in med Google" })).toBeVisible();
 });
 
-test("a broken or expired link shows an explanation and no buttons", async ({ page, context }) => {
+test("a broken or expired link shows an explanation and no buttons", { tag: RUN_ONCE }, async ({ page, context }) => {
   await logIn(context, "anna", "adult");
   await page.goto("/consent?client_id=nope&exp=1&sig=bad");
 
@@ -201,14 +201,14 @@ test("the MCP address refuses a call without an access token", { tag: RUN_ONCE }
   expect(res.headers()["www-authenticate"]).toContain(`${E2E_BASE_URL}/.well-known/oauth-protected-resource/mcp`);
 });
 
-test("the login page is the plain app login when nobody is connecting an app", async ({ page }) => {
+test("the login page is the plain app login when nobody is connecting an app", { tag: RUN_ONCE }, async ({ page }) => {
   await page.goto("/login");
   await expect(page.getByText("Logga in för att ansluta")).toHaveCount(0);
 });
 
 const WARNING = /Hemmafix känner inte igen den här adressen\./;
 
-test("the real Claude shows where the approval goes, with no warning and Godkänn first", async ({ page, context }) => {
+test("the real Claude shows where the approval goes, with no warning and Godkänn first", { tag: RUN_ONCE }, async ({ page, context }) => {
   await logIn(context, "anna", "adult");
   await page.goto((await claudeStartsConnecting()).url);
 
@@ -218,7 +218,7 @@ test("the real Claude shows where the approval goes, with no warning and Godkän
   await expect(buttons).toHaveText(["Godkänn", "Avbryt"]);
 });
 
-test("an app on the person's own computer is called that, with no warning", async ({ page, context }) => {
+test("an app on the person's own computer is called that, with no warning", { tag: RUN_ONCE }, async ({ page, context }) => {
   await logIn(context, "anna", "adult");
   await page.goto((await claudeStartsConnecting({ name: "Claude Code", redirectUri: "http://localhost:54321/callback" })).url);
 
@@ -226,7 +226,7 @@ test("an app on the person's own computer is called that, with no warning", asyn
   await expect(page.getByText(WARNING)).toHaveCount(0);
 });
 
-test("an impostor calling itself Claude at an unknown address gets a warning and Avbryt first", async ({ page, context }) => {
+test("an impostor calling itself Claude at an unknown address gets a warning and Avbryt first", { tag: RUN_ONCE }, async ({ page, context }) => {
   await logIn(context, "anna", "adult");
   await page.goto((await claudeStartsConnecting({ redirectUri: "https://claude-hjalp.app/cb" })).url);
 
@@ -240,7 +240,7 @@ test("an impostor calling itself Claude at an unknown address gets a warning and
   }
 });
 
-test("a nameless app is named after its address everywhere, also on the login step", async ({ page, context }) => {
+test("a nameless app is named after its address everywhere, also on the login step", { tag: RUN_ONCE }, async ({ page, context }) => {
   const claude = await claudeStartsConnecting({ name: null, redirectUri: "https://claude-hjalp.app/cb" });
   await page.goto(claude.url);
   await expect(page.getByText("Logga in för att ansluta claude-hjalp.app till ditt hem.")).toBeVisible();
@@ -252,7 +252,7 @@ test("a nameless app is named after its address everywhere, also on the login st
   await expect(page.getByText(WARNING)).toBeVisible();
 });
 
-test("a nameless app on the person's own computer", async ({ page, context }) => {
+test("a nameless app on the person's own computer", { tag: RUN_ONCE }, async ({ page, context }) => {
   const claude = await claudeStartsConnecting({ name: null, redirectUri: "http://127.0.0.1:5000/cb" });
   await page.goto(claude.url);
   await expect(page.getByText("Logga in för att ansluta en app på den här datorn till ditt hem.")).toBeVisible();

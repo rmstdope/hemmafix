@@ -1,6 +1,7 @@
 import type { Page } from "@playwright/test";
 import { nuEmpty } from "./support/board";
 import { logIn, seedChore, seedRooms } from "./support/family";
+import { RUN_ONCE } from "./support/tags";
 import { expect, test } from "./support/test";
 
 const pill = (page: Page) => page.getByRole("button", { name: /mynt$/ });
@@ -66,7 +67,7 @@ test("a chest closed unopened with Esc opens itself and its coins are credited a
   await expect(pill(page)).toHaveText(String(total));
 });
 
-test("undoing the first tick-off does not take the chest back", async ({ page, context }) => {
+test("undoing the first tick-off does not take the chest back", { tag: RUN_ONCE }, async ({ page, context }) => {
   await setUp(page, context);
   await tick(page, "Diska");
   await card(page).getByRole("button", { name: "Öppna kistan" }).click();
@@ -82,7 +83,7 @@ test("undoing the first tick-off does not take the chest back", async ({ page, c
   await expect(card(page)).toBeHidden();
 });
 
-test("a task worth 0 coins offers no chest", async ({ page, context }) => {
+test("a task worth 0 coins offers no chest", { tag: RUN_ONCE }, async ({ page, context }) => {
   await logIn(context, "bo", "child");
   const rooms = await seedRooms("Kök");
   await seedChore({ title: "Gratis", roomId: rooms["Kök"]!.id, recurrence: null, coins: 0 });

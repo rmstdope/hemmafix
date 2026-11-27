@@ -17,7 +17,7 @@ const card = (page: Page) => page.getByRole("region", { name: "Den här veckan" 
 const seenLastWeek = (userId: string) =>
   db.insert(schema.weekRecapSeen).values({ userId, weekStart: addDays(weekStart(todayIso()), -7) });
 
-test("a new member sees a week of zeros that says to get going", async ({ page, context }) => {
+test("a new member sees a week of zeros that says to get going", { tag: RUN_ONCE }, async ({ page, context }) => {
   await logIn(context, "anna", "adult");
   await page.goto("/jag");
   await hydrated(page);
@@ -136,7 +136,7 @@ test("a child gets the Monday sheet too", async ({ page, context }) => {
   await expect(page.getByRole("dialog", { name: "Din vecka" })).toBeVisible();
 });
 
-test("the card follows a tick made on another device, with no reload", async ({ page, context }) => {
+test("the card follows a tick made on another device, with no reload", { tag: RUN_ONCE }, async ({ page, context }) => {
   await logIn(context, "anna", "adult");
   const rooms = await seedRooms("Kök");
   await seedChore({ title: "Diska", roomId: rooms["Kök"]!.id, recurrence: null });

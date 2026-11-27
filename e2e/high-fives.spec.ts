@@ -1,8 +1,9 @@
 import { E2E_BASE_URL } from "./support/env";
 import { logIn, seedDone, seedRooms } from "./support/family";
+import { RUN_ONCE } from "./support/tags";
 import { expect, test } from "./support/test";
 
-test("an adult cheers a child's tick; the child sees the count, who, and a note that stays closed", async ({
+test("an adult cheers a child's tick; the child sees the count, who, and a note that stays closed", { tag: RUN_ONCE }, async ({
   page,
   context,
 }) => {
@@ -41,7 +42,7 @@ test("an adult cheers a child's tick; the child sees the count, who, and a note 
   await expect(boPage.getByRole("button", { name: /^👏/ })).toHaveCount(0);
 });
 
-test("a person has no cheer button on their own tick", async ({ page, context }) => {
+test("a person has no cheer button on their own tick", { tag: RUN_ONCE }, async ({ page, context }) => {
   const anna = await logIn(context, "anna", "adult");
   const rooms = await seedRooms("Kök");
   await seedDone({ title: "Diska", roomId: rooms["Kök"]!.id, completedById: anna.id });

@@ -53,7 +53,7 @@ test("ticking a first task wins Första uppgiften: in colour, with its date and 
   await expect(page.getByRole("dialog", { name: "Första uppgiften" }).getByText(/^Vunnet \d{1,2} \p{L}+\.$/u)).toBeVisible();
 });
 
-test("a badge won on one device shows on another without reloading", async ({ page, context }) => {
+test("a badge won on one device shows on another without reloading", { tag: RUN_ONCE }, async ({ page, context }) => {
   await logInWithChestTaken(context, "bo", "child", { badges: "none" });
   const rooms = await seedRooms("Kök", "Badrum");
   await seedChore({ title: "Diska", roomId: rooms["Kök"]!.id, recurrence: null });

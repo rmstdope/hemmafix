@@ -3,6 +3,7 @@ import { addDays, formatDue, formatTabDay, formatTabDayLong, todayIso } from "..
 import { sql } from "drizzle-orm";
 import { household } from "../src/db/schema";
 import { db, logIn, seedChore, seedDone, seedRooms } from "./support/family";
+import { RUN_ONCE } from "./support/tags";
 import { expect, test } from "./support/test";
 
 const today = () => todayIso();
@@ -71,7 +72,7 @@ test("the other tabs show their day or everything later, with dates only under S
   await expect(panel(page)).not.toContainText(/Varje|Var \d|Varannan/);
 });
 
-test("Senare lists undated tasks first, oldest added first, live and when a date is removed", async ({ page, context }) => {
+test("Senare lists undated tasks first, oldest added first, live and when a date is removed", { tag: RUN_ONCE }, async ({ page, context }) => {
   await logIn(context, "anna", "adult");
   const rooms = await seedRooms("Kök");
   const room = rooms["Kök"]!.id;
@@ -182,7 +183,7 @@ test("Klart senaste veckan is a fold on Nu only", async ({ page, context }) => {
   await expect(page.getByText(/Klart senaste veckan/)).toBeHidden();
 });
 
-test("ticking off drops the count; a recurring task's next occurrence raises another tab's", async ({ page, context }) => {
+test("ticking off drops the count; a recurring task's next occurrence raises another tab's", { tag: RUN_ONCE }, async ({ page, context }) => {
   await logIn(context, "anna", "adult");
   const rooms = await seedRooms("Kök");
   await seedChore({ title: "Diska", roomId: rooms["Kök"]!.id, dueDate: inDays(0), recurrence: { unit: "day", interval: 1 } });
@@ -197,7 +198,7 @@ test("ticking off drops the count; a recurring task's next occurrence raises ano
   await expect(item(page, "Diska")).toBeVisible();
 });
 
-test("a change from another device updates the tabs without leaving the tab you are on", async ({ page, context }) => {
+test("a change from another device updates the tabs without leaving the tab you are on", { tag: RUN_ONCE }, async ({ page, context }) => {
   await logIn(context, "anna", "adult");
   const rooms = await seedRooms("Kök");
   await page.goto("/");

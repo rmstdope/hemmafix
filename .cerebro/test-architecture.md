@@ -19,5 +19,5 @@ Agreed with the navigator 2026-11-27.
 
 ## System           e2e/*.spec.ts, pnpm test:e2e (the production build in Chromium, mobile and desktop); deploy/smoke-test.sh for the image; src/server/mcp*.int.test.ts for what a connected app does through its tools
   Belongs here:    one requirement each, named by its ID — what a family member sees and does, on phone and desktop (REL-3 is proven by the repository checks)
-  Not here:        branch-by-branch rules that unit or integration pin; a second viewport's run of a test that sets its own width or loads no page
+  Not here:        branch-by-branch rules that unit or integration pin; a second viewport's run of a test that sets its own width or loads no page, or of one the navigator has agreed the viewport cannot change
   Enough is:       every requirement once; both viewports only where the viewport changes what is seen

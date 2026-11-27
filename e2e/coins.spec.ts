@@ -1,6 +1,7 @@
 import type { Page } from "@playwright/test";
 import { logIn, logInWithChestTaken, seedChore, seedDone, seedRooms } from "./support/family";
 import { menuButton } from "./support/menu";
+import { RUN_ONCE } from "./support/tags";
 import { expect, test } from "./support/test";
 
 /** The coin pill: a button named "<number> mynt" (the visible one: phone header or desktop strip). */
@@ -12,7 +13,7 @@ const undo = async (page: Page, title: string) => {
   await page.getByRole("button", { name: `${title}: ångra klar` }).click();
 };
 
-test("a tick from before coins existed earns nothing, and undoing it takes nothing", async ({ page, context }) => {
+test("a tick from before coins existed earns nothing, and undoing it takes nothing", { tag: RUN_ONCE }, async ({ page, context }) => {
   const bo = await logInWithChestTaken(context, "bo", "child");
   const rooms = await seedRooms("Kök");
   await seedDone({ title: "Gammal", roomId: rooms["Kök"]!.id, completedById: bo.id });

@@ -12,13 +12,13 @@ const undo = async (page: Page, title: string) => {
   await page.getByRole("button", { name: `${title}: ångra klar` }).click();
 };
 
-test("a member with no streak sees a grey 🔥0, always there", async ({ page, context }) => {
+test("a member with no streak sees a grey 🔥0, always there", { tag: RUN_ONCE }, async ({ page, context }) => {
   await logIn(context, "bo", "child");
   await page.goto("/");
   await expect(flame(page, "Ingen svit just nu")).toHaveText("🔥0");
 });
 
-test("the first tick of the day starts a streak of 1, and undoing it takes the day back", async ({ page, context }) => {
+test("the first tick of the day starts a streak of 1, and undoing it takes the day back", { tag: RUN_ONCE }, async ({ page, context }) => {
   await logInWithChestTaken(context, "bo", "child");
   const rooms = await seedRooms("Kök");
   await seedChore({ title: "Diska", roomId: rooms["Kök"]!.id, recurrence: null });
@@ -32,7 +32,7 @@ test("the first tick of the day starts a streak of 1, and undoing it takes the d
   await expect(coins(page)).toHaveAccessibleName("0 mynt");
 });
 
-test("from day 4 a tick gives +10 %, in the shower total and in what undo takes back", async ({ page, context }) => {
+test("from day 4 a tick gives +10 %, in the shower total and in what undo takes back", { tag: RUN_ONCE }, async ({ page, context }) => {
   const bo = await logInWithChestTaken(context, "bo", "child");
   const rooms = await seedRooms("Kök");
   await seedStreak({ roomId: rooms["Kök"]!.id, completedById: bo.id, days: 3 });
@@ -51,7 +51,7 @@ test("from day 4 a tick gives +10 %, in the shower total and in what undo takes 
   await expect(flame(page, "3 dagar i rad")).toBeVisible();
 });
 
-test("the chest's coins never take the streak's extra", async ({ page, context }) => {
+test("the chest's coins never take the streak's extra", { tag: RUN_ONCE }, async ({ page, context }) => {
   const bo = await logIn(context, "bo", "child");
   const rooms = await seedRooms("Kök");
   await seedStreak({ roomId: rooms["Kök"]!.id, completedById: bo.id, days: 6 });
@@ -67,7 +67,7 @@ test("the chest's coins never take the streak's extra", async ({ page, context }
   await expect(coins(page)).toHaveAccessibleName(`${72 + shown} mynt`, { timeout: 5_000 });
 });
 
-test("from day 7 the flame reads 7+ and a tick gives +20 %", async ({ page, context }) => {
+test("from day 7 the flame reads 7+ and a tick gives +20 %", { tag: RUN_ONCE }, async ({ page, context }) => {
   const bo = await logInWithChestTaken(context, "bo", "child");
   const rooms = await seedRooms("Kök");
   await seedStreak({ roomId: rooms["Kök"]!.id, completedById: bo.id, days: 6 });
@@ -78,7 +78,7 @@ test("from day 7 the flame reads 7+ and a tick gives +20 %", async ({ page, cont
   await expect(flame(page, "7 dagar i rad eller fler")).toHaveText("🔥7+");
 });
 
-test("a streak that missed a full day is 0 again", async ({ page, context }) => {
+test("a streak that missed a full day is 0 again", { tag: RUN_ONCE }, async ({ page, context }) => {
   const bo = await logIn(context, "bo", "child");
   const rooms = await seedRooms("Kök");
   await seedStreak({ roomId: rooms["Kök"]!.id, completedById: bo.id, days: 5, from: 2 });
@@ -122,7 +122,7 @@ test("the streak follows a tick made on another device", async ({ page, context 
   await expect(flame(page, "1 dag i rad")).toHaveText("🔥1");
 });
 
-test("Framsteg shows the streak card for the state", async ({ page, context }) => {
+test("Framsteg shows the streak card for the state", { tag: RUN_ONCE }, async ({ page, context }) => {
   const bo = await logIn(context, "bo", "child");
   const rooms = await seedRooms("Kök");
   await page.goto("/jag");

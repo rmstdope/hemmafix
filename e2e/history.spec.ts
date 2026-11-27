@@ -3,6 +3,7 @@ import { nuEmpty } from "./support/board";
 import { E2E_BASE_URL } from "./support/env";
 import { logIn, logInWithChestTaken, seedChore, seedDone, seedRooms } from "./support/family";
 import { chooseFromMenu } from "./support/menu";
+import { RUN_ONCE } from "./support/tags";
 import { expect, test } from "./support/test";
 
 const DAY = 86_400_000;
@@ -33,7 +34,7 @@ test("a child sees what they have done, and only that", async ({ context }) => {
   await boContext.close();
 });
 
-test("an adult sees what anyone in the home has done, over a chosen period", async ({ page, context }) => {
+test("an adult sees what anyone in the home has done, over a chosen period", { tag: RUN_ONCE }, async ({ page, context }) => {
   await logIn(context, "anna", "adult");
   const bo = await logIn(await context.browser()!.newContext(), "bo", "child");
   const rooms = await seedRooms("Kök");

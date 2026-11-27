@@ -5,6 +5,7 @@ import { formatDue, todayIso } from "../src/lib/dates";
 import { nextDueDate } from "../src/lib/recurrence";
 import { E2E_BASE_URL } from "./support/env";
 import { logIn, logInWithChestTaken, seedChore, seedRooms } from "./support/family";
+import { RUN_ONCE } from "./support/tags";
 import { expect, test } from "./support/test";
 
 const today = () => todayIso();
@@ -30,7 +31,7 @@ test("a visitor who is not logged in is sent to the login page", async ({ page }
   expect(await icon.boundingBox()).toMatchObject({ width: 64, height: 64 });
 });
 
-test("someone who is no longer on the allowlist is logged out at once", async ({ page, context }) => {
+test("someone who is no longer on the allowlist is logged out at once", { tag: RUN_ONCE }, async ({ page, context }) => {
   // A valid session for an address not (or no longer) in ALLOWED_EMAILS.
   await logIn(context, "eve");
   await page.goto("/");
@@ -169,7 +170,7 @@ test("the open tasks can be filtered on room and on person, and the filter survi
   await expect(titles()).toHaveText(["Städa toaletten"]);
 });
 
-test("an adult gives a recurring task to someone every time, or just this time", async ({ page, context }) => {
+test("an adult gives a recurring task to someone every time, or just this time", { tag: RUN_ONCE }, async ({ page, context }) => {
   await logIn(context, "anna", "adult");
   await logIn(await context.browser()!.newContext(), "bo", "child");
   const rooms = await seedRooms("Kök");
@@ -203,7 +204,7 @@ test("an adult gives a recurring task to someone every time, or just this time",
   await expect(next).toContainText("Bo");
 });
 
-test("an adult deletes a task", async ({ page, context }) => {
+test("an adult deletes a task", { tag: RUN_ONCE }, async ({ page, context }) => {
   await logIn(context, "anna", "adult");
   const rooms = await seedRooms("Kök");
   await seedChore({ title: "Diska", roomId: rooms["Kök"]!.id });
