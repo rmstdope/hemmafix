@@ -14,7 +14,7 @@ function serialSuite(test: TestCase, testRun: TestRun) {
 }
 
 export default class BalancedShards implements Reporter {
-  /** Seconds per test, by its key; refreshed with `refresh-test-times.mjs`. */
+  /** Seconds per test in a project, as `[project] › key`; refreshed with `refresh-test-times.mjs`. */
   private readonly times: Partial<Record<string, number>>;
 
   constructor(options: { times?: Record<string, number> } = {}) {
@@ -29,10 +29,11 @@ export default class BalancedShards implements Reporter {
     const shards = splitIntoShards(tests, total, (test) => {
       // Without the root's and the project's names: file, suites and title.
       const key = test.titlePath().slice(2).join(" › ");
+      const project = test.parent.project()!.name;
       return {
         key,
-        project: test.parent.project()!.name,
-        seconds: test.expectedStatus === "skipped" ? 0 : this.times[key],
+        project,
+        seconds: test.expectedStatus === "skipped" ? 0 : this.times[`[${project}] › ${key}`],
         together: serialSuite(test, testRun),
       };
     });

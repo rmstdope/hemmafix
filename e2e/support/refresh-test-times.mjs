@@ -12,10 +12,11 @@ const UNITS = { ms: 0.001, s: 1, m: 60 };
  * A passing test as Playwright's `list` reporter prints it. Tags follow the title and are not
  * part of the key, so a title that itself ends in an `@word` would never be matched.
  */
-const PASSED = /✓ +\d+ \[[\w-]+\] › e2e\/(.+?):\d+:\d+ › (.+?)(?: @[\w-]+)* \(([\d.]+)(ms|s|m)\)\s*$/;
+const PASSED = /✓ +\d+ \[([\w-]+)\] › e2e\/(.+?):\d+:\d+ › (.+?)(?: @[\w-]+)* \(([\d.]+)(ms|s|m)\)\s*$/;
 
 /**
- * Seconds per test, averaged over both viewports and every run in the log.
+ * Seconds per test and project, averaged over every run in the log. The projects are kept apart:
+ * a test may skip itself on one viewport.
  * @param {string} log
  * @returns {Record<string, number>}
  */
@@ -23,10 +24,10 @@ export function testTimes(log) {
   /** @type {Map<string, number[]>} */
   const samples = new Map();
   for (const line of log.split("\n")) {
-    const [, file, title, time, unit] = PASSED.exec(line) ?? [];
+    const [, project, file, title, time, unit] = PASSED.exec(line) ?? [];
     // A retry's time says more about what failed before it than about the test.
     if (!file || title.includes("(retry #")) continue;
-    const key = `${file} › ${title}`;
+    const key = `[${project}] › ${file} › ${title}`;
     const seconds = Number(time) * UNITS[/** @type {keyof typeof UNITS} */ (unit)];
     samples.set(key, [...(samples.get(key) ?? []), seconds]);
   }

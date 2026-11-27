@@ -134,21 +134,30 @@ describe("the sharding reporter", () => {
     );
   });
 
-  // The times are looked up without the project.
   it("weighs each test by its listed time", async () => {
     const shards = await run(
       ["slow", "a", "b", "c"].map((title) => ({ title })),
       2,
-      { "x.spec.ts › slow": 10 },
+      { "[mobile] › x.spec.ts › slow": 10 },
     );
     expect(shards).toEqual([["mobile x.spec.ts slow"], ["a", "b", "c"].map((t) => `mobile x.spec.ts ${t}`)]);
+  });
+
+  // A test that skips itself on one viewport costs nothing there and seconds on the other.
+  it("weighs a test in each project by that project's time", async () => {
+    const shards = await run(
+      [{ title: "a" }, { title: "a", project: "desktop" }, { title: "b" }, { title: "c" }],
+      2,
+      { "[mobile] › x.spec.ts › a": 10 },
+    );
+    expect(shards).toContainEqual(["mobile x.spec.ts a"]);
   });
 
   it("gives a skipped test no weight", async () => {
     const shards = await run(
       [{ title: "a", status: "skipped" }, { title: "b" }, { title: "c" }],
       2,
-      { "x.spec.ts › a": 10 },
+      { "[mobile] › x.spec.ts › a": 10 },
     );
     expect(shards.map((s) => s.length).sort()).toEqual([1, 2]);
     expect(shards.find((s) => s.length === 1)).not.toEqual(["mobile x.spec.ts a"]);
@@ -183,17 +192,19 @@ describe("refreshing the test times from CI logs", () => {
   const line = (mark: string, project: string, title: string, end: string) =>
     `e2e-shard (1)\tEnd-to-end tests (production build, mobile and desktop)\t2026-11-27T07:02:02.6386696Z   ${mark}   1 [${project}] › e2e/${title}${end}`;
 
-  it("averages each test over projects and runs, under the key the reporter looks up", () => {
+  it("averages each project's test over the runs, under the key the reporter looks up", () => {
     const log = [
       line("✓", "mobile", "a.spec.ts:3:1 › a title (with brackets)", " (2.0s)"),
-      line("✓", "desktop", "a.spec.ts:3:1 › a title (with brackets)", " (4.0s)"),
+      line("✓", "mobile", "a.spec.ts:3:1 › a title (with brackets)", " (4.0s)"),
+      line("✓", "desktop", "a.spec.ts:3:1 › a title (with brackets)", " (5.0s)"),
       line("✓", "mobile", "b.spec.ts:7:3 › a suite › a title", " (1.0m)"),
       line("✓", "mobile", "b.spec.ts:9:3 › tagged @run-once", " (1600ms)"),
     ].join("\n");
     expect(testTimes(log)).toEqual({
-      "a.spec.ts › a title (with brackets)": 3,
-      "b.spec.ts › a suite › a title": 60,
-      "b.spec.ts › tagged": 1.6,
+      "[desktop] › a.spec.ts › a title (with brackets)": 5,
+      "[mobile] › a.spec.ts › a title (with brackets)": 3,
+      "[mobile] › b.spec.ts › a suite › a title": 60,
+      "[mobile] › b.spec.ts › tagged": 1.6,
     });
   });
 
@@ -203,7 +214,7 @@ describe("refreshing the test times from CI logs", () => {
       line("✓", "mobile", "a.spec.ts:1:1 › quick", " (1.4s)"),
       line("✓", "mobile", "a.spec.ts:2:1 › slow", " (2.3s)"),
     ].join("\n");
-    expect(Object.keys(testTimes(log))).toEqual(["a.spec.ts › slow", "b.spec.ts › slow"]);
+    expect(Object.keys(testTimes(log))).toEqual(["[mobile] › a.spec.ts › slow", "[mobile] › b.spec.ts › slow"]);
   });
 
   // None of these says how long the test normally takes.
