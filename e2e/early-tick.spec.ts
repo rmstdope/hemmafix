@@ -1,9 +1,12 @@
-import type { Page } from "@playwright/test";
+import type { Page, Request } from "@playwright/test";
 import { addDays, todayIso } from "../src/lib/dates";
 import { logIn, seedChore, seedRooms } from "./support/family";
 import { expect, test } from "./support/test";
 
 const pill = (page: Page) => page.getByRole("button", { name: /mynt$/ });
+
+/** The page asking the server for its data again, as opposed to prefetching a link. */
+const isRefresh = (r: Request) => r.url().includes("_rsc") && r.headers()["next-router-prefetch"] === undefined;
 
 async function seedComeback() {
   const rooms = await seedRooms("Kök");
@@ -52,13 +55,13 @@ test("a screen left open over midnight asks the server for the new day, which mo
   await logIn(context, "bo", "child");
   await seedComeback();
   await page.clock.install({ time: new Date() });
+  const connected = page.waitForResponse((r) => isRefresh(r.request()));
   await page.goto("/?flik=imorgon");
   await expect(page.getByRole("button", { name: "Diska: kan bockas av imorgon" })).toBeVisible();
   // Let the refresh the event stream makes on connecting happen first, so only a midnight one counts.
-  await page.clock.resume();
-  await page.waitForTimeout(1_000);
+  await (await connected).finished();
 
-  const refreshed = page.waitForRequest((r) => r.url().includes("_rsc") && r.headers()["next-router-prefetch"] === undefined);
+  const refreshed = page.waitForRequest(isRefresh);
   await page.clock.fastForward("25:00:00");
   await refreshed;
 });

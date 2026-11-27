@@ -39,6 +39,13 @@ const seen = (page: Page) =>
     return { coinsFlown: w.coinsFlown, numbers: w.numbers, clinks: w.clinks };
   });
 
+/** Waits until a first tick-off's shower is over: saved, the server's list shown, all five coins landed. */
+async function showerOver(page: Page) {
+  await expect(page.getByText(/Klart senaste veckan/)).toBeAttached();
+  await expect.poll(async () => (await seen(page)).clinks).toBe(5);
+  await expect(page.locator("[data-flying-coin]")).toHaveCount(0);
+}
+
 async function setUp(page: Page, context: Parameters<typeof logIn>[0], titles = ["Diska"], chestTaken = false) {
   const person = await (chestTaken ? logInWithChestTaken : logIn)(context, "bo", "child");
   const rooms = await seedRooms("Kök");
@@ -54,19 +61,18 @@ test("ticking a task off sends five coins, the number climbs coin by coin, with 
   await tick(page, "Diska");
   await expect(pill(page)).toHaveText("10", { timeout: 5_000 });
   await expect(page.getByRole("status")).toHaveText("Du fick 10 mynt");
-  await page.waitForTimeout(500);
+  await showerOver(page);
   const { coinsFlown, numbers, clinks } = await seen(page);
   expect(coinsFlown).toBe(5);
   expect(numbers).toEqual(["0", "2", "4", "6", "8", "10"]);
   expect(clinks).toBe(5);
-  await expect(page.locator("[data-flying-coin]")).toHaveCount(0);
 });
 
 test("undoing a tick-off is quiet: no coins, no sound, no announcement", async ({ page, context }) => {
   await setUp(page, context, ["Diska"], true);
   await tick(page, "Diska");
   await expect(pill(page)).toHaveText("10", { timeout: 5_000 });
-  await page.waitForTimeout(2_000);
+  await showerOver(page);
   const before = await seen(page);
   await page.getByText(/Klart senaste veckan/).click();
   await page.getByRole("button", { name: "Diska: ångra klar" }).click();
@@ -98,13 +104,16 @@ test("with reduced motion no coins fly: the number changes at once, glows and cl
 });
 
 test("when the tick-off is refused the number drops back and the error shows", async ({ page, context }) => {
+  await page.clock.install();
   await setUp(page, context);
   // Someone else has ticked it already, which this page does not know yet.
   await db.update(choreInstance).set({ completedAt: new Date() });
   await tick(page, "Diska");
   await expect(page.getByText("Någon har redan bockat av den")).toBeVisible();
   await expect(pill(page)).toHaveText("0", { timeout: 5_000 });
-  await page.waitForTimeout(1_500);
+  // The coins still land; a moment later (1.5 s) the pill goes back to the server's number.
+  await expect.poll(async () => (await seen(page)).clinks).toBe(5);
+  await page.clock.runFor(1_500);
   await expect(pill(page)).toHaveText("0");
   // Once refused, no further coin is credited: the number never reaches the full 10.
   expect((await seen(page)).numbers).not.toContain("10");
