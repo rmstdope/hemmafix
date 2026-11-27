@@ -2,6 +2,7 @@ import type { Page } from "@playwright/test";
 import { E2E_BASE_URL } from "./support/env";
 import { logIn, seedList } from "./support/family";
 import { menuItem } from "./support/menu";
+import { RUN_ONCE } from "./support/tags";
 import { expect, test } from "./support/test";
 
 const parts = (page: Page) => page.getByRole("navigation", { name: "Delar" });
@@ -412,7 +413,7 @@ test("a Ny lista that fails to save shows the error and keeps the sheet open wit
   await expect(dialog.getByRole("textbox", { name: "Namn" })).toHaveValue("Inköp");
 });
 
-test("long names wrap, nothing overflows, and Tab goes in reading order", async ({ page, context }) => {
+test("long names wrap, nothing overflows, and Tab goes in reading order", { tag: RUN_ONCE }, async ({ page, context }) => {
   await logIn(context, "anna", "adult");
   const long = "Glutenfritt bröd till mormor, det som finns i frysdisken längst in i butiken ".repeat(2).trim();
   const inkop = await seedList(long, ["Kaffe", long]);

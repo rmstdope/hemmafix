@@ -3,6 +3,7 @@ import { eq } from "drizzle-orm";
 import { chore, choreInstance } from "../src/db/schema";
 import { addDays, formatShortDay, formatTabDay, formatTabDayLong, todayIso } from "../src/lib/dates";
 import { db, logIn, seedChore, seedRooms } from "./support/family";
+import { RUN_ONCE } from "./support/tags";
 import { expect, test } from "./support/test";
 
 const SAVE_FAILED = "Det gick inte att spara. Försök igen.";
@@ -190,7 +191,7 @@ test("Välj dag… opens the device's picker, from the day after the chore's own
   await expect(dateField(page, "Byta")).toHaveAttribute("min", inDays(6));
 });
 
-test("the four buttons come first by keyboard, share a 300 px row and stay narrow on a wide window", async ({
+test("the four buttons come first by keyboard, share a 300 px row and stay narrow on a wide window", { tag: RUN_ONCE }, async ({
   page,
   context,
 }) => {

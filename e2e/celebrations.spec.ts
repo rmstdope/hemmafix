@@ -1,6 +1,7 @@
 import type { Page } from "@playwright/test";
 import { reward } from "../src/db/schema";
 import { db, logIn, logInWithChestTaken, seedChore, seedDone, seedRooms } from "./support/family";
+import { RUN_ONCE } from "./support/tags";
 import { expect, test } from "./support/test";
 
 const pill = (page: Page) => page.getByRole("button", { name: /^[\d\s\u00a0]+ mynt$/ });
@@ -130,7 +131,7 @@ test("celebrations happen only on the device that ticked: another page of the sa
   await expect(badgeCard(other)).toHaveCount(0);
 });
 
-test("a badge card fits a 300 px screen", async ({ page, context }) => {
+test("a badge card fits a 300 px screen", { tag: RUN_ONCE }, async ({ page, context }) => {
   await page.setViewportSize({ width: 300, height: 640 });
   await logInWithChestTaken(context, "bo", "child", { badges: "none" });
   const rooms = await seedRooms("Kök", "Badrum");
