@@ -39,6 +39,11 @@ Annars gäller:
    Kontrollen `e2e` är grön bara om alla delar är det. Playwright fördelar testfilerna själv, så
    en ny testfil behöver inte läggas till någonstans. GitHub kör ett begränsat antal jobb
    samtidigt (20 på ett gratiskonto), så flera körningar på en gång får vänta på varandra.
+   Delarna installerar bara Chromiums huvudlösa skal, utan systempaket. Bygget utgår från
+   byggcachen (`.next/cache`) från senaste `main`: första delen sparar den vid en push till
+   `main`, och ändrade beroenden (`pnpm-lock.yaml`) börjar om från tomt. Misstänker du att
+   cachen är trasig, ta bort den med `gh cache delete` (`gh cache list --key next-`). Den
+   driftsatta imagen byggs utan cache.
 3. **production-image**: bygger imagen (`GIT_SHA` inbakad) och röktestar exakt den
    (hälsa, `release.json`, migreringar, omstart, snabb stopp).
 4. **publish** (bara `main`): pushar den testade imagen till
