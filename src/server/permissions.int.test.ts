@@ -13,12 +13,13 @@ import { buyLook, chooseLook } from "./looks";
 import { buyReward, cancelPurchase, listGoldRows } from "./rewards";
 import { closeWeekRecap } from "./weeks";
 
-/** Actions taken away from everyone for one test, on top of the real table. */
-const denied = vi.hoisted(() => new Set<string>());
+/** Actions taken from, or given to, everyone for one test, on top of the real table. */
+const { denied, granted } = vi.hoisted(() => ({ denied: new Set<string>(), granted: new Set<string>() }));
 
 vi.mock("@/lib/permissions", async (importOriginal) => {
   const real = await importOriginal<typeof import("@/lib/permissions")>();
-  const can: typeof real.can = (role, action) => !denied.has(action) && real.can(role, action);
+  const can: typeof real.can = (role, action) =>
+    !denied.has(action) && (granted.has(action) || real.can(role, action));
   const assertCan: typeof real.assertCan = (actor, action) => {
     if (!can(actor.role, action)) throw new real.ForbiddenError();
   };
@@ -29,6 +30,7 @@ let f: Awaited<ReturnType<typeof createFamily>>;
 
 beforeEach(async () => {
   denied.clear();
+  granted.clear();
   await db.delete(household);
   f = await createFamily();
 });
@@ -53,10 +55,12 @@ describe("the permissions table", () => {
   });
 
   it("decides who is asked to give a reward", async () => {
-    await db.insert(rewardPurchase).values({ householdId: f.homeId, buyerId: f.child.userId, name: "Glass", price: 50 });
-    expect(await listGoldRows(f.adult)).toHaveLength(1);
+    await db.insert(rewardPurchase).values({ householdId: f.homeId, buyerId: f.adult.userId, name: "Glass", price: 50 });
+    expect(await listGoldRows(f.child)).toEqual([]);
+    granted.add("reward:give");
+    expect(await listGoldRows(f.child)).toHaveLength(1);
+    granted.clear();
     denied.add("reward:give");
     expect(giveRecipients(f.child.userId, [{ id: f.adult.userId, role: "adult" }])).toEqual([]);
-    expect(await listGoldRows(f.adult)).toEqual([]);
   });
 });

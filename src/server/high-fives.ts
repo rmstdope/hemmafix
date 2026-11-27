@@ -14,9 +14,9 @@ const firstName = (name: string) => name.split(" ")[0] ?? name;
  * other people's ticks (src/server/chores.ts), so only they may cheer them.
  */
 export async function setHighFive(actor: Actor, id: string, on: boolean) {
+  if (!on) assertCan(actor, "high-five:take-back");
   const target = instanceIdInput.parse(id);
   if (!on) {
-    assertCan(actor, "high-five:take-back");
     await db.delete(highFive).where(and(eq(highFive.instanceId, target), eq(highFive.userId, actor.userId)));
     return;
   }

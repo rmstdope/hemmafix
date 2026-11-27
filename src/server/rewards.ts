@@ -68,7 +68,7 @@ export async function deleteReward(actor: Actor, id: string) {
 // Buying
 // ---------------------------------------------------------------------------
 
-/** Spends the actor's coins on a reward; an adult is asked to give it. Exactly enough is enough. */
+/** Spends the actor's coins on a reward; someone who may give rewards is asked to. Exactly enough is enough. */
 export async function buyReward(actor: Actor, id: string): Promise<Won> {
   assertCan(actor, "coins:spend");
   const target = idOrGone(id, GONE_REWARD);
