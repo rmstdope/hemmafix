@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import { useSearchParams } from "next/navigation";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
@@ -16,8 +17,7 @@ export function LoginCard({ connectApp }: { connectApp?: string }) {
 
   return (
     <div className="w-full max-w-sm space-y-6 rounded-2xl border bg-card p-8 text-center">
-      {/* eslint-disable-next-line @next/next/no-img-element */}
-      <img src="/icon.svg" alt="" className="mx-auto size-16" />
+      <Image src="/icon.svg" alt="" width={64} height={64} loading="eager" className="mx-auto size-16" />
       <div>
         <h1 className="text-2xl font-semibold">Hemmafix</h1>
         <p className="text-muted-foreground">Familjens att-göra-lista</p>
