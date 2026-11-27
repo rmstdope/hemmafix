@@ -103,7 +103,7 @@ Four levels, all run in CI on every pull request that changes anything outside `
   (`e2e/support/tags.ts`) runs in mobile only: one that sets its own viewport before it loads
   anything or loads no page, or one whose subject the viewport cannot change (server rules, coin
   arithmetic, history), which takes the navigator's approval. Tests of layout, the header, menus,
-  touch or narrow screens run on both. CI splits the suite into six shards on separate runners
+  touch or narrow screens run on both. CI splits the suite into seven shards on separate runners
   (`e2e-shard` in `ci.yml`), each running two tests at a time; the required check `e2e` passes only
   when every shard does. Each worker has its own server and database (`e2e/support/slots.ts`), so
   tests running at once share nothing; locally one runs at a time unless `E2E_WORKERS` says

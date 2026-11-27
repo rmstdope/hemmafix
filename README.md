@@ -75,7 +75,7 @@ en ändring som bara rör `docs/`: se [deploy/README.md](deploy/README.md).
   som körs samtidigt delar ingenting. Testerna loggar in utan Google via Better Auths `test-utils`-plugin,
   som bara finns i testprocessen: det skriver en riktig session och signerar cookien med
   samma hemlighet. Appen har alltså ingen testinloggning som kan råka vara påslagen.
-  I CI delas sviten i sex delar som körs samtidigt på var sin maskin, två test åt gången i
+  I CI delas sviten i sju delar som körs samtidigt på var sin maskin, två test åt gången i
   varje (se [deploy/README.md](deploy/README.md)); lokalt körs den i ett stycke, ett test åt
   gången om inte `E2E_WORKERS` säger annat (använd den, inte `--workers`). Delningen går test
   för test, så ett test får inte bygga på att ett annat har körts före det (en fil som måste

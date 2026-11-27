@@ -34,7 +34,7 @@ Annars gäller:
 
 1. **checks**: lint, typkontroll, enhetstester, integrationstester, migreringar mot en tom
    Postgres, kontroll att schema och migreringar stämmer.
-2. **e2e**: produktionsbygge och end-to-end-tester av det, delade i sex delar (`e2e-shard`) som
+2. **e2e**: produktionsbygge och end-to-end-tester av det, delade i sju delar (`e2e-shard`) som
    körs samtidigt på var sin maskin, med eget bygge och egen Postgres. Varje del kör två test
    åt gången, med en server och en databas per test (`e2e/support/slots.ts`).
    Kontrollen `e2e` är grön bara om alla delar är det. Testen fördelas ett och ett så att delarna
@@ -44,7 +44,7 @@ Annars gäller:
    några färska körningar:
    `for run in <id> <id>; do gh run view "$run" --log; done | node e2e/support/refresh-test-times.mjs`.
    GitHub kör ett begränsat antal jobb samtidigt (20 på ett gratiskonto), så flera körningar på en
-   gång får vänta på varandra. En körning startar nio jobb (sex delar, `checks`,
+   gång får vänta på varandra. En körning startar tio jobb (sju delar, `checks`,
    `production-image` och `e2e`), så två körningar samtidigt ryms.
    Delarna installerar bara Chromiums huvudlösa skal, utan systempaket. Bygget utgår från
    byggcachen (`.next/cache`) från senaste `main`: första delen sparar den vid en push till
