@@ -96,9 +96,11 @@ Three levels, all run in CI on every pull request that changes anything outside 
   database. Mock as little as possible.
 - **End-to-end** (`e2e/`, Playwright, `pnpm e2e`): the production build in Chromium, mobile and
   desktop. Tests log in through Better Auth's `test-utils` plugin, which exists only in the test
-  process; the app itself has no test login, and none may be added. CI splits the suite into ten
-  shards on separate runners (`e2e-shard` in `ci.yml`); the required check `e2e` passes only when
-  every shard does. A new spec needs no registration.
+  process; the app itself has no test login, and none may be added. A test that sets its own
+  viewport before it loads anything, or loads no page, is tagged `RUN_ONCE` (`e2e/support/tags.ts`)
+  and runs in mobile only. CI splits the suite into ten shards on separate runners (`e2e-shard` in
+  `ci.yml`); the required check `e2e` passes only when every shard does. A new spec needs no
+  registration.
 
 Integration and e2e need a local Postgres (README *Kom igång*) and create databases named
 `hemmafix_test_*` on `TEST_DATABASE_URL` (else `DATABASE_URL`). A worktree gets a copy of the main

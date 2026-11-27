@@ -1,5 +1,6 @@
 import type { Page } from "@playwright/test";
 import { logIn, logInWithChestTaken, seedChore, seedRooms } from "./support/family";
+import { RUN_ONCE } from "./support/tags";
 import { expect, test } from "./support/test";
 
 const hydrated = (page: Page) => expect(page.locator('[data-hydrated="true"]')).toBeAttached();
@@ -80,7 +81,7 @@ test("badges are reached with the keyboard: Enter opens a sheet, Esc closes it a
   await expect(badge).toBeFocused();
 });
 
-test("on a 300 px phone the four-across grid fits the screen", async ({ page, context }) => {
+test("on a 300 px phone the four-across grid fits the screen", { tag: RUN_ONCE }, async ({ page, context }) => {
   await logIn(context, "bo", "child", { badges: "none" });
   await page.setViewportSize({ width: 300, height: 700 });
   await go(page, "/jag");

@@ -1,6 +1,7 @@
 import type { Page } from "@playwright/test";
 import { logIn, logInWithChestTaken, seedChore, seedRooms, seedStreak } from "./support/family";
 import { menuButton } from "./support/menu";
+import { RUN_ONCE } from "./support/tags";
 import { expect, test } from "./support/test";
 
 const flame = (page: Page, name: string | RegExp) => page.getByRole("img", { name });
@@ -101,7 +102,7 @@ test("the flame is not a button, and sits just left of the coin pill on every pa
   }
 });
 
-test("on a narrow phone the flame, coin pill and picture stay on one row and fit", async ({ page, context }) => {
+test("on a narrow phone the flame, coin pill and picture stay on one row and fit", { tag: RUN_ONCE }, async ({ page, context }) => {
   await logIn(context, "anna", "adult");
   await page.setViewportSize({ width: 300, height: 700 });
   await page.goto("/jag");

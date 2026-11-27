@@ -2,6 +2,7 @@ import type { Page } from "@playwright/test";
 import { lookPurchase, reward } from "../src/db/schema";
 import { E2E_BASE_URL } from "./support/env";
 import { db, logIn, seedDone, seedRooms } from "./support/family";
+import { RUN_ONCE } from "./support/tags";
 import { expect, test } from "./support/test";
 
 const pill = (page: Page) => page.getByRole("button", { name: /mynt$/ });
@@ -83,7 +84,7 @@ test("an adult undoing a child's spent tick is asked in the child's name", async
   await boContext.close();
 });
 
-test("the question fits a 300 px phone", async ({ page, context }) => {
+test("the question fits a 300 px phone", { tag: RUN_ONCE }, async ({ page, context }) => {
   const bo = await logIn(context, "bo", "child");
   await spentAfterTick(bo.id, 150);
   await page.setViewportSize({ width: 300, height: 700 });
