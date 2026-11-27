@@ -61,7 +61,7 @@ export const useOfferChest = () => useContext(OfferChestContext);
 /** The badges a tick-off won and the level it reached, offered to the provider, which shows a card for each. */
 export type Celebrations = {
   badges: string[];
-  levelUp?: { level: number; title: string; name: string; image: string | null };
+  levelUp?: { level: number; title: string; name: string; image: string | null } | null;
 };
 type Card =
   | { kind: "badge"; key: string; name: string; emoji: string }
