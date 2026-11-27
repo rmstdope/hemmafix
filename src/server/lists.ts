@@ -209,6 +209,7 @@ export async function getListOrder(actor: Actor): Promise<ListOrder> {
 }
 
 export async function setListOrder(actor: Actor, order: ListOrder) {
+  assertCan(actor, "list:order");
   const value = listOrder.parse(order);
   await db
     .update(membership)

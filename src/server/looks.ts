@@ -5,6 +5,7 @@ import { db } from "@/db";
 import { lookPurchase, membership } from "@/db/schema";
 import { UserError } from "@/lib/errors";
 import { chooseLookInput, defaultLook, findLook, LOOK_KINDS, type LookKind } from "@/lib/looks";
+import { assertCan } from "@/lib/permissions";
 import { balanceOf } from "./chores";
 import type { Actor } from "./household";
 import { changeAndAward, type Won } from "./badges";
@@ -53,6 +54,7 @@ const ownedBy = (tx: Executor, actor: Actor, kind: string, key: string) =>
 
 /** Buys a look with the actor's coins, exactly enough being enough, and starts using it. */
 export async function buyLook(actor: Actor, kind: string, key: string): Promise<Won> {
+  assertCan(actor, "coins:spend");
   const input = chooseLookInput.parse({ kind, key });
   const look = findLook(input.kind, input.key)!;
   if (look.price === 0) throw new UserError("Utseendet är gratis.");
@@ -75,6 +77,7 @@ export async function buyLook(actor: Actor, kind: string, key: string): Promise<
 
 /** Switches to a look the actor owns, or to the free default of its kind. */
 export async function chooseLook(actor: Actor, kind: string, key: string) {
+  assertCan(actor, "look:choose");
   const input = chooseLookInput.parse({ kind, key });
   const look = findLook(input.kind, input.key)!;
   if (look.price > 0 && (await ownedBy(db, actor, look.kind, look.key)).length === 0) {
