@@ -54,7 +54,19 @@ export type Action =
   /** Give a bought reward, or decline to. */
   | "reward:give"
   /** Let an app such as Claude act on the home, through its approval page. */
-  | "app:connect";
+  | "app:connect"
+  /** Buy a reward or a look with one's own coins. */
+  | "coins:spend"
+  /** Switch between the looks one owns. */
+  | "look:choose"
+  /** Take back one's own waiting purchase. */
+  | "purchase:cancel"
+  /** Close one's own high five notes and week sheet. */
+  | "note:close"
+  /** Choose one's own order for the lists. */
+  | "list:order"
+  /** Take back a high five one has given. */
+  | "high-five:take-back";
 
 export function can(role: Role, action: Action): boolean {
   return role === "adult" || !ADULTS_ONLY.has(action);
