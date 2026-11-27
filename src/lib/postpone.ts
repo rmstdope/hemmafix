@@ -17,13 +17,15 @@ export const restoredText = (title: string, day: string) => `"${title}" är till
 
 type Listed = { id: string; dueDate: string | null; createdAt: Date };
 
-// The order of `listOpenInstances`: by day with undated last, then age, then id.
+// The order of `listOpenInstances`: by day with undated last, then age, then id. A move only gives
+// days, and the undated may be placed by when their day was removed, so they stay as they came.
 const byListOrder = (a: Listed, b: Listed) => {
   if (a.dueDate !== b.dueDate) {
     if (a.dueDate === null) return 1;
     if (b.dueDate === null) return -1;
     return a.dueDate < b.dueDate ? -1 : 1;
   }
+  if (a.dueDate === null) return 0;
   return a.createdAt.getTime() - b.createdAt.getTime() || (a.id < b.id ? -1 : a.id > b.id ? 1 : 0);
 };
 

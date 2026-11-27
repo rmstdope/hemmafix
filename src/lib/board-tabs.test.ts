@@ -17,9 +17,14 @@ describe("splitByTab", () => {
     expect(s.senare).toEqual([]);
   });
 
-  it("puts everything later, then undated, in Senare", () => {
-    const s = splitByTab([t("a", "2026-11-27"), t("b", "2027-01-01"), t("c", null)], today);
-    expect(s.senare.map((i) => i.title)).toEqual(["a", "b", "c"]);
+  it("puts undated first, then everything later, in Senare, keeping the input order of each", () => {
+    const s = splitByTab([t("a", "2026-11-27"), t("b", "2027-01-01"), t("c", null), t("d", null)], today);
+    expect(s.senare.map((i) => i.title)).toEqual(["c", "d", "a", "b"]);
+  });
+
+  it("lists only undated, or only dated, in Senare as they came", () => {
+    expect(splitByTab([t("a", null), t("b", null)], today).senare.map((i) => i.title)).toEqual(["a", "b"]);
+    expect(splitByTab([t("c", "2026-11-27"), t("d", "2026-12-01")], today).senare.map((i) => i.title)).toEqual(["c", "d"]);
   });
 
   it("counts days across a year boundary", () => {
