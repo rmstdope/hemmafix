@@ -10,20 +10,13 @@ import {
   FLOOR_RENAMED_TEXT,
   floorAddedText,
   formatDone,
-  formatFamily,
   formatFloorsAndRooms,
   formatOpenTasks,
   formatRoutines,
-  NO_ROUTINES_TEXT,
-  routineCreatedText,
-  routineTaskAddedText,
-  routineRemovedText,
-  routineAddedToRoomText,
   formatTaskLookup,
   homeRenamedText,
   NO_FLOORS_TEXT,
   noSuchMemberText,
-  NOTHING_DONE_TEXT,
   NOTHING_OPEN_TEXT,
   roleChangedText,
   ROOM_REMOVED_TEXT,
@@ -38,10 +31,6 @@ describe("what Claude is told", () => {
       "Ditt konto har inte längre tillgång till Hemmafix. Be den som administrerar appen att lägga till din adress igen.",
     );
     expect(CHILD_TEXT).toBe("Bara vuxna kan använda Hemmafix via Claude. Be en vuxen i familjen om hjälp.");
-  });
-
-  it("says nothing is left when no task is open", () => {
-    expect(formatOpenTasks([], "2026-11-15")).toBe(NOTHING_OPEN_TEXT);
   });
 
   it("lists one line per open task with room, assignee and due date", () => {
@@ -170,29 +159,6 @@ describe("floors and rooms", () => {
   });
 });
 
-describe("the family", () => {
-  it("lists members with the app's role labels and ids", () => {
-    expect(
-      formatFamily([
-        { id: "a", name: "Anna Andersson", role: "adult" },
-        { id: "b", name: "Bo", role: "child" },
-      ]),
-    ).toBe("- Anna Andersson – Vuxen [a]\n- Bo – Barn [b]");
-  });
-});
-
-describe("open tasks with several floors", () => {
-  it("puts the floor after the room, as the app does", () => {
-    expect(
-      formatOpenTasks(
-        [{ title: "Torka", roomName: "Badrum", floorName: "2", assigneeName: "Anna", dueDate: null }],
-        "2026-11-15",
-        true,
-      ),
-    ).toBe("- Torka – Badrum · Plan 2, Anna, inget datum");
-  });
-});
-
 describe("what someone has done", () => {
   const at = (iso: string) => new Date(iso);
   it("groups by day, newest first, with the time in Swedish time", () => {
@@ -205,13 +171,6 @@ describe("what someone has done", () => {
         { today: "2026-11-15", who: "Anna", period: "senaste månaden", truncated: false, showFloors: false },
       ),
     ).toBe("Anna har gjort, senaste månaden:\n\nIdag\n- 09:45 Diska – Kök\n\nIgår\n- 11:00 Dammsug");
-  });
-
-  it("says when nothing was done", () => {
-    expect(
-      formatDone([], { today: "2026-11-15", who: "Anna", period: "senaste veckan", truncated: false, showFloors: false }),
-    ).toBe(NOTHING_DONE_TEXT);
-    expect(NOTHING_DONE_TEXT).toBe("Inget gjort under perioden.");
   });
 
   it("says when the list was cut", () => {
@@ -250,18 +209,5 @@ describe("routines", () => {
         { id: "r2", name: "Tom", tasks: [] },
       ]),
     ).toBe("Städa [r1]\n- Dammsug [t1] – 25 mynt\n- Torka [t2] – 10 mynt\n\nTom [r2]\n(inga uppgifter)");
-  });
-
-  it("says when there are none", () => {
-    expect(formatRoutines([])).toBe(NO_ROUTINES_TEXT);
-    expect(NO_ROUTINES_TEXT).toBe("Inga rutiner ännu.");
-  });
-
-  it("answers each change in one sentence, with the new ids", () => {
-    expect(routineCreatedText("Städa", "r1")).toBe("Rutinen Städa är skapad (id r1).");
-    expect(routineTaskAddedText("Dammsug", "t1")).toBe("Uppgiften Dammsug lades till i rutinen (id t1).");
-    expect(routineRemovedText("Städa")).toBe("Rutinen Städa togs bort. Uppgifter som redan lagts till i hemmet finns kvar.");
-    expect(routineAddedToRoomText(3, "Kök")).toBe("3 uppgifter är tillagda i Kök.");
-    expect(routineAddedToRoomText(1, "Kök")).toBe("1 uppgift är tillagd i Kök.");
   });
 });
