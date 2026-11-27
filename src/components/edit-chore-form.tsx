@@ -10,13 +10,11 @@ import { DEFAULT_COINS } from "@/lib/coins";
 import type { Recurrence, RecurrenceUnit } from "@/lib/recurrence";
 import { cn } from "@/lib/utils";
 import { CoinStepper } from "./coin-stepper";
-import { RoomOptions } from "./room-options";
+import { fieldClass } from "./field-class";
+import { RoomField } from "./room-field";
 
 type Option = { id: string; name: string };
 type Room = Option & { floorId: string };
-
-const fieldClass =
-  "h-11 w-full min-w-0 rounded-lg border border-input bg-transparent px-3 text-base md:text-sm dark:bg-input/30";
 
 const UNITS: { value: RecurrenceUnit; one: string; many: string }[] = [
   { value: "day", one: "dag", many: "dagar" },
@@ -59,10 +57,6 @@ export function EditChoreForm({
     return result;
   }, { ok: false });
   const recurring = kind === "recurring";
-  // The chosen room may be removed while the form is open, and the live refresh then takes its
-  // option away. Left to itself the browser would fall back to the first room; it has to be chosen
-  // again instead, and "Välj rum" is required.
-  const shownRoomId = rooms.some((r) => r.id === roomId) ? roomId : "";
 
   return (
     <form onSubmit={submitKeepingValues(action)} className="w-full space-y-3" aria-label={`Ändra ${task.title}`}>
@@ -79,22 +73,7 @@ export function EditChoreForm({
         />
       </label>
 
-      <label className="block space-y-1 text-sm">
-        <span className="text-muted-foreground">Rum</span>
-        <select
-          name="roomId"
-          aria-label="Rum"
-          value={shownRoomId}
-          onChange={(e) => setRoomId(e.target.value)}
-          required
-          className={fieldClass}
-        >
-          <option value="" disabled>
-            Välj rum
-          </option>
-          <RoomOptions floors={floors} rooms={rooms} />
-        </select>
-      </label>
+      <RoomField floors={floors} rooms={rooms} roomId={roomId} onChange={setRoomId} />
 
       <fieldset className="space-y-2 text-sm">
         <legend className="mb-1 text-muted-foreground">Hur ofta?</legend>
