@@ -92,8 +92,8 @@ Four levels, all run in CI on every pull request that changes anything outside `
 - **Unit** (`src/**/*.test.ts`, `pnpm test`): pure logic next to the code it covers, no database
   (an accidental import of `src/db` fails loudly).
 - **Repository checks** (`test/repo/**/*.test.ts`, `pnpm test:repo`): what holds the build and deploy
-  setup together: `scripts/ci-needed.sh`, the mistakes in `ci.yml` that would pass unnoticed, and
-  the Node version stated more than once. Unit tests read no files and start no processes.
+  setup together: `scripts/ci-needed.sh`, the mistakes in `ci.yml` that would pass unnoticed, the
+  end-to-end shard split, and the Node version stated more than once. Unit tests read no files and start no processes.
 - **Integration** (`src/**/*.int.test.ts`, `pnpm test:int`): server code against a real Postgres,
   including the login hooks in `src/server/auth.ts`. Each file gets its own freshly migrated
   database. Mock as little as possible.
@@ -102,8 +102,11 @@ Four levels, all run in CI on every pull request that changes anything outside `
   process; the app itself has no test login, and none may be added. A test that sets its own
   viewport before it loads anything, or loads no page, is tagged `RUN_ONCE` (`e2e/support/tags.ts`)
   and runs in mobile only. CI splits the suite into ten shards on separate runners (`e2e-shard` in
-  `ci.yml`); the required check `e2e` passes only when every shard does. A new spec needs no
-  registration.
+  `ci.yml`); the required check `e2e` passes only when every shard does. The split is test by test,
+  by the times in `e2e/support/test-times.json`, so a test must not depend on another having run
+  before it (a file that must stay together declares `mode: "serial"`). A new spec or test needs no
+  registration; when the shards drift apart, refresh the times as
+  `e2e/support/refresh-test-times.mjs` says.
 
 Integration and e2e need a local Postgres (README *Kom igång*) and create databases named
 `hemmafix_test_*` on `TEST_DATABASE_URL` (else `DATABASE_URL`). A worktree gets a copy of the main

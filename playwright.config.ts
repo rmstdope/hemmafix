@@ -3,6 +3,9 @@ import { ALLOWED, E2E_AUTH_SECRET, E2E_BASE_URL, E2E_DB, E2E_PORT, PEOPLE } from
 import { RUN_ONCE } from "./e2e/support/tags";
 import { databaseUrl } from "./test/database.mjs";
 
+/** Splits a `--shard` run by the time each test takes. */
+const sharding = ["./e2e/support/balanced-shards.ts"] as const;
+
 /**
  * End-to-end tests against the production build (`pnpm build` first, or `pnpm e2e`). The
  * web server gets its own freshly migrated database and a throwaway secret; tests share it,
@@ -17,7 +20,10 @@ export default defineConfig({
   retries: process.env.CI ? 1 : 0,
   failOnFlakyTests: !!process.env.CI,
   globalTeardown: "./e2e/support/global-teardown.ts",
-  reporter: process.env.CI ? [["github"], ["html", { open: "never" }]] : [["list"]],
+  // `list` in CI too: its per-test times are what `test-times.json` is refreshed from.
+  reporter: process.env.CI
+    ? [sharding, ["list"], ["github"], ["html", { open: "never" }]]
+    : [sharding, ["list"]],
   use: {
     baseURL: E2E_BASE_URL,
     locale: "sv-SE",

@@ -6,6 +6,10 @@ import { test, expect } from "./support/test";
 const authorize = (request: APIRequestContext) =>
   request.get("/api/auth/oauth2/authorize", { maxRedirects: 0, failOnStatusCode: false });
 
+// The second test proves something only after the first, against the same server, so they run
+// in one shard.
+test.describe.configure({ mode: "serial" });
+
 test("the authorize limit still applies", { tag: RUN_ONCE }, async ({ request }) => {
   for (let i = 0; i < 30; i++) await authorize(request);
   const limited = await authorize(request);

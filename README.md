@@ -75,7 +75,9 @@ en ändring som bara rör `docs/`: se [deploy/README.md](deploy/README.md).
   som bara finns i testprocessen: det skriver en riktig session och signerar cookien med
   samma hemlighet. Appen har alltså ingen testinloggning som kan råka vara påslagen.
   I CI delas sviten i tio delar som körs samtidigt på var sin maskin (se
-  [deploy/README.md](deploy/README.md)); lokalt körs den i ett stycke.
+  [deploy/README.md](deploy/README.md)); lokalt körs den i ett stycke. Delningen går test för
+  test, så ett test får inte bygga på att ett annat har körts före det (en fil som måste hållas
+  ihop anger `mode: "serial"`).
   Ett test som själv sätter sin fönsterstorlek innan det laddar något, eller inte laddar någon
   sida, märks med `RUN_ONCE` (`e2e/support/tags.ts`) och körs bara i mobilformat.
 
