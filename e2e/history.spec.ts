@@ -1,4 +1,5 @@
 import type { Page } from "@playwright/test";
+import { nuEmpty } from "./support/board";
 import { E2E_BASE_URL } from "./support/env";
 import { logIn, logInWithChestTaken, seedChore, seedDone, seedRooms } from "./support/family";
 import { chooseFromMenu } from "./support/menu";
@@ -64,7 +65,7 @@ test("a tick shows up in the history, and an undone tick goes away", async ({ pa
 
   await page.goto("/");
   await page.getByRole("button", { name: "Markera som klar" }).click();
-  await expect(page.getByText("Allt i Nu är klart!")).toBeVisible();
+  await expect(nuEmpty(page)).toBeVisible();
   await chooseFromMenu(page, "Gjort");
   await expect(entries(page)).toHaveText(["Diska"]);
 
