@@ -12,6 +12,11 @@ asking, the port refusal, *The navigator's window*, the recipes in *Taking the v
 of a pass. Where this file is more specific, this file wins; it replaces the type of a proposed
 follow-up (*Present the results*).
 
+**Under Copilot**, the browser integration is Copilot's `use-browser`, as verify-bead's *Prepare*
+says: read every "Chrome" and "the Chrome integration" below as `use-browser`, and its console and
+network log as `use-browser`'s. The rules keep what they protect whichever tool drives the browser,
+and a step `use-browser` cannot do is a blocker, never a skipped check.
+
 Every question below is the verifier's three-action sandwich: `asking --bead <id> --phase <phase>`,
 the question, then `working --bead <id> --phase <phase>` before anything else. The phase is
 `prepare` until you start the server, and `verify` from then on. In a batch, `--bead` is the first
