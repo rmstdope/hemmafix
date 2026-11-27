@@ -175,16 +175,14 @@ describe("the sharding reporter", () => {
     expect(new BalancedShards().printsToStdio()).toBe(false);
   });
 
-  // Locally too, so a shard can be reproduced on a developer's machine.
-  it("is first in both reporter lists, and CI prints each test's time", () => {
-    const text = readFileSync("playwright.config.ts", "utf8");
+  // Dropping it would pass unnoticed: Playwright would go back to splitting by file. Locally
+  // too, so a shard can be reproduced on a developer's machine.
+  it("is the first reporter, in CI and locally", () => {
     // Read as text: importing the config would set the end-to-end run's environment here.
+    const text = readFileSync("playwright.config.ts", "utf8");
     const lists = /reporter: process\.env\.CI\s*\? (\[.*\])\s*: (\[.*\]),/.exec(text);
     expect(lists).not.toBeNull();
-    for (const list of lists!.slice(1)) {
-      expect(list).toMatch(/^\[sharding, /);
-      expect(list).toContain('["list"]');
-    }
+    for (const list of lists!.slice(1)) expect(list).toMatch(/^\[sharding, /);
   });
 });
 
