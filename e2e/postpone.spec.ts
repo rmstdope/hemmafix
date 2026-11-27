@@ -131,6 +131,24 @@ test("within Senare the chore moves to its new place and keeps focus", async ({ 
   await expect(more(page, "Byta")).toBeFocused();
 });
 
+test("a tapped tab survives a postponement and a reload", async ({ page, context }) => {
+  await logIn(context, "anna", "adult");
+  await seedBoard();
+  await page.goto("/");
+  await tab(page, "Senare").click();
+  await expect(page).toHaveURL(/[?&]flik=senare\b/);
+
+  await more(page, "Byta").click();
+  await quickDay(page, "Byta", 8).click();
+  await expect(notice(page, moved("Byta", 8))).toBeVisible();
+  await expect.poll(() => dueDateOf("Byta")).toBe(inDays(8));
+  await expect(rows(page)).toHaveText([/Frosta/, /Rensa/, /Putsa/, /Byta/]);
+  await expect(page).toHaveURL(/[?&]flik=senare\b/);
+
+  await page.reload();
+  await expect(tab(page, "Senare")).toHaveAttribute("aria-selected", "true");
+});
+
 test("Välj dag… opens the device's picker, from the day after the chore's own", async ({ page, context }) => {
   await logIn(context, "anna", "adult");
   await seedBoard();
