@@ -32,7 +32,9 @@ export function BoardTabs({
     const url = new URL(window.location.href);
     if (key === "nu") url.searchParams.delete("flik");
     else url.searchParams.set("flik", key);
-    window.history.replaceState(window.history.state, "", url);
+    // Not `history.state`: Next.js lets an entry carrying its own state through without updating
+    // its router, which then writes its stale URL back on the next server action's refresh.
+    window.history.replaceState(null, "", url);
   };
 
   const onKeyDown = (e: KeyboardEvent) => {
