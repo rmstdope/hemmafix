@@ -35,3 +35,24 @@ unchanged source passed. `bd search` for "flaky" and "lists.spec" found no bead 
 into Klart…", as hf-z7p and hf-aq2 asked.
 
 **Seen before.** hf-8jj, hf-z7p, hf-aq2.
+
+## Two "ended session" browser tests timed out in CI: the app reached the login page before the press
+
+**What happened.** After catching up with `main` (2c69fa1), `e2e-shard (3)` and `(10)` of run
+45934412066 were flaky, so red: `e2e/jul.spec.ts:227` and `e2e/page-marks.spec.ts:68`, both
+`part(page, "Listor").click()` right after `context.clearCookies()`, timing out after 30 s
+("element was detached from the DOM, retrying"). `main`'s own run 45933533792 for #164 was red on
+the second one. Neither file is in this diff. 160 plain local runs (half under full CPU load) passed.
+Dispatching `visibilitychange` after `clearCookies()` and waiting 2 s reproduced it every time
+tried (once): the page snapshot is the login page and the link is gone.
+
+**Why.** `LiveUpdates` calls `router.refresh()` 150 ms after its stream opens or the page becomes
+visible. A refresh that lands between `clearCookies()` and the press redirects to `/login` first.
+That the CI runs were hit by the stream opening is inferred, not traced.
+
+**Cost.** Two local builds, three spec runs and a second CI run, about twenty minutes.
+
+**Prevent by.** A bug bead for the two tests: have each wait for or hold back the pending refresh
+before clearing cookies (or accept either route to `/login` in the same document).
+
+**Seen before.** None found.
