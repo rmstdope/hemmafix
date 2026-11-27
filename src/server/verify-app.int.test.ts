@@ -20,7 +20,8 @@ afterAll(async () => {
 });
 
 describe("verify-app reset", () => {
-  // One home holding everything, so each script start (it re-checks the database and its migrations) is paid once.
+  // One home holding everything, so status and reset start once for all tables, not once per group:
+  // every start re-checks the database and its migrations.
   it("clears routines, lists, coins and rewards, keeps them cleared and keeps the logins", { timeout: 30_000 }, async () => {
     await verifyApp("status"); // creates and migrates the scratch database
     const sql = postgres(databaseUrl(scratch), { max: 1 });
