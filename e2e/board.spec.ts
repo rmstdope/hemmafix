@@ -171,7 +171,7 @@ test("the open tasks can be filtered on room and on person, and the filter survi
 });
 
 test("an adult gives a recurring task to someone every time, or just this time", { tag: RUN_ONCE }, async ({ page, context }) => {
-  await logIn(context, "anna", "adult");
+  await logInWithChestTaken(context, "anna", "adult");
   await logIn(await context.browser()!.newContext(), "bo", "child");
   const rooms = await seedRooms("Kök");
   await seedChore({ title: "Diska", roomId: rooms["Kök"]!.id, dueDate: today() });

@@ -4,7 +4,7 @@ import { chooseFromMenu, menuItem } from "./support/menu";
 import { RUN_ONCE } from "./support/tags";
 import { expect, test } from "./support/test";
 import { E2E_BASE_URL } from "./support/env";
-import { logIn, seedChore, seedRooms } from "./support/family";
+import { logIn, logInWithChestTaken, seedChore, seedRooms } from "./support/family";
 
 const openHome = async (page: Page) => {
   await page.goto("/");
@@ -51,7 +51,7 @@ test("a child sees the tasks and ticks them off, but cannot manage anything", as
   await logIn(context, "anna", "adult");
   const childContext = await context.browser()!.newContext({ baseURL: E2E_BASE_URL, locale: "sv-SE" });
   const childPage = await childContext.newPage();
-  const bo = await logIn(childContext, "bo", "child");
+  const bo = await logInWithChestTaken(childContext, "bo", "child");
   const rooms = await seedRooms("Sovrum", "Kök");
   await seedChore({ title: "Bädda sängen", roomId: rooms["Sovrum"]!.id, assigneeId: bo.id, recurrence: null });
   await seedChore({ title: "Mata katten", roomId: rooms["Kök"]!.id });
@@ -90,10 +90,10 @@ test("a child sees the tasks and ticks them off, but cannot manage anything", as
 });
 
 test("among the recently done, a child sees only their own ticks", { tag: RUN_ONCE }, async ({ page, context }) => {
-  await logIn(context, "anna", "adult");
+  await logInWithChestTaken(context, "anna", "adult");
   const childContext = await context.browser()!.newContext({ baseURL: E2E_BASE_URL, locale: "sv-SE" });
   const childPage = await childContext.newPage();
-  await logIn(childContext, "bo", "child");
+  await logInWithChestTaken(childContext, "bo", "child");
   const rooms = await seedRooms("Kök");
   await seedChore({ title: "Diska", roomId: rooms["Kök"]!.id, recurrence: null });
   await seedChore({ title: "Damma", roomId: rooms["Kök"]!.id, recurrence: null });

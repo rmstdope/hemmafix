@@ -2,7 +2,7 @@ import type { Page } from "@playwright/test";
 import { addDays, formatDue, formatTabDay, formatTabDayLong, todayIso } from "../src/lib/dates";
 import { sql } from "drizzle-orm";
 import { household } from "../src/db/schema";
-import { db, logIn, seedChore, seedDone, seedRooms } from "./support/family";
+import { db, logIn, logInWithChestTaken, seedChore, seedDone, seedRooms } from "./support/family";
 import { RUN_ONCE } from "./support/tags";
 import { expect, test } from "./support/test";
 
@@ -184,7 +184,7 @@ test("Klart senaste veckan is a fold on Nu only", async ({ page, context }) => {
 });
 
 test("ticking off drops the count; a recurring task's next occurrence raises another tab's", { tag: RUN_ONCE }, async ({ page, context }) => {
-  await logIn(context, "anna", "adult");
+  await logInWithChestTaken(context, "anna", "adult");
   const rooms = await seedRooms("Kök");
   await seedChore({ title: "Diska", roomId: rooms["Kök"]!.id, dueDate: inDays(0), recurrence: { unit: "day", interval: 1 } });
   await page.goto("/");
