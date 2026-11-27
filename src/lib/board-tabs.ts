@@ -31,7 +31,6 @@ export function splitByTab<T extends { dueDate: string | null }>(items: T[], tod
     if (tab === "senare" && item.dueDate !== null) later.push(item);
     else split[tab === "imorgon" ? "d1" : tab].push(item);
   }
-  }
   split.senare.push(...later);
   return split;
 }
