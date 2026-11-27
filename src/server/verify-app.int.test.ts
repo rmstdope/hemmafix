@@ -50,7 +50,8 @@ describe("verify-app reset", () => {
       const rows = async () => JSON.parse(await verifyApp("status")).rows as Record<string, number>;
       const before = await rows();
       expect(before).toMatchObject(Object.fromEntries(counted.map((table) => [table, 1])));
-      for (const kept of ["user", "account", "session", "household", "membership"]) expect(before).not.toHaveProperty(kept);
+      const kept = ["user", "account", "session", "verification", "household", "membership", "jwks", "badge_epoch", "oauth_resource"];
+      for (const table of kept) expect(before).not.toHaveProperty(table);
 
       // A kept table pointing at the home's contents: emptying it would take the members along, so
       // reset refuses, names both tables and changes nothing.
@@ -83,6 +84,7 @@ describe("verify-app reset", () => {
       expect(await sql`select 1 from account where id = 'a-coins'`).toHaveLength(1);
       expect(await sql`select 1 from verification`).toHaveLength(1);
       expect(await sql`select 1 from oauth_resource`).toHaveLength(1);
+      expect(await sql`select 1 from badge_epoch`).toHaveLength(1);
     } finally {
       await sql.end();
     }
