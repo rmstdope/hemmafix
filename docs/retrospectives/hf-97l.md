@@ -1,5 +1,9 @@
 # hf-97l — retrospective
 
+- **Implementer:** Wolverine
+- **Date:** 2026-11-27
+- **PR:** #158
+
 ## `gh pr checks --required` exits 0 before the `e2e` check exists
 
 **What happened.** Waiting for CI on #158 at `2ddb40f`, the loop polled `gh pr checks 158 --required`
@@ -17,4 +21,4 @@ GitHub behaviour was not looked up).
 the branch protection (`required_status_checks.contexts`) is listed and has passed, never on the
 exit status of `gh pr checks` alone.
 
-**Seen before.** No.
+**Seen before.** none found
