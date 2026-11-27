@@ -1,30 +1,39 @@
 import { describe, expect, it } from "vitest";
 import { formatShortDay } from "./dates";
-import { focusAfterMove, laterThan, moveTask, movedText, quickDays, restoredText } from "./postpone";
+import { firstPostponeDay, focusAfterMove, moveTask, movedText, quickDays, restoredText } from "./postpone";
 
 // Thursday 26 November 2026.
 const today = "2026-11-26";
 const labels = (dueDate: string) => quickDays(dueDate, today).map((q) => q.label);
 
 describe("quickDays", () => {
-  it.each(["2026-11-23", "2026-11-26"])("counts from today for a chore due %s", (dueDate) => {
+  it.each(["2026-11-12", "2026-11-25"])("starts at today for a late chore, due %s", (dueDate) => {
     expect(quickDays(dueDate, today)).toEqual([
+      { day: "2026-11-26", label: "Idag" },
+      { day: "2026-11-27", label: "Imorgon" },
+      { day: "2026-11-28", label: "Lör 28" },
+    ]);
+  });
+
+  it("starts tomorrow for a chore due today", () => {
+    expect(quickDays(today, today)).toEqual([
       { day: "2026-11-27", label: "Imorgon" },
       { day: "2026-11-28", label: "Lör 28" },
       { day: "2026-11-29", label: "Sön 29" },
     ]);
   });
 
-  it("counts from the chore's own day when it is later than today", () => {
+  it("starts the day after the chore's own when it is later than today", () => {
     expect(labels("2026-11-27")).toEqual(["Lör 28", "Sön 29", "Mån 30"]);
     expect(labels("2026-11-30")).toEqual(["Tis 1", "Ons 2", "Tor 3"]);
   });
 });
 
-describe("laterThan", () => {
-  it("is the later of today and the chore's day: nothing up to it can be chosen", () => {
-    expect(laterThan("2026-11-23", today)).toBe(today);
-    expect(laterThan("2026-11-30", today)).toBe("2026-11-30");
+describe("firstPostponeDay", () => {
+  it("is today for a late chore, else the day after the chore's own: nothing before it can be chosen", () => {
+    expect(firstPostponeDay("2026-11-25", today)).toBe(today);
+    expect(firstPostponeDay(today, today)).toBe("2026-11-27");
+    expect(firstPostponeDay("2026-11-30", today)).toBe("2026-12-01");
   });
 });
 
@@ -32,8 +41,12 @@ describe("the messages", () => {
   it("name the chore and the day with weekday, day and short month", () => {
     expect(formatShortDay("2026-11-26")).toBe("tor 26 nov");
     expect(formatShortDay("2026-12-01")).toBe("tis 1 dec");
-    expect(movedText("Dammsuga hallen", "2026-11-28")).toBe('"Dammsuga hallen" flyttad till lör 28 nov');
-    expect(restoredText("Dammsuga hallen", "2026-11-26")).toBe('"Dammsuga hallen" är tillbaka på tor 26 nov');
+    expect(movedText("Dammsuga hallen", "2026-11-28", today)).toBe('"Dammsuga hallen" flyttad till lör 28 nov');
+    expect(restoredText("Dammsuga hallen", "2026-11-24")).toBe('"Dammsuga hallen" är tillbaka på tis 24 nov');
+  });
+
+  it("say idag for a move to today", () => {
+    expect(movedText("Dammsuga hallen", today, today)).toBe('"Dammsuga hallen" flyttad till idag');
   });
 });
 

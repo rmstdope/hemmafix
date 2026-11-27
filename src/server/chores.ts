@@ -9,7 +9,7 @@ import { addDays, HOME_TIME_ZONE, todayIso } from "@/lib/dates";
 import { UserError } from "@/lib/errors";
 import { assertCan, can, type Role } from "@/lib/permissions";
 import { earlyDoneMessage, isNotYetDue, lockedMessage } from "@/lib/early-tick";
-import { laterThan } from "@/lib/postpone";
+import { firstPostponeDay } from "@/lib/postpone";
 import { SAVE_FAILED } from "@/lib/routine-texts";
 import { levelFor } from "@/lib/levels";
 import { rollChestCoins } from "@/lib/chest";
@@ -305,8 +305,8 @@ export async function postponeInstance(actor: Actor, id: string, day: string): P
     const row = await lockForMove(tx, actor, input.id);
     if (!row) throw new UserError("Uppgiften finns inte längre");
     if (row.completedAt) throw new UserError("Någon har redan bockat av den");
-    // The row offers only later days; one that is not has been overtaken (another move, midnight).
-    if (!row.dueDate || input.day <= laterThan(row.dueDate, todayIso())) throw new UserError(SAVE_FAILED);
+    // The row offers no earlier day; one that is has been overtaken (another move, midnight).
+    if (!row.dueDate || input.day < firstPostponeDay(row.dueDate, todayIso())) throw new UserError(SAVE_FAILED);
     const [moved] = await tx
       .update(choreInstance)
       .set({ dueDate: input.day })

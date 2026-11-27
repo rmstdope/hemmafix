@@ -515,12 +515,33 @@ describe("postponeInstance", () => {
     expect(await dueDateOf(t.choreId)).toBe(todayIso());
   });
 
+  it("moves a late task to today, where it is ticked off at once and comes back one interval later", async () => {
+    const t = await dueIn(-3);
+
+    await postponeInstance(f.adult, t.id, inDays(0));
+
+    expect(await dueDateOf(t.choreId)).toBe(todayIso());
+    await completeInstance(f.child, t.id);
+    expect(await dueDateOf(t.choreId)).toBe(nextDueDate(todayIso(), { unit: "week", interval: 1 }));
+  });
+
+  it("puts a task moved to today back on its late day with Ångra", async () => {
+    const t = await dueIn(-1);
+    const { postponed } = await postponeInstance(f.adult, t.id, inDays(0));
+
+    await undoPostpone(f.adult, t.id, { to: postponed.from, version: postponed.version });
+
+    expect(await dueDateOf(t.choreId)).toBe(inDays(-1));
+  });
+
   it.each([
-    [-3, 0],
     [-3, -1],
+    [-3, -4],
     [0, 0],
+    [0, -1],
     [4, 4],
     [4, 2],
+    [4, 0],
   ])("refuses to move a task due in %i days to %i days from today", async (due, to) => {
     const t = await dueIn(due);
 

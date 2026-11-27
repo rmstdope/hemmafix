@@ -1,8 +1,7 @@
 "use client";
 
 import { createContext, useCallback, useContext, useRef } from "react";
-import { addDays } from "@/lib/dates";
-import { laterThan, quickDays } from "@/lib/postpone";
+import { firstPostponeDay, quickDays } from "@/lib/postpone";
 
 /** A move of an open chore to a later day, asked for by its row and carried out by the board. */
 export type Postpone = (task: { id: string; title: string }, day: string) => void;
@@ -11,7 +10,7 @@ export const PostponeContext = createContext<Postpone | null>(null);
 
 const button = "h-10 min-w-0 rounded-lg border border-input text-xs whitespace-nowrap hover:bg-muted min-[360px]:text-[13px] dark:bg-input/30";
 
-/** "Skjut upp": the three days after the chore's own (or today), and the device's picker for any later one. */
+/** "Skjut upp": three days from today (late) or after the chore's own, and the device's picker for any later one. */
 export function PostponeLine({
   task,
   today,
@@ -24,7 +23,7 @@ export function PostponeLine({
 }) {
   const postpone = useContext(PostponeContext);
   const field = useRef<HTMLInputElement | null>(null);
-  const last = laterThan(task.dueDate, today);
+  const first = firstPostponeDay(task.dueDate, today);
 
   const choose = useCallback(
     (day: string) => {
@@ -44,12 +43,12 @@ export function PostponeLine({
         const day = input.value;
         input.value = "";
         // Not every phone's picker honours `min`.
-        if (day > last) choose(day);
+        if (day >= first) choose(day);
       };
       input.addEventListener("change", picked);
       return () => input.removeEventListener("change", picked);
     },
-    [choose, last],
+    [choose, first],
   );
 
   const openPicker = () => {
@@ -82,7 +81,7 @@ export function PostponeLine({
           <input
             ref={listen}
             type="date"
-            min={addDays(last, 1)}
+            min={first}
             tabIndex={-1}
             aria-hidden
             className="absolute inset-0 size-full cursor-pointer opacity-0"
