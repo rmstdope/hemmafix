@@ -178,6 +178,7 @@ test("Gjort opened from Listor goes back to Listor and lights it, also after a r
   await parts(page).getByRole("link", { name: "Uppgifter" }).click();
   await expect(page.getByRole("heading", { name: "Uppgifter" })).toBeVisible();
   await chooseFromMenu(page, "Gjort");
+  await expect(page.getByRole("heading", { name: "Gjort" })).toBeVisible();
   await expect(parts(page).getByRole("link", { name: "Uppgifter" })).toHaveAttribute("aria-current", "page");
 });
 
