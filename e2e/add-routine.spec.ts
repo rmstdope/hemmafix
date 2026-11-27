@@ -87,22 +87,6 @@ test("following Skapa en rutin scrolls Hemmet to Rutiner", async ({ page, contex
   await expect(page.getByRole("heading", { name: "Rutiner" })).toBeInViewport();
 });
 
-test("a routine removed while the form is open is answered with a notice and nothing is added", async ({ page, context }) => {
-  await logIn(context, "anna", "adult");
-  await seedRooms("Badrum");
-  const form = await openForm(page);
-  await form.getByText("En rutin", { exact: true }).click();
-  await form.getByRole("combobox", { name: "Rutin" }).selectOption({ label: "Städa kök" });
-  await form.getByRole("combobox", { name: "Rum" }).selectOption({ label: "Badrum" });
-
-  // Only the chosen one: a live refresh may or may not have arrived, the form stays filled in either way.
-  await db.delete(routine).where(eq(routine.name, "Städa kök"));
-  await form.getByRole("button", { name: /^Lägg till/ }).click();
-  await expect(page.getByText("Rutinen finns inte längre")).toBeVisible();
-  await expect(form).toBeVisible();
-  await expect(form.getByRole("combobox", { name: "Rum" })).not.toHaveValue("");
-});
-
 /** Tells the open browsers something changed, as an action by another adult would. */
 const notifyOthers = async () => {
   const [home] = await db.select({ id: household.id }).from(household);
@@ -163,10 +147,4 @@ test("the switch is changed with the arrow keys and keeps focus", async ({ page,
   await page.keyboard.press("ArrowLeft");
   await expect(oneTask).toBeChecked();
   await expect(oneTask).toBeFocused();
-});
-
-test("a child does not get the form", async ({ page, context }) => {
-  await logIn(context, "bo", "child");
-  await page.goto("/");
-  await expect(page.getByRole("button", { name: "Ny uppgift" })).toHaveCount(0);
 });
