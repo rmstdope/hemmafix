@@ -31,7 +31,8 @@ describe("splitting the end-to-end tests into shards", () => {
 
   // Every shard computes the split by itself: were they to disagree, tests would be lost.
   it("gives the same shards whatever order the tests come in", () => {
-    const shuffled = [...suite].sort((a, b) => ((a.key.length + Number(a.key.slice(0, 3)) * 37) % 101) - ((b.key.length + Number(b.key.slice(0, 3)) * 37) % 101));
+    const scrambled = (t: Item) => (Number(t.key.slice(0, 3)) * 37) % 200;
+    const shuffled = [...suite].sort((a, b) => scrambled(a) - scrambled(b));
     expect(shuffled).not.toEqual(suite);
     const sorted = (shards: Item[][]) => keys(shards).map((shard) => shard.sort());
     expect(sorted(split(shuffled, 10))).toEqual(sorted(split(suite, 10)));

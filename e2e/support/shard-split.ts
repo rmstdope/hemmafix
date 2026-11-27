@@ -4,7 +4,7 @@ export type ShardTest = {
   key: string;
   project: string;
   /** How long it takes; unknown weighs `DEFAULT_SECONDS`. */
-  seconds: number | undefined;
+  seconds?: number;
   /** Tests with the same value run in the same shard. */
   together?: unknown;
 };
