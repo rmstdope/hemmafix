@@ -3,7 +3,7 @@ import { eq, sql } from "drizzle-orm";
 import { chore, household, room } from "../src/db/schema";
 import { formatDue, todayIso } from "../src/lib/dates";
 import { E2E_BASE_URL } from "./support/env";
-import { db, logIn, seedChore, seedRooms } from "./support/family";
+import { db, logIn, logInWithChestTaken, seedChore, seedRooms } from "./support/family";
 import { chooseFromMenu } from "./support/menu";
 import { expect, test } from "./support/test";
 
@@ -42,7 +42,8 @@ test("an adult edits a task's title, room, how often and next date", async ({ pa
 });
 
 test("a task ticked off before an edit keeps its old name in the history", async ({ page, context }) => {
-  await logIn(context, "anna", "adult");
+  // With the day's chest still to come, its card would open over the list after the tick-off.
+  await logInWithChestTaken(context, "anna", "adult");
   const rooms = await seedRooms("Kök");
   await seedChore({ title: "Diska", roomId: rooms["Kök"]!.id, dueDate: todayIso() });
   await page.goto("/");
