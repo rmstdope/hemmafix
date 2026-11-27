@@ -1,11 +1,12 @@
 # Every pull request and push to main: lint, types, unit tests, integration tests and
 # migrations against a real Postgres, a production build, and end-to-end tests of that build
-# in a browser. Main publishes only the exact image that passed the smoke
-# test, plus the deployment manifest rmstdope-infra reads (artifact `deployment-manifest`).
+# in a browser, split into shards that run side by side. Main publishes only the exact image that
+# passed the smoke test, plus the deployment manifest rmstdope-infra reads (artifact `deployment-manifest`).
 #
 # Changes under docs/ only need none of that. A push to main starts no run, because
 # rmstdope-infra takes the latest successful run and requires its manifest. A pull request still
-# runs the three required jobs, so that they report, but each skips its steps (scripts/ci-needed.sh).
+# runs the jobs, so that the three required checks report, but each skips its steps
+# (scripts/ci-needed.sh).
 name: CI
 
 on:
@@ -81,9 +82,17 @@ jobs:
       - run: pnpm run build
         if: steps.changes.outputs.run != 'false'
 
-  e2e:
+  # The end-to-end suite, split over machines so that the verdict comes in minutes: each shard
+  # runs its share one test at a time, with its own Postgres and server. The shards together are
+  # the whole suite; `e2e` below is the required check that stands for all of them.
+  e2e-shard:
     runs-on: ubuntu-latest
     timeout-minutes: 20
+    strategy:
+      # A failure in one shard must not stop the tests in the others.
+      fail-fast: false
+      matrix:
+        shard: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
     services:
       postgres:
         image: postgres:17-alpine
@@ -120,15 +129,27 @@ jobs:
         if: steps.changes.outputs.run != 'false'
       - name: End-to-end tests (production build, mobile and desktop)
         if: steps.changes.outputs.run != 'false'
-        run: pnpm run test:e2e
+        run: pnpm run test:e2e --shard=${{ matrix.shard }}/${{ strategy.job-total }}
       - uses: actions/upload-artifact@v7
         if: failure() && steps.changes.outputs.run != 'false'
         with:
-          name: playwright-report
+          name: playwright-report-${{ matrix.shard }}
           path: |
             playwright-report/
             test-results/
           retention-days: 7
+
+  e2e:
+    needs: [e2e-shard]
+    # Never skipped, also when cancelled: branch protection counts a skipped check as passing.
+    if: ${{ always() }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Every end-to-end shard passed
+        env:
+          RESULT: ${{ needs.e2e-shard.result }}
+        run: test "$RESULT" = success
 
   production-image:
     runs-on: ubuntu-latest

@@ -24,7 +24,7 @@ miljövariabler) kräver en separat granskad procedur. Vanliga releaser byter ba
 som bara rör `docs/` (skisser och dokument):
 
 - En sådan **PR** får sina tre obligatoriska kontroller (`checks`, `e2e`, `production-image`)
-  gröna direkt: jobben startar men hoppar över sina steg (`scripts/ci-needed.sh`).
+  gröna utan att något körs: jobben startar men hoppar över sina steg (`scripts/ci-needed.sh`).
 - En sådan **push till `main`** startar ingen körning, så ingen image publiceras och inget
   driftsätts. Det måste vara ingen körning alls: rmstdope-infra tar den senaste lyckade körningen
   och kräver att den har ett `deployment-manifest`. GitHub avgör det utifrån pushens första 300
@@ -34,9 +34,14 @@ Annars gäller:
 
 1. **checks**: lint, typkontroll, enhetstester, migreringar mot en tom Postgres,
    kontroll att schema och migreringar stämmer, produktionsbygge.
-2. **production-image**: bygger imagen (`GIT_SHA` inbakad) och röktestar exakt den
+2. **e2e**: end-to-end-testerna, delade i tio delar (`e2e-shard`) som körs samtidigt på var sin
+   maskin, med egen Postgres och server, ett test i taget. Kontrollen `e2e` är grön bara om alla
+   delar är det. Playwright fördelar testfilerna själv, så en ny testfil behöver inte läggas till
+   någonstans. GitHub kör ett begränsat antal jobb samtidigt (20 på ett gratiskonto), så flera
+   körningar på en gång får vänta på varandra.
+3. **production-image**: bygger imagen (`GIT_SHA` inbakad) och röktestar exakt den
    (hälsa, `release.json`, migreringar, omstart, snabb stopp).
-3. **publish** (bara `main`): pushar den testade imagen till
+4. **publish** (bara `main`): pushar den testade imagen till
    `ghcr.io/rmstdope/hemmafix:<sha>` utan att bygga om och laddar upp artefakten
    `deployment-manifest` med `deployment.json`:
    `{"revision": "<sha>", "images": {"web": "ghcr.io/rmstdope/hemmafix@sha256:…"}}`.
