@@ -1,5 +1,6 @@
 import { chooseFromMenu, menuButton, menuItem } from "./support/menu";
 import { logIn } from "./support/family";
+import { RUN_ONCE } from "./support/tags";
 import { expect, test } from "./support/test";
 
 test("the corner is only the picture; an adult's menu holds name, role, Gjort, Hemmet and Logga ut", async ({ page, context }) => {
@@ -68,7 +69,7 @@ test("on Gjort the menu is there and Gjort is the current page", async ({ page, 
   await expect(await menuItem(page, "Gjort")).toHaveAttribute("aria-current", "page");
 });
 
-test("the menu stays inside a 320px screen", async ({ page, context }) => {
+test("the menu stays inside a 320px screen", { tag: RUN_ONCE }, async ({ page, context }) => {
   await logIn(context, "anna", "adult");
   await page.setViewportSize({ width: 320, height: 640 });
   await page.goto("/");

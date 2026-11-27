@@ -1,5 +1,6 @@
 import type { Locator, Page } from "@playwright/test";
 import { logIn, seedChore, seedDone, seedRooms } from "./support/family";
+import { RUN_ONCE } from "./support/tags";
 import { expect, test } from "./support/test";
 
 const LONG = "Städa badrummet ordentligt och byt alla handdukar och badmattor";
@@ -26,7 +27,7 @@ async function expectCalm(row: Locator) {
 const noSideways = (page: Page) =>
   page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth);
 
-test("task rows keep the coin clear of a long title at 300 px, for open and done rows", async ({ page, context }) => {
+test("task rows keep the coin clear of a long title at 300 px, for open and done rows", { tag: RUN_ONCE }, async ({ page, context }) => {
   const anna = await logIn(context, "anna", "adult");
   const rooms = await seedRooms("Badrum");
   await seedChore({ title: LONG, roomId: rooms["Badrum"]!.id, coins: 30 });
@@ -87,7 +88,7 @@ test("the panel has a switch for a recurring task only, keeps focus on the chevr
   await expect(diska.getByRole("button", { name: "Ta bort uppgiften" })).toBeFocused();
 });
 
-test("a child's open row has no panel button and Gjort shows the coin of each tick", async ({ page, context }) => {
+test("a child's open row has no panel button and Gjort shows the coin of each tick", { tag: RUN_ONCE }, async ({ page, context }) => {
   const bo = await logIn(context, "bo", "child");
   const rooms = await seedRooms("Badrum");
   await seedChore({ title: LONG, roomId: rooms["Badrum"]!.id, coins: 30, assigneeId: bo.id });
@@ -108,7 +109,7 @@ test("a child's open row has no panel button and Gjort shows the coin of each ti
   expect(await noSideways(page)).toBe(true);
 });
 
-test("a routine's task puts the coin below its name", async ({ page, context }) => {
+test("a routine's task puts the coin below its name", { tag: RUN_ONCE }, async ({ page, context }) => {
   await logIn(context, "anna", "adult");
   await page.setViewportSize({ width: 300, height: 700 });
   await page.goto("/hemmet");

@@ -6,6 +6,7 @@ import { weekStart } from "../src/lib/weeks";
 import * as schema from "../src/db/schema";
 import { E2E_BASE_URL } from "./support/env";
 import { db, logIn, seedChore, seedDone, seedRooms } from "./support/family";
+import { RUN_ONCE } from "./support/tags";
 import { expect, test } from "./support/test";
 
 const hydrated = (page: Page) => expect(page.locator('[data-hydrated="true"]')).toBeAttached();
@@ -62,7 +63,7 @@ async function seedChestAndBadges(userId: string, days: number, keys: BadgeKey[]
   }
 }
 
-test("the week's Mynt counts chests and badges too, and four digits fit a 300 px phone", async ({ page, context }) => {
+test("the week's Mynt counts chests and badges too, and four digits fit a 300 px phone", { tag: RUN_ONCE }, async ({ page, context }) => {
   const bo = await logIn(context, "bo", "child");
   const rooms = await seedRooms("Kök");
   const roomId = rooms["Kök"]!.id;

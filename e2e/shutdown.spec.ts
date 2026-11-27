@@ -4,6 +4,7 @@ import { connect } from "node:net";
 import type { BrowserContext } from "@playwright/test";
 import { logIn } from "./support/family";
 import { ALLOWED, E2E_AUTH_SECRET, E2E_PORT, PEOPLE } from "./support/env";
+import { RUN_ONCE } from "./support/tags";
 import { expect, test } from "./support/test";
 
 // The image contract asks for a fast shutdown on SIGTERM: a deploy stops the old container and
@@ -77,7 +78,7 @@ test("the server exits promptly on SIGTERM while a page holds an event stream", 
 // Node's server.close() drops only the connections idle at that moment. One that is busy then
 // (a page load, a refresh, or a proxy's pooled connection) stays open afterwards, and an event
 // stream asked for on it must not keep the server running either.
-test("the server exits promptly on SIGTERM when an event stream is asked for afterwards", async ({ context }) => {
+test("the server exits promptly on SIGTERM when an event stream is asked for afterwards", { tag: RUN_ONCE }, async ({ context }) => {
   await withServer(async (server, exited) => {
     await logIn(context, "anna", "adult");
     const cookie = await cookieHeader(context);

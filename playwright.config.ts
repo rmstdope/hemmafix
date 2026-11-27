@@ -1,5 +1,6 @@
 import { defineConfig, devices } from "@playwright/test";
 import { ALLOWED, E2E_AUTH_SECRET, E2E_BASE_URL, E2E_DB, E2E_PORT, PEOPLE } from "./e2e/support/env";
+import { RUN_ONCE } from "./e2e/support/tags";
 import { databaseUrl } from "./test/database.mjs";
 
 /**
@@ -25,7 +26,8 @@ export default defineConfig({
   },
   projects: [
     { name: "mobile", use: { ...devices["Pixel 7"] } },
-    { name: "desktop", use: { ...devices["Desktop Chrome"] } },
+    // A second viewport adds nothing to these: see `RUN_ONCE`.
+    { name: "desktop", use: { ...devices["Desktop Chrome"] }, grepInvert: new RegExp(RUN_ONCE) },
   ],
   webServer: {
     // The standalone server, as in the production image (which also copies these assets in).

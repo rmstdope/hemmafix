@@ -3,6 +3,7 @@ import { eq } from "drizzle-orm";
 import { choreInstance } from "../src/db/schema";
 import { db, logIn, seedDone, seedRooms } from "./support/family";
 import { chooseFromMenu } from "./support/menu";
+import { RUN_ONCE } from "./support/tags";
 import { expect, test } from "./support/test";
 
 const hydrated = (page: Page) => expect(page.locator('[data-hydrated="true"]')).toBeAttached();
@@ -142,7 +143,7 @@ test("a frame bought by a child shows on their picture in an adult's member list
   await other.close();
 });
 
-test("on a 300px phone the rows scroll sideways and the sheet fits", async ({ page, context }) => {
+test("on a 300px phone the rows scroll sideways and the sheet fits", { tag: RUN_ONCE }, async ({ page, context }) => {
   const bo = await logIn(context, "bo", "child");
   await grant(bo.id, 500);
   await page.setViewportSize({ width: 300, height: 640 });

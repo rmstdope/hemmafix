@@ -73,6 +73,8 @@ en ändring som bara rör `docs/`: se [deploy/README.md](deploy/README.md).
   samma hemlighet. Appen har alltså ingen testinloggning som kan råka vara påslagen.
   I CI delas sviten i tio delar som körs samtidigt på var sin maskin (se
   [deploy/README.md](deploy/README.md)); lokalt körs den i ett stycke.
+  Ett test som själv sätter sin fönsterstorlek innan det laddar något, eller inte laddar någon
+  sida, märks med `RUN_ONCE` (`e2e/support/tags.ts`) och körs bara i mobilformat.
 
 Integration och e2e skapar databaser på servern i `TEST_DATABASE_URL` (annars
 `DATABASE_URL`), bara på localhost om man inte sätter `ALLOW_REMOTE_TEST_DB=1`. De rör
