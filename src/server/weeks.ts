@@ -3,6 +3,7 @@ import { and, count, eq, gte, isNotNull, lt, sql } from "drizzle-orm";
 import { db } from "@/db";
 import { badgeAward, choreInstance, weekRecapSeen } from "@/db/schema";
 import { addDays, todayIso } from "@/lib/dates";
+import { assertCan } from "@/lib/permissions";
 import { formatWeekRange, weekStart, type WeekCounts } from "@/lib/weeks";
 import { startOfDay, sumEarned } from "./earned";
 import type { Actor } from "./household";
@@ -72,6 +73,7 @@ export async function getPendingRecap(actor: Actor, now: Date = new Date()): Pro
 
 /** The actor is through the sheet for the weeks up to now; it does not come back this week. */
 export async function closeWeekRecap(actor: Actor, now: Date = new Date()) {
+  assertCan(actor, "note:close");
   const thisWeek = weekStart(todayIso(now));
   await db
     .insert(weekRecapSeen)
