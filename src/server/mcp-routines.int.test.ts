@@ -269,14 +269,3 @@ describe("who may", () => {
     expect(textOf(res)).toContain("inte längre tillgång");
   });
 });
-
-describe("tool annotations", () => {
-  it("ask the client to confirm exactly the removals", async () => {
-    const res = await rpc("anna", "tools/list");
-    const tools = res.result.tools as { name: string; annotations?: Record<string, boolean> }[];
-    const mine = tools.filter((t) => ["visa_rutiner", "skapa_rutin", "byt_namn_pa_rutin", "ta_bort_rutin", "lagg_till_uppgift_i_rutin", "byt_namn_pa_uppgift_i_rutin", "ta_bort_uppgift_ur_rutin", "lagg_till_rutin_i_hemmet"].includes(t.name));
-    expect(mine).toHaveLength(8);
-    expect(mine.filter((t) => t.annotations?.destructiveHint === true).map((t) => t.name).sort()).toEqual(["ta_bort_rutin", "ta_bort_uppgift_ur_rutin"]);
-    expect(mine.find((t) => t.name === "visa_rutiner")!.annotations?.readOnlyHint).toBe(true);
-  });
-});

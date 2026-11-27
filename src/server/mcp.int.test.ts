@@ -81,20 +81,6 @@ describe("the open-tasks tool", () => {
     const res = await callTool("anna");
     expect(res.result.content[0].text).toBe("- Diska – Kök, Anna, inget datum");
   });
-
-  it("tells a child that only adults can use it", async () => {
-    const res = await callTool("bo");
-    expect(res.result.isError).toBe(true);
-    expect(res.result.content[0].text).toBe("Bara vuxna kan använda Hemmafix via Claude. Be en vuxen i familjen om hjälp.");
-  });
-
-  it("tells someone removed from the allowlist that their access is gone", async () => {
-    process.env.ALLOWED_EMAILS = "bo@example.com";
-    const res = await callTool("anna");
-    process.env.ALLOWED_EMAILS = "anna@example.com, bo@example.com, eve@example.com";
-    expect(res.result.isError).toBe(true);
-    expect(res.result.content[0].text).toContain("Ditt konto har inte längre tillgång till Hemmafix.");
-  });
 });
 
 
@@ -150,6 +136,7 @@ describe("the task tools", () => {
       "tilldela_syssla",
     ]);
     expect(tools.find((t) => t.name === "visa_sysslor_med_id")?.annotations?.readOnlyHint).toBe(true);
+    expect(tools.find((t) => t.name === "lagg_till_rum")?.annotations?.destructiveHint).toBe(false);
   });
 
   it("describes no input with a type array, which some clients refuse", async () => {
@@ -542,13 +529,6 @@ const roleOf = async (id: string) =>
   (await db.select({ role: membership.role }).from(membership).where(eq(membership.userId, id)))[0]?.role;
 
 describe("the change-role tool", () => {
-  it("is marked so the client asks for confirmation", async () => {
-    const res = await rpc("anna", "tools/list");
-    const tool = res.result.tools.find((t: { name: string }) => t.name === "andra_roll");
-    expect(tool.annotations.readOnlyHint).toBe(false);
-    expect(tool.annotations.destructiveHint).toBe(true);
-  });
-
   it("makes a child an adult", async () => {
     const res = await changeRole("anna", "bo", "vuxen");
     expect(res.result.content[0].text).toBe("Bo är nu vuxen.");

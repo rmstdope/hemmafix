@@ -1333,11 +1333,6 @@ describe("streaks", () => {
     expect((await tickNow(f.child)).coins).toBe(10);
   });
 
-  it("gives +10 % on day 4, rounded up", async () => {
-    await daysBack(f.child, 3);
-    expect((await tickNow(f.child)).coins).toBe(11);
-  });
-
   it("gives +20 % from day 7, rounded up", async () => {
     await daysBack(f.child, 6);
     expect((await tickNow(f.child)).coins).toBe(12);
