@@ -1,4 +1,5 @@
 import type { Page } from "@playwright/test";
+import { nuEmpty } from "./support/board";
 import { logIn, seedChore, seedRooms } from "./support/family";
 import { expect, test } from "./support/test";
 
@@ -87,7 +88,7 @@ test("a task worth 0 coins offers no chest", async ({ page, context }) => {
   await seedChore({ title: "Gratis", roomId: rooms["Kök"]!.id, recurrence: null, coins: 0 });
   await page.goto("/");
   await tick(page, "Gratis");
-  await expect(page.getByText("Allt i Nu är klart!")).toBeVisible();
+  await expect(nuEmpty(page)).toBeVisible();
   await expect(pill(page)).toHaveText("0");
   await expect(card(page)).toBeHidden();
 });

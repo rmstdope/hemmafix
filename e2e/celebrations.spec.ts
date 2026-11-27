@@ -1,5 +1,6 @@
 import type { Page } from "@playwright/test";
 import { reward } from "../src/db/schema";
+import { nuEmpty } from "./support/board";
 import { db, logIn, logInWithChestTaken, seedChore, seedDone, seedRooms } from "./support/family";
 import { RUN_ONCE } from "./support/tags";
 import { expect, test } from "./support/test";
@@ -21,7 +22,7 @@ async function oneTask(page: Page, context: Parameters<typeof logIn>[0], titles 
 test("ticking off the last task in Nu drops confetti for about two seconds and says so", async ({ page, context }) => {
   await oneTask(page, context);
   await tick(page, "Diska");
-  await expect(page.getByText("🎉 Allt i Nu är klart!")).toBeVisible();
+  await expect(nuEmpty(page)).toBeVisible();
   await expect(confetti(page)).toBeVisible();
   await expect(confetti(page)).toBeHidden({ timeout: 4_000 });
 });
@@ -37,7 +38,7 @@ test("with less motion Nu says it is cleared but nothing falls", async ({ page, 
   await page.emulateMedia({ reducedMotion: "reduce" });
   await oneTask(page, context);
   await tick(page, "Diska");
-  await expect(page.getByText("🎉 Allt i Nu är klart!")).toBeVisible();
+  await expect(nuEmpty(page)).toBeVisible();
   await expect(confetti(page)).toHaveCount(0);
 });
 
@@ -196,7 +197,7 @@ test("two ticks made at once clear Nu once", async ({ page, context }) => {
   await oneTask(page, context, ["Diska", "Damma"]);
   await page.getByRole("button", { name: "Diska: markera som klar" }).click();
   await tick(page, "Damma");
-  await expect(page.getByText("🎉 Allt i Nu är klart!")).toBeVisible();
+  await expect(nuEmpty(page)).toBeVisible();
   await expect(confetti(page)).toHaveCount(1);
 });
 
