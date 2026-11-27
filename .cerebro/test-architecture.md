@@ -8,7 +8,7 @@ Agreed with the navigator 2026-11-27.
   Enough is:       every branch of a decision once
 
 ## Repository checks   test/repo/**/*.test.ts, pnpm test:repo
-  Belongs here:    what holds the build and deploy setup together — a script that decides something, the CI workflow's mistakes that would pass unnoticed, a fact the repository states twice
+  Belongs here:    what holds the build and deploy setup together — a script that decides something, the CI workflow's mistakes that would pass unnoticed, a fact the repository states twice; and the proof of a requirement about releases that the workflow alone keeps (REL-3), named by its ID
   Not here:        the app's own logic; a line of a file restated, where breaking it shows itself in a run
   Enough is:       every answer of a script once; each silent failure of the workflow once; each repeated fact once, against the real tree and not on made-up input
 
@@ -18,6 +18,6 @@ Agreed with the navigator 2026-11-27.
   Enough is:       every rule and refusal once, at the function that decides it
 
 ## System           e2e/*.spec.ts, pnpm test:e2e (the production build in Chromium, mobile and desktop); deploy/smoke-test.sh for the image; src/server/mcp*.int.test.ts for what a connected app does through its tools
-  Belongs here:    one requirement each, named by its ID — what a family member sees and does, on phone and desktop
+  Belongs here:    one requirement each, named by its ID — what a family member sees and does, on phone and desktop (REL-3 is proven by the repository checks)
   Not here:        branch-by-branch rules that unit or integration pin; a second viewport's run of a test that sets its own width or loads no page
   Enough is:       every requirement once; both viewports only where the viewport changes what is seen

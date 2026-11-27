@@ -165,4 +165,4 @@ REL-2  A release that does not come up healthy is rolled back to the previous im
        Proven by: src/db/migrations.int.test.ts
 REL-3  A merge that changes only files under docs/ starts no release, and its pull request's
        required checks pass without running.
-       Proven by: nothing yet
+       Proven by: test/repo/ci-needed.test.ts, test/repo/ci-workflow.test.ts
