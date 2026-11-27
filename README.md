@@ -59,7 +59,8 @@ delete from membership where user_id = (select id from "user" where email = 'adr
 
 ## Tester
 
-Tre nivåer, alla körs i CI på varje PR och måste passera innan något publiceras:
+Tre nivåer, alla körs i CI på varje PR och måste passera innan något publiceras. Undantaget är
+en ändring som bara rör `docs/`: se [deploy/README.md](deploy/README.md).
 
 - **Enhetstester** (`src/**/*.test.ts`): ren logik, ingen databas.
 - **Integrationstester** (`src/**/*.int.test.ts`): serverkod mot en riktig Postgres,

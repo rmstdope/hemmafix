@@ -32,7 +32,7 @@ async function dueDateOf(title: string) {
   return row?.dueDate;
 }
 
-/** Nu: Dammsuga (late), Bädda and Vattna (today). Senare: Rensa, Byta, Putsa and the undated Frosta. */
+/** Nu: Dammsuga (late), Bädda and Vattna (today). Senare: the undated Frosta, then Rensa, Byta and Putsa. */
 async function seedBoard() {
   const room = (await seedRooms("Kök"))["Kök"]!.id;
   await seedChore({ title: "Dammsuga", roomId: room, dueDate: inDays(-2) });
@@ -113,12 +113,12 @@ test("within Senare the chore moves to its new place and keeps focus", async ({ 
   await logIn(context, "anna", "adult");
   await seedBoard();
   await page.goto("/?flik=senare");
-  await expect(rows(page)).toHaveText([/Rensa/, /Byta/, /Putsa/, /Frosta/]);
+  await expect(rows(page)).toHaveText([/Frosta/, /Rensa/, /Byta/, /Putsa/]);
 
   await more(page, "Byta").click();
   await quickDay(page, "Byta", 8).click();
 
-  await expect(rows(page)).toHaveText([/Rensa/, /Putsa/, /Byta/, /Frosta/]);
+  await expect(rows(page)).toHaveText([/Frosta/, /Rensa/, /Putsa/, /Byta/]);
   const [, day, month] = formatShortDay(inDays(8)).split(" ");
   await expect(item(page, "Byta")).toContainText(`${day} ${month}`);
   await expect(more(page, "Byta")).toBeFocused();
@@ -127,7 +127,7 @@ test("within Senare the chore moves to its new place and keeps focus", async ({ 
   await expect(notice(page, moved("Byta", 8))).toBeVisible();
 
   await undo(page, moved("Byta", 8)).click();
-  await expect(rows(page)).toHaveText([/Rensa/, /Byta/, /Putsa/, /Frosta/]);
+  await expect(rows(page)).toHaveText([/Frosta/, /Rensa/, /Byta/, /Putsa/]);
   await expect(more(page, "Byta")).toBeFocused();
 });
 

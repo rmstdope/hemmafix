@@ -188,9 +188,16 @@ export async function editChore(actor: Actor, openInstanceId: string, raw: unkno
         ...(input.coins !== undefined && { coins: input.coins }),
       })
       .where(eq(chore.id, target));
+    const dueDate = input.dueDate ?? (input.recurrence ? todayIso() : null);
     await tx
       .update(choreInstance)
-      .set({ dueDate: input.dueDate ?? (input.recurrence ? todayIso() : null) })
+      .set({
+        dueDate,
+        // The right-hand side sees the row as it was: only a date being removed starts the wait.
+        ...(dueDate === null && {
+          undatedSince: sql`case when ${choreInstance.dueDate} is not null then now() else ${choreInstance.undatedSince} end`,
+        }),
+      })
       .where(eq(choreInstance.id, instance));
   });
 }
@@ -672,7 +679,13 @@ export async function listOpenInstances(actor: Actor, filter: BoardFilter): Prom
       filter.floorId ? eq(room.floorId, filter.floorId) : undefined,
       who,
     ),
-  ).orderBy(sql`${choreInstance.dueDate} asc nulls last`, asc(choreInstance.createdAt), asc(choreInstance.id));
+  ).orderBy(
+    sql`${choreInstance.dueDate} asc nulls last`,
+    // The undated wait from when they were added, or from when their date was removed.
+    sql`coalesce(case when ${choreInstance.dueDate} is null then ${choreInstance.undatedSince} end, ${choreInstance.createdAt})`,
+    asc(choreInstance.createdAt),
+    asc(choreInstance.id),
+  );
   return rows.map((r) => toView(r as Row));
 }
 
