@@ -20,9 +20,9 @@ afterAll(async () => {
 });
 
 describe("verify-app reset", () => {
-  // One home holding everything, so status and reset start once for all tables, not once per group:
+  // One home for every case, so the script starts as few times as possible, not once per group:
   // every start re-checks the database and its migrations.
-  it("clears routines, lists, coins and rewards, keeps them cleared and keeps the logins", { timeout: 30_000 }, async () => {
+  it("empties every table and member setting, ones it has never heard of too, and keeps the logins", { timeout: 30_000 }, async () => {
     await verifyApp("status"); // creates and migrates the scratch database
     const sql = postgres(databaseUrl(scratch), { max: 1 });
     try {
@@ -52,11 +52,27 @@ describe("verify-app reset", () => {
       expect(before).toMatchObject(Object.fromEntries(counted.map((table) => [table, 1])));
       for (const kept of ["user", "account", "session", "household", "membership"]) expect(before).not.toHaveProperty(kept);
 
+      // A kept table pointing at the home's contents: emptying it would take the members along, so
+      // reset refuses, names both tables and changes nothing.
+      await sql`create table later_team (id integer primary key)`;
+      await sql`alter table membership add column later_team_id integer references later_team`;
+      await expect(verifyApp("reset")).rejects.toMatchObject({
+        stderr: expect.stringContaining('Table "membership" references "later_team".'),
+      });
+      expect(await sql`select list_order, later_pref from membership`).toEqual([{ list_order: "skapad", later_pref: "p" }]);
+      expect(await sql`select 1 from later_table`).toHaveLength(1);
+      expect(await sql`select 1 from membership`).toHaveLength(1);
+      await sql`alter table membership drop column later_team_id`;
+      await sql`drop table later_team`;
+      // Login state and the server's own rows stay.
+      await sql`insert into verification (id, identifier, value, expires_at) values ('v', 'i', 'x', now())`;
+      await sql`insert into oauth_resource (id, identifier, name) values ('r', 'https://example.com/mcp', 'MCP')`;
+
       await verifyApp("reset");
 
       // Every table of the home's contents is empty, but for the new home's one floor.
-      const after_rows = await rows();
-      expect(after_rows).toEqual({ ...Object.fromEntries(Object.keys(before).map((table) => [table, 0])), floor: 1 });
+      const emptied = await rows();
+      expect(emptied).toEqual({ ...Object.fromEntries(Object.keys(before).map((table) => [table, 0])), floor: 1 });
       const [after] = await sql`select routines_seeded_at from household`;
       expect(after!.routines_seeded_at).not.toBeNull();
       const [m] = await sql`select list_order, frame, theme, coin_look, later_pref, later_count from membership where user_id = ${u!.id}`;
@@ -65,6 +81,8 @@ describe("verify-app reset", () => {
       expect(await sql`select 1 from later_table`).toHaveLength(0);
       expect(await sql`select 1 from "user" where id = 'u-coins'`).toHaveLength(1);
       expect(await sql`select 1 from account where id = 'a-coins'`).toHaveLength(1);
+      expect(await sql`select 1 from verification`).toHaveLength(1);
+      expect(await sql`select 1 from oauth_resource`).toHaveLength(1);
     } finally {
       await sql.end();
     }

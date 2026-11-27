@@ -165,8 +165,10 @@ async function reset() {
   await withSql(await ensureDatabase(true), async (sql) => {
     await sql.begin(async (tx) => {
       // The home's contents go: chores and rooms, coins, purchases and badges, every connected app
-      // (and the ready-made routines stay away: the home counts as seeded).
-      await tx`truncate ${tx(await contentTables(tx))} cascade`;
+      // (and the ready-made routines stay away: the home counts as seeded). Never `cascade`: if a
+      // kept table references one of these, Postgres refuses and names both, where a cascade would
+      // empty the kept one too.
+      await tx`truncate ${tx(await contentTables(tx))}`;
       await tx`delete from "user" u where not exists (select 1 from account a where a.user_id = u.id)`;
       const defaults = (await memberSettings(tx)).map((column) => tx`${tx(column)} = default, `);
       await tx`update membership set ${defaults} role = 'adult', updated_at = now()`;
