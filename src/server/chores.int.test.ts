@@ -57,6 +57,9 @@ const openOf = async (title: string) => (await open()).filter((i) => i.title ===
 const instancesOf = async (choreId: string) =>
   db.select().from(choreInstance).where(eq(choreInstance.choreId, choreId)).orderBy(choreInstance.createdAt);
 
+/** An undo that leaves nobody below zero. */
+const UNDONE = { kind: "undone", debt: null };
+
 describe("createChore", () => {
   it("creates a recurring task, due today by default, with its first instance", async () => {
     await createChore(f.adult, weekly("Dammsuga"));
@@ -215,7 +218,7 @@ describe("completeInstance before a repeating chore's day", () => {
     const report = await completeInstance(f.adult, next.id);
 
     expect(report.notice).toBe("Diska är klar. Inga mynt, eftersom den inte är dags förrän imorgon.");
-    expect(report.chestId).toBeNull();
+    expect(report).toMatchObject({ kind: "done", chestId: null });
     expect(await getCoinTotal(f.adult)).toBe(before);
     const [done] = await db.select().from(choreInstance).where(eq(choreInstance.id, next.id));
     expect(done!.coins).toBe(0);
@@ -227,7 +230,7 @@ describe("completeInstance before a repeating chore's day", () => {
     const next = await tomorrows();
     await completeInstance(f.adult, next.id);
     const before = await getCoinTotal(f.adult);
-    expect(await uncompleteInstance(f.adult, next.id)).toBeUndefined();
+    expect(await uncompleteInstance(f.adult, next.id)).toEqual(UNDONE);
     expect(await getCoinTotal(f.adult)).toBe(before);
   });
 
@@ -266,7 +269,7 @@ describe("uncompleteInstance when the coins are spent", () => {
 
   it("undoes at once, with no question, while the balance stays at 0 or above", async () => {
     const id = await tickAs(f.child, "Damma", 100);
-    expect(await uncompleteInstance(f.child, id)).toBeUndefined();
+    expect(await uncompleteInstance(f.child, id)).toEqual(UNDONE);
     expect(await getCoinTotal(f.child)).toBe(0);
   });
 
@@ -275,7 +278,7 @@ describe("uncompleteInstance when the coins are spent", () => {
     const id = await tickAs(f.child, "B", 100);
     await buyLook(f.child, "coin", "silver");
     expect(await getCoinTotal(f.child)).toBe(100);
-    expect(await uncompleteInstance(f.child, id)).toBeUndefined();
+    expect(await uncompleteInstance(f.child, id)).toEqual(UNDONE);
     expect(await getCoinTotal(f.child)).toBe(0);
   });
 
@@ -284,7 +287,7 @@ describe("uncompleteInstance when the coins are spent", () => {
     await buyLook(f.child, "coin", "silver");
     expect(await getCoinTotal(f.child)).toBe(0);
 
-    expect(await uncompleteInstance(f.child, id)).toEqual({ confirm: { own: true, name: "Bo", balance: -100 } });
+    expect(await uncompleteInstance(f.child, id)).toEqual({ kind: "asked", confirm: { own: true, name: "Bo", balance: -100 } });
     expect(await getCoinTotal(f.child)).toBe(0);
     expect((await listRecentlyCompleted(f.adult)).map((i) => i.id)).toContain(id);
   });
@@ -293,7 +296,7 @@ describe("uncompleteInstance when the coins are spent", () => {
     const id = await tickAs(f.child, "Damma", 100);
     await buyLook(f.child, "coin", "silver");
 
-    expect(await uncompleteInstance(f.child, id, { confirmDebt: true })).toEqual({ debt: { balance: -100, name: "Bo", own: true } });
+    expect(await uncompleteInstance(f.child, id, { confirmDebt: true })).toEqual({ kind: "undone", debt: { balance: -100, name: "Bo", own: true } });
     expect(await getCoinTotal(f.child)).toBe(-100);
     expect((await getLooks(f.child)).owned).toEqual(["coin:silver"]);
     expect((await openOf("Damma"))[0]!.completedAt).toBeNull();
@@ -305,7 +308,7 @@ describe("uncompleteInstance when the coins are spent", () => {
     await buyLook(f.child, "coin", "silver");
     expect(await getCoinTotal(f.child)).toBe(30);
 
-    expect(await uncompleteInstance(f.adult, id)).toEqual({ confirm: { own: false, name: "Bo", balance: -70 } });
+    expect(await uncompleteInstance(f.adult, id)).toEqual({ kind: "asked", confirm: { own: false, name: "Bo", balance: -70 } });
   });
 
   it("asks again, with the new end number, while already below zero", async () => {
@@ -313,9 +316,10 @@ describe("uncompleteInstance when the coins are spent", () => {
     const b = await tickAs(f.child, "B", 50);
     await buyLook(f.child, "coin", "silver");
     expect(await uncompleteInstance(f.child, a, { confirmDebt: true })).toEqual({
+      kind: "undone",
       debt: { own: true, name: "Bo", balance: -50 },
     });
-    expect(await uncompleteInstance(f.child, b)).toEqual({ confirm: { own: true, name: "Bo", balance: -100 } });
+    expect(await uncompleteInstance(f.child, b)).toEqual({ kind: "asked", confirm: { own: true, name: "Bo", balance: -100 } });
   });
 
   it("does not ask about a tick that gave no coins, even while below zero", async () => {
@@ -324,14 +328,14 @@ describe("uncompleteInstance when the coins are spent", () => {
     const free = await tickAs(f.child, "Gratis", 0);
     await uncompleteInstance(f.child, a, { confirmDebt: true });
     expect(await getCoinTotal(f.child)).toBe(-100);
-    expect(await uncompleteInstance(f.child, free)).toBeUndefined();
+    expect(await uncompleteInstance(f.child, free)).toEqual(UNDONE);
     expect(await getCoinTotal(f.child)).toBe(-100);
   });
 
   it("never refuses a confirmed undo, even when the balance has recovered", async () => {
     const id = await tickAs(f.child, "Damma", 100);
     await tickAs(f.child, "Mer", 100);
-    expect(await uncompleteInstance(f.child, id, { confirmDebt: true })).toBeUndefined();
+    expect(await uncompleteInstance(f.child, id, { confirmDebt: true })).toEqual(UNDONE);
     expect(await getCoinTotal(f.child)).toBe(100);
   });
 });
@@ -485,8 +489,9 @@ describe("postponeInstance", () => {
   it.each([-3, 0, 4])("moves a task due %i days from today to a later day", async (days) => {
     const t = await dueIn(days);
 
-    const { postponed } = await postponeInstance(f.adult, t.id, inDays(6));
+    const { kind, postponed } = await postponeInstance(f.adult, t.id, inDays(6));
 
+    expect(kind).toBe("moved");
     expect(postponed.from).toBe(inDays(days));
     expect(await dueDateOf(t.choreId)).toBe(inDays(6));
   });

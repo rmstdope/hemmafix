@@ -29,6 +29,9 @@ const as = (who: CurrentMember | null) => {
 };
 const FORBIDDEN = { ok: false, error: "Det här får bara vuxna göra." };
 const OK = { ok: true };
+const UNDONE = { ok: true, report: { kind: "undone", debt: null } };
+/** A tick-off with nothing to celebrate, as the app gets it. */
+const TICKED = { kind: "done", chestId: null, chestCoins: null, badges: [], levelUp: null, notice: null };
 
 /** A weekly kitchen task created by the adult, and its open instance. */
 async function weeklyTask(title = "Diska", kind = "once") {
@@ -66,8 +69,8 @@ describe("postponing", () => {
 
     const result = await actions.postponeInstance(t.instanceId, later());
 
-    expect(result).toEqual({ ...OK, postponed: { from: t.due, version: expect.any(String) } });
-    expect(await actions.undoPostpone(t.instanceId, { to: t.due, version: result.postponed!.version })).toEqual(OK);
+    expect(result).toEqual({ ...OK, report: { kind: "moved", postponed: { from: t.due, version: expect.any(String) } } });
+    expect(await actions.undoPostpone(t.instanceId, { to: t.due, version: result.report!.postponed.version })).toEqual(OK);
     expect((await openInstance(t.choreId))!.dueDate).toBe(t.due);
   });
 
@@ -121,10 +124,9 @@ describe("as a child", () => {
     // The first tick of the day also reports the day's chest.
     expect(await actions.completeInstance(mine.instanceId)).toEqual({
       ...OK,
-      chestId: expect.any(String),
-      chestCoins: expect.any(Number),
+      report: { ...TICKED, chestId: expect.any(String), chestCoins: expect.any(Number), badges: expect.any(Array) },
     });
-    expect(await actions.uncompleteInstance(mine.instanceId)).toEqual(OK);
+    expect(await actions.uncompleteInstance(mine.instanceId)).toEqual(UNDONE);
 
     as(f.adult);
     await actions.completeInstance(annas.instanceId);
@@ -151,10 +153,11 @@ describe("as a child", () => {
       .values({ householdId: f.homeId, userId: f.child.userId, kind: "coin", key: "silver", price: own!.coins ?? 0 });
 
     const asked = await actions.uncompleteInstance(mine.instanceId);
-    expect(asked).toEqual({ ok: true, confirm: { own: true, name: "Bo", balance: -(own!.coins ?? 0) } });
+    const debt = { own: true, name: "Bo", balance: -(own!.coins ?? 0) };
+    expect(asked).toEqual({ ok: true, report: { kind: "asked", confirm: debt } });
     expect((await db.select().from(choreInstance).where(eq(choreInstance.id, mine.instanceId)))[0]!.completedAt).not.toBeNull();
 
-    expect(await actions.uncompleteInstance(mine.instanceId, true)).toEqual(OK);
+    expect(await actions.uncompleteInstance(mine.instanceId, true)).toEqual({ ok: true, report: { kind: "undone", debt } });
     expect((await db.select().from(choreInstance).where(eq(choreInstance.id, mine.instanceId)))[0]!.completedAt).toBeNull();
   });
 });
@@ -168,7 +171,25 @@ describe("as an adult", () => {
     const next = await openInstance(t.choreId);
     expect(await actions.completeInstance(next!.id)).toEqual({
       ok: true,
-      notice: expect.stringMatching(/^Diska är klar\. Inga mynt, eftersom den inte är dags förrän .+\.$/),
+      report: {
+        ...TICKED,
+        badges: expect.any(Array),
+        notice: expect.stringMatching(/^Diska är klar\. Inga mynt, eftersom den inte är dags förrän .+\.$/),
+      },
+    });
+  });
+
+  it("says who reached the level a tick-off reports", async () => {
+    const t = await weeklyTask("Storstäda");
+    await db.update(chore).set({ coins: 100 }).where(eq(chore.id, t.choreId));
+
+    const { report } = await actions.completeInstance(t.instanceId);
+
+    expect(report?.kind === "done" && report.levelUp).toEqual({
+      level: 2,
+      title: "Hjälpreda",
+      name: f.adult.name,
+      image: f.adult.image,
     });
   });
 
@@ -209,7 +230,7 @@ describe("as an adult", () => {
     ).toEqual(OK);
     expect(await actions.completeInstance(first.id)).toMatchObject(OK);
     expect(await actions.completeInstance(first.id)).toEqual({ ok: false, error: "Någon har redan bockat av den" });
-    expect(await actions.uncompleteInstance(first.id)).toEqual(OK);
+    expect(await actions.uncompleteInstance(first.id)).toEqual(UNDONE);
     expect(await actions.deleteChore(c!.id)).toEqual(OK);
     expect(await openInstance(c!.id)).toBeUndefined();
   });

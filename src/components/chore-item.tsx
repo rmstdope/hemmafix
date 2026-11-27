@@ -25,7 +25,7 @@ import { TaskRowBody } from "./task-row";
 import { EditChoreForm } from "./edit-chore-form";
 import { PostponeLine } from "./postpone";
 import { cn } from "@/lib/utils";
-import type { InstanceView, Member } from "@/server/chores";
+import type { CompleteReport, InstanceView, Member, UndoReport } from "@/server/chores";
 
 const selectClass = "h-10 truncate rounded-lg border border-input bg-transparent px-2 text-sm dark:bg-input/30";
 
@@ -92,7 +92,7 @@ export function ChoreItem({
     id === currentUserId ? "Jag" : (members.find((m) => m.id === id)?.name.split(" ")[0] ?? "");
 
   const run = (
-    fn: () => Promise<ActionState>,
+    fn: () => Promise<ActionState<CompleteReport | UndoReport>>,
     optimistic?: () => void,
     success?: string,
     shower?: Shower,
@@ -104,7 +104,7 @@ export function ChoreItem({
       const nuList = row?.closest<HTMLElement>("[data-clears-nu]");
       const lastInNu = nuList !== null && nuList !== undefined && [...nuList.children].every((li) => li === row);
       optimistic?.();
-      let result: ActionState;
+      let result: ActionState<CompleteReport | UndoReport>;
       try {
         result = await fn();
       } catch (e) {
@@ -114,15 +114,16 @@ export function ChoreItem({
       if (result.error) {
         shower?.failed();
         toast.error(result.error);
-      } else if (result.confirm) {
+      } else if (result.report?.kind === "asked") {
         // Nothing was undone: the coins are spent, so the person is asked first.
-        setAsking(result.confirm);
+        setAsking(result.report.confirm);
       } else {
         shower?.saved();
-        if (result.chestId && result.chestCoins !== undefined) offerChest({ id: result.chestId, coins: result.chestCoins });
-        if (result.badges || result.levelUp) offerCelebrations({ badges: result.badges ?? [], levelUp: result.levelUp });
+        const ticked = result.report?.kind === "done" ? result.report : null;
+        if (ticked?.chestId && ticked.chestCoins !== null) offerChest({ id: ticked.chestId, coins: ticked.chestCoins });
+        if (ticked) offerCelebrations(ticked);
         if (lastInNu) celebrateNuCleared();
-        if (result.notice) toast.success(result.notice);
+        if (ticked?.notice) toast.success(ticked.notice);
         if (success) toast.success(success);
       }
     });
