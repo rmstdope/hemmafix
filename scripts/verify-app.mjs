@@ -30,6 +30,8 @@ const LOCAL_HOSTS = new Set(["localhost", "127.0.0.1", "[::1]", "::1"]);
 // What `reset` keeps: the logins, the home and its members, and the server's own rows (it seeds
 // oauth_resource once per process). Every other table is the home's contents, a new one included.
 const KEPT_TABLES = ["user", "account", "session", "verification", "household", "membership", "jwks", "badge_epoch", "oauth_resource"];
+// Likewise for a member: who they are and where they belong. Every other column goes back to its default.
+const KEPT_MEMBERSHIP_COLUMNS = ["user_id", "household_id", "role", "created_at", "updated_at"];
 
 function verifyUrl() {
   const raw = process.env.DATABASE_URL;
@@ -52,6 +54,13 @@ async function withSql(url, fn) {
   } finally {
     await sql.end();
   }
+}
+
+/** The `membership` columns that are the member's own settings: every one `reset` does not keep. */
+async function memberSettings(sql) {
+  const rows = await sql`select column_name from information_schema.columns
+    where table_schema = 'public' and table_name = 'membership' and column_name not in ${sql(KEPT_MEMBERSHIP_COLUMNS)}`;
+  return rows.map((row) => row.column_name);
 }
 
 /** The tables holding the home's contents: asked of the database, so no new table is missed. */
@@ -159,7 +168,8 @@ async function reset() {
       // (and the ready-made routines stay away: the home counts as seeded).
       await tx`truncate ${tx(await contentTables(tx))} cascade`;
       await tx`delete from "user" u where not exists (select 1 from account a where a.user_id = u.id)`;
-      await tx`update membership set role = 'adult', frame = null, theme = null, coin_look = null, updated_at = now()`;
+      const defaults = (await memberSettings(tx)).map((column) => tx`${tx(column)} = default, `);
+      await tx`update membership set ${defaults} role = 'adult', updated_at = now()`;
       const homes = await tx`update household set name = ${HOME_NAME}, routines_seeded_at = now(), updated_at = now() returning id`;
       for (const home of homes) await tx`insert into floor (household_id, name, position) values (${home.id}, '1', 1)`;
     });

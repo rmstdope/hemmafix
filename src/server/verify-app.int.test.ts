@@ -43,6 +43,9 @@ describe("verify-app reset", () => {
       // A table the script has never heard of, as the next schema change would add.
       await sql`create table later_table (household_id uuid references household)`;
       await sql`insert into later_table values (${home!.id})`;
+      // Per-member columns it has never heard of either, nullable and with a default.
+      await sql`alter table membership add column later_pref text, add column later_count integer not null default 0`;
+      await sql`update membership set list_order = 'skapad', later_pref = 'p', later_count = 7`;
       const counted = ["routine", "list", "look_purchase", "reward_purchase", "reward", "daily_chest", "badge_award", "later_table"];
       const rows = async () => JSON.parse(await verifyApp("status")).rows as Record<string, number>;
       const before = await rows();
@@ -56,8 +59,8 @@ describe("verify-app reset", () => {
       expect(after_rows).toEqual({ ...Object.fromEntries(Object.keys(before).map((table) => [table, 0])), floor: 1 });
       const [after] = await sql`select routines_seeded_at from household`;
       expect(after!.routines_seeded_at).not.toBeNull();
-      const [m] = await sql`select frame, theme, coin_look from membership where user_id = ${u!.id}`;
-      expect(m).toEqual({ frame: null, theme: null, coin_look: null });
+      const [m] = await sql`select list_order, frame, theme, coin_look, later_pref, later_count from membership where user_id = ${u!.id}`;
+      expect(m).toEqual({ list_order: null, frame: null, theme: null, coin_look: null, later_pref: null, later_count: 0 });
 
       expect(await sql`select 1 from later_table`).toHaveLength(0);
       expect(await sql`select 1 from "user" where id = 'u-coins'`).toHaveLength(1);
