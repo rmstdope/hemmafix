@@ -145,6 +145,20 @@ describe("the production build", () => {
   });
 });
 
+describe("an e2e shard's browser", () => {
+  // The tests are headless, and the runner image already has the system libraries.
+  it("is only the headless one the tests run, with no system packages", () => {
+    const installs = steps("e2e-shard").filter((step) => step.includes("playwright install"));
+    expect(installs).toEqual([
+      [
+        "name: Install headless Chromium for Playwright",
+        "        if: steps.changes.outputs.run != 'false'",
+        "        run: pnpm exec playwright install --only-shell chromium",
+      ].join("\n"),
+    ]);
+  });
+});
+
 describe("publishing", () => {
   it("still needs every required check, on a push to main only", () => {
     const publish = block(workflow, "publish", 2);

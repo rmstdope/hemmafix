@@ -120,9 +120,11 @@ jobs:
           cache: pnpm
       - run: pnpm install --frozen-lockfile
         if: steps.changes.outputs.run != 'false'
-      - name: Install Chromium for Playwright
+      # Only the headless shell: the tests are headless, and the runner image already has the
+      # system libraries it needs (--with-deps added little but fonts for scripts the app lacks).
+      - name: Install headless Chromium for Playwright
         if: steps.changes.outputs.run != 'false'
-        run: pnpm exec playwright install --with-deps chromium
+        run: pnpm exec playwright install --only-shell chromium
       - run: pnpm run build
         if: steps.changes.outputs.run != 'false'
       - name: End-to-end tests (production build, mobile and desktop)
