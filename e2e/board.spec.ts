@@ -23,6 +23,11 @@ test("a visitor who is not logged in is sent to the login page", async ({ page }
   await page.goto("/");
   await expect(page).toHaveURL(/\/login$/);
   await expect(page.getByRole("button", { name: "Logga in med Google" })).toBeVisible();
+  // The icon is the file itself, not a copy through the image optimizer, which refuses SVG.
+  const icon = page.locator('img[src="/icon.svg"]');
+  await expect(icon).toHaveJSProperty("complete", true);
+  await expect(icon).not.toHaveJSProperty("naturalWidth", 0);
+  expect(await icon.boundingBox()).toMatchObject({ width: 64, height: 64 });
 });
 
 test("someone who is no longer on the allowlist is logged out at once", async ({ page, context }) => {
