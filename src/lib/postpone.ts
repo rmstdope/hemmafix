@@ -1,19 +1,21 @@
 import { addDays, formatShortDay, formatTabDay } from "./dates";
 import { byOpenOrder, type Ordered } from "./open-order";
 
-/** The last day a chore cannot be postponed to: the later of today and its own day. */
-export const laterThan = (dueDate: string, today: string) => (dueDate > today ? dueDate : today);
+/** The first day a chore can be postponed to: today for a late one, else the day after its own. */
+export const firstPostponeDay = (dueDate: string, today: string) => (dueDate < today ? today : addDays(dueDate, 1));
 
-/** The three one-tap choices, named like the day tabs. */
+/** The three one-tap choices, today and tomorrow by name and later days like the day tabs. */
 export function quickDays(dueDate: string, today: string): { day: string; label: string }[] {
-  const from = laterThan(dueDate, today);
-  return [1, 2, 3].map((n) => {
-    const day = addDays(from, n);
-    return { day, label: day === addDays(today, 1) ? "Imorgon" : formatTabDay(day) };
+  const first = firstPostponeDay(dueDate, today);
+  return [0, 1, 2].map((n) => {
+    const day = addDays(first, n);
+    const label = day === today ? "Idag" : day === addDays(today, 1) ? "Imorgon" : formatTabDay(day);
+    return { day, label };
   });
 }
 
-export const movedText = (title: string, day: string) => `"${title}" flyttad till ${formatShortDay(day)}`;
+export const movedText = (title: string, day: string, today: string) =>
+  `"${title}" flyttad till ${day === today ? "idag" : formatShortDay(day)}`;
 export const restoredText = (title: string, day: string) => `"${title}" är tillbaka på ${formatShortDay(day)}`;
 
 /** The open list as it will be once the task has its new day. */
