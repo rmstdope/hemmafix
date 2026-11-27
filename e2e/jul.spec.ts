@@ -172,14 +172,17 @@ test("a page left before its marks arrived does not keep the sky once the person
   try {
     const landed = page.waitForEvent("requestfinished", (r) => r.url().includes("/hemmet?") && !r.headers()["next-router-prefetch"]);
     await chooseFromMenu(page, "Hemmet");
-    await expect(page.locator("main [aria-busy=true]").locator("visible=true")).toBeVisible();
+    // Hemmet is the page shown, its own content loaded or not; its marks are still held back.
+    const shown = page.getByRole("heading", { name: "Hemmet" }).or(page.locator("main [aria-busy=true]"));
+    await expect(shown.locator("visible=true").first()).toBeVisible();
     await page.goBack();
-    await hydrated(page);
+    await expect(page).toHaveURL(/\/jag$/);
     await release();
     await landed;
   } finally {
     await release();
   }
+  await hydrated(page);
   await page.getByRole("group", { name: "Visa" }).getByRole("button", { name: "Butik" }).click();
   await page.getByRole("button", { name: "Svart" }).click();
   await expect(page.getByRole("button", { name: "Svart, används" })).toBeVisible();
