@@ -104,9 +104,9 @@ Four levels, all run in CI on every pull request that changes anything outside `
   anything or loads no page, or one whose subject the viewport cannot change (server rules, coin
   arithmetic, history), which takes the navigator's approval. Tests of layout, the header, menus,
   touch or narrow screens run on both. CI splits the suite into ten shards on separate runners
-  (`e2e-shard` in `ci.yml`); the required check `e2e` passes only when every shard does. The split is test by test,
-  by the times in `e2e/support/test-times.json`, so a test must not depend on another having run
-  before it (a file that must stay together declares `mode: "serial"`). A new spec or test needs no
+  (`e2e-shard` in `ci.yml`); the required check `e2e` passes only when every shard does. The split
+  is test by test, by the times in `e2e/support/test-times.json`, so a test must not depend on
+  another having run before it (a file that must stay together declares `mode: "serial"`). A new spec or test needs no
   registration; when the shards drift apart, refresh the times as
   `e2e/support/refresh-test-times.mjs` says.
 
