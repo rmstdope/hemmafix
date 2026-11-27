@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { addDays, formatTime, todayIso } from "./dates";
 import { formatCoins } from "./coins";
+import { can, type Role } from "./permissions";
 
 export const MAX_REWARD_PRICE = 1000;
 export const PRICE_ERROR = "Priset ska vara 1–1 000 mynt.";
@@ -59,12 +60,12 @@ export const waitingWhen = (at: Date, now: Date = new Date()) =>
 export const givenWhen = (at: Date, now: Date = new Date()) => `Fick ${dayWords(at, now)}`;
 
 /**
- * Who is asked to give a purchase: every adult except the buyer, or the buyer themselves when
- * they are the home's only adult. Empty when nobody can.
+ * Who is asked to give a purchase: everyone who may give rewards except the buyer, or the buyer
+ * themselves when nobody else may. Empty when nobody can.
  */
-export function giveRecipients(buyerId: string, members: { id: string; role: "adult" | "child" }[]): string[] {
-  const adults = members.filter((m) => m.role === "adult").map((m) => m.id);
-  const others = adults.filter((id) => id !== buyerId);
+export function giveRecipients(buyerId: string, members: { id: string; role: Role }[]): string[] {
+  const givers = members.filter((m) => can(m.role, "reward:give")).map((m) => m.id);
+  const others = givers.filter((id) => id !== buyerId);
   if (others.length > 0) return others;
-  return adults.includes(buyerId) ? [buyerId] : [];
+  return givers.includes(buyerId) ? [buyerId] : [];
 }

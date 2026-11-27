@@ -466,6 +466,7 @@ export async function uncompleteInstance(
   id: string,
   { confirmDebt = false }: { confirmDebt?: boolean } = {},
 ): Promise<UndoReport> {
+  assertCan(actor, "task:complete");
   const target = instanceIdInput.parse(id);
 
   return db.transaction(async (tx) => {

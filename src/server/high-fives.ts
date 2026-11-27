@@ -16,6 +16,7 @@ const firstName = (name: string) => name.split(" ")[0] ?? name;
 export async function setHighFive(actor: Actor, id: string, on: boolean) {
   const target = instanceIdInput.parse(id);
   if (!on) {
+    assertCan(actor, "high-five:take-back");
     await db.delete(highFive).where(and(eq(highFive.instanceId, target), eq(highFive.userId, actor.userId)));
     return;
   }
@@ -96,6 +97,7 @@ export async function listHighFiveNotes(actor: Actor): Promise<HighFiveNote[]> {
 
 /** The doer closes the notes about their own ticks; the high fives themselves stay counted. */
 export async function closeHighFiveNotes(actor: Actor, ids: string[]) {
+  assertCan(actor, "note:close");
   const targets = ids.map((i) => instanceIdInput.parse(i));
   if (targets.length === 0) return;
   await db
