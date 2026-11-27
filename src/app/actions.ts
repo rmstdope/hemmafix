@@ -73,7 +73,10 @@ async function act(fn: (member: CurrentMember) => Promise<unknown>, options: Act
   return done.ok ? { ok: true } : done;
 }
 
-/** `perform` for an action whose report goes back to the app. One that only asked has changed nothing. */
+/**
+ * `perform` for an action whose report goes back to the app. The whole object is sent, so `fn` must
+ * resolve with exactly what the app may see, never a row. One that only asked has changed nothing.
+ */
 async function actAndReport<R extends Report>(
   fn: (member: CurrentMember) => Promise<R>,
   options: ActOptions = {},
