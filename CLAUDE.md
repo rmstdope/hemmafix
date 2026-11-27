@@ -99,8 +99,11 @@ Three levels, all run in CI on every pull request that changes anything outside 
   process; the app itself has no test login, and none may be added. A test that sets its own
   viewport before it loads anything, or loads no page, is tagged `RUN_ONCE` (`e2e/support/tags.ts`)
   and runs in mobile only. CI splits the suite into ten shards on separate runners (`e2e-shard` in
-  `ci.yml`); the required check `e2e` passes only when every shard does. A new spec needs no
-  registration.
+  `ci.yml`); the required check `e2e` passes only when every shard does. The split is test by test,
+  by the times in `e2e/support/test-times.json`, so a test must not depend on another having run
+  before it (a file that must stay together declares `mode: "serial"`). A new spec or test needs no
+  registration; when the shards drift apart, refresh the times as
+  `e2e/support/refresh-test-times.mjs` says.
 
 Integration and e2e need a local Postgres (README *Kom igång*) and create databases named
 `hemmafix_test_*` on `TEST_DATABASE_URL` (else `DATABASE_URL`). A worktree gets a copy of the main

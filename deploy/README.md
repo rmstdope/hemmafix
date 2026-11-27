@@ -36,9 +36,14 @@ Annars gäller:
    Postgres, kontroll att schema och migreringar stämmer.
 2. **e2e**: produktionsbygge och end-to-end-tester av det, delade i tio delar (`e2e-shard`) som
    körs samtidigt på var sin maskin, med eget bygge, egen Postgres och server, ett test i taget.
-   Kontrollen `e2e` är grön bara om alla delar är det. Playwright fördelar testfilerna själv, så
-   en ny testfil behöver inte läggas till någonstans. GitHub kör ett begränsat antal jobb
-   samtidigt (20 på ett gratiskonto), så flera körningar på en gång får vänta på varandra.
+   Kontrollen `e2e` är grön bara om alla delar är det. Testen fördelas ett och ett så att delarna
+   tar ungefär lika lång tid (`e2e/support/balanced-shards.ts`), efter tiderna för de långsamma
+   testen i `e2e/support/test-times.json`. Ett nytt eller omdöpt test behöver inte läggas till
+   någonstans, det räknas bara som snabbt. Har delarnas tider glidit isär, uppdatera tabellen från
+   några färska körningar:
+   `for run in <id> <id>; do gh run view "$run" --log; done | node e2e/support/refresh-test-times.mjs`.
+   GitHub kör ett begränsat antal jobb samtidigt (20 på ett gratiskonto), så flera körningar på en
+   gång får vänta på varandra.
    Delarna installerar bara Chromiums huvudlösa skal, utan systempaket. Bygget utgår från
    byggcachen (`.next/cache`) från senaste `main`: första delen sparar den vid en push till
    `main`, och ändrade beroenden (`pnpm-lock.yaml`) börjar om från tomt. Misstänker du att
