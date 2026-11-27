@@ -1,5 +1,5 @@
 import { earlyDay } from "../src/lib/early-tick";
-import { filterSelect } from "./support/board";
+import { filterSelect, nuEmpty } from "./support/board";
 import type { Page } from "@playwright/test";
 import { formatDue, todayIso } from "../src/lib/dates";
 import { nextDueDate } from "../src/lib/recurrence";
@@ -207,7 +207,7 @@ test("an adult deletes a task", async ({ page, context }) => {
   await item(page, "Diska").getByRole("button", { name: "Ta bort uppgiften" }).click();
   await expect(page.getByText('"Diska" togs bort')).toBeVisible();
   await page.reload();
-  await expect(page.getByText("Allt i Nu är klart!")).toBeVisible();
+  await expect(nuEmpty(page)).toBeVisible();
 });
 
 test("a change on one device shows up on another without reloading", async ({ page, context, browser }) => {
@@ -227,7 +227,7 @@ test("a change on one device shows up on another without reloading", async ({ pa
   };
 
   await boPage.goto("/");
-  await expect(boPage.getByText("Allt i Nu är klart!")).toBeVisible();
+  await expect(nuEmpty(boPage)).toBeVisible();
   await page.goto("/");
 
   // Bo's page also refreshes once when its event stream opens, which could deliver the first

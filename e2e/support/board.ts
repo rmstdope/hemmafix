@@ -6,3 +6,8 @@ export async function filterSelect(page: Page, label: "Rum" | "Person"): Promise
   if (!(await select.isVisible())) await page.getByRole("button", { name: /^Filtrera/ }).click();
   return select;
 }
+
+/** What the Nu tab says once nothing in it is left to do; most specs wait for it as a sign the page has settled. */
+export function nuEmpty(scope: Page | Locator): Locator {
+  return scope.getByText("🎉 Allt i Nu är klart!");
+}

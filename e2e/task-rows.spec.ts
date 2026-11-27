@@ -1,4 +1,5 @@
 import type { Locator, Page } from "@playwright/test";
+import { addDays, formatTabDay, todayIso } from "../src/lib/dates";
 import { logIn, seedChore, seedDone, seedRooms } from "./support/family";
 import { RUN_ONCE } from "./support/tags";
 import { expect, test } from "./support/test";
@@ -71,7 +72,8 @@ test("the panel has a switch for a recurring task only, keeps focus on the chevr
   await diska.getByRole("button", { name: "Mer" }).click();
   await diska.getByRole("button", { name: "Mer" }).focus();
   const days = diska.getByRole("group", { name: /skjut upp/ }).getByRole("button");
-  await expect(days).toHaveCount(4);
+  const day = (n: number) => formatTabDay(addDays(todayIso(), n));
+  await expect(days).toHaveText(["Imorgon", day(2), day(3), "Välj dag…"]);
   for (let i = 0; i < 4; i++) {
     await page.keyboard.press("Tab");
     await expect(days.nth(i)).toBeFocused();
