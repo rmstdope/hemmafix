@@ -6,6 +6,7 @@ import { usePathname, useSearchParams } from "next/navigation";
 import { useState } from "react";
 import { PARTS, litPart } from "@/lib/parts";
 import { cn } from "@/lib/utils";
+import { PageMark } from "./page-mark";
 import { useRememberedPart } from "./part-links";
 
 const ICONS = { uppgifter: ListChecks, listor: List, jag: Star };
@@ -25,13 +26,13 @@ export function PartsNav({ variant }: { variant: "top" | "bottom" }) {
   return (
     <nav
       aria-label="Delar"
-      data-parts-bar={variant === "bottom" ? "" : undefined}
       className={cn(
         variant === "bottom"
           ? "fixed inset-x-0 bottom-0 z-40 flex h-[calc(var(--parts-bar-h)+env(safe-area-inset-bottom))] border-t bg-background pb-[env(safe-area-inset-bottom)] sm:hidden"
           : "hidden gap-1 sm:flex",
       )}
     >
+      {variant === "bottom" && <PageMark attributes={{ "data-parts-bar": "" }} />}
       {PARTS.map((part) => {
         const Icon = ICONS[part.key];
         const lit = part.key === current;
