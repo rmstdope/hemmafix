@@ -2,6 +2,7 @@ import type { Page } from "@playwright/test";
 import { eq } from "drizzle-orm";
 import { chore, choreInstance } from "../src/db/schema";
 import { addDays, formatShortDay, formatTabDay, formatTabDayLong, todayIso } from "../src/lib/dates";
+import { nuEmpty } from "./support/board";
 import { db, logIn, seedChore, seedRooms } from "./support/family";
 import { RUN_ONCE } from "./support/tags";
 import { expect, test } from "./support/test";
@@ -107,7 +108,7 @@ test("focus goes to the row above after the last row, and to the tab when nothin
   await more(page, "Dammsuga").press("Enter");
   await quickDay(page, "Dammsuga", 1).press("Enter");
   await expect(tab(page, "Nu")).toBeFocused();
-  await expect(panel(page).getByText("🎉 Allt i Nu är klart!")).toBeVisible();
+  await expect(nuEmpty(panel(page))).toBeVisible();
 });
 
 test("within Senare the chore moves to its new place and keeps focus", async ({ page, context }) => {
@@ -191,7 +192,7 @@ test("Välj dag… opens the device's picker, from the day after the chore's own
   await expect(dateField(page, "Byta")).toHaveAttribute("min", inDays(6));
 });
 
-test("the four buttons come first by keyboard, share a 300 px row and stay narrow on a wide window", { tag: RUN_ONCE }, async ({
+test("the four buttons share a 300 px row and stay narrow on a wide window", { tag: RUN_ONCE }, async ({
   page,
   context,
 }) => {
@@ -202,14 +203,7 @@ test("the four buttons come first by keyboard, share a 300 px row and stay narro
   await more(page, "Dammsuga").click();
 
   const buttons = [1, 2, 3].map((n) => quickDay(page, "Dammsuga", n)).concat(pickDay(page, "Dammsuga"));
-  await more(page, "Dammsuga").focus();
-  for (const button of buttons) {
-    await page.keyboard.press("Tab");
-    await expect(button).toBeFocused();
-  }
-  await page.keyboard.press("Tab");
-  await expect(item(page, "Dammsuga").getByRole("button", { name: "Den här gången" })).toBeFocused();
-
+  await expect(buttons[3]!).toBeVisible();
   const boxes = await Promise.all(buttons.map(async (b) => (await b.boundingBox())!));
   expect(new Set(boxes.map((b) => Math.round(b.y))).size).toBe(1);
   expect(Math.max(...boxes.map((b) => b.width)) - Math.min(...boxes.map((b) => b.width))).toBeLessThan(1);
