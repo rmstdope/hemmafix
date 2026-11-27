@@ -9,7 +9,7 @@ import { expect, test } from "./support/test";
 
 // The image contract asks for a fast shutdown on SIGTERM: a deploy stops the old container and
 // waits for it. A family member's open page holds a live-update stream (/api/events), which must
-// not keep the old server running. The shared web server cannot be stopped mid-suite, so these
+// not keep the old server running. The worker's web server cannot be stopped mid-suite, so these
 // tests start their own standalone server on the next port, on the same database and secret.
 
 const PORT = E2E_PORT + 1;

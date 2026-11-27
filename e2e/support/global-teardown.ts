@@ -1,6 +1,6 @@
 import { dropDatabase } from "../../test/database.mjs";
-import { E2E_DB } from "./env";
+import { E2E_SLOTS } from "./env";
 
 export default async function teardown() {
-  await dropDatabase(E2E_DB);
+  for (const { db } of E2E_SLOTS) await dropDatabase(db);
 }
