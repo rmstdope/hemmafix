@@ -587,11 +587,14 @@ describe("the change-role tool", () => {
 
   it("tells the family's open screens when a role changed, and only then", async () => {
     const homes = await listenForHomes();
-    await changeRole("bo", "Bo", "vuxen"); // refused
-    await changeRole("anna", "Bo", "barn"); // no change
-    await changeRole("anna", "Bo", "vuxen");
-    expect(await homes.told()).toEqual([homeId]);
-    await homes.unlisten();
+    try {
+      await changeRole("bo", "Bo", "vuxen"); // refused
+      await changeRole("anna", "Bo", "barn"); // no change
+      await changeRole("anna", "Bo", "vuxen");
+      expect(await homes.told()).toEqual([homeId]);
+    } finally {
+      await homes.unlisten();
+    }
   });
 
   it("takes effect for the next call: a person made a child is refused", async () => {

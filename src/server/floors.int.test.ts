@@ -170,7 +170,10 @@ describe("rooms on floors", () => {
   });
 });
 
-/** Waits until a session in this database is queued behind another one's lock (a row lock included). */
+/**
+ * Waits until a session in this database is queued behind another one's lock (a row lock included).
+ * Any such session counts, so use it only where the caller under test is the only one that can wait.
+ */
 async function waitForBlockedSession() {
   for (let i = 0; i < 200; i++) {
     const blocked = await db.execute(
