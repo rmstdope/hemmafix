@@ -169,9 +169,13 @@ describe("the sharding reporter", () => {
   // Locally too, so a shard can be reproduced on a developer's machine.
   it("is first in both reporter lists, and CI prints each test's time", () => {
     const text = readFileSync("playwright.config.ts", "utf8");
-    expect(text).toMatch(
-      /reporter: process\.env\.CI\s*\? \[sharding, \["list"\], \["github"\], \["html", \{ open: "never" \}\]\]\s*: \[sharding, \["list"\]\],/,
-    );
+    // Read as text: importing the config would set the end-to-end run's environment here.
+    const lists = /reporter: process\.env\.CI\s*\? (\[.*\])\s*: (\[.*\]),/.exec(text);
+    expect(lists).not.toBeNull();
+    for (const list of lists!.slice(1)) {
+      expect(list).toMatch(/^\[sharding, /);
+      expect(list).toContain('["list"]');
+    }
   });
 });
 

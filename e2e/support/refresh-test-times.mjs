@@ -8,7 +8,10 @@ import { fileURLToPath, pathToFileURL } from "node:url";
 /** Quicker tests are left out and weigh the split's default. */
 const LISTED_SECONDS = 1.5;
 const UNITS = { ms: 0.001, s: 1, m: 60 };
-/** A passing test as Playwright's `list` reporter prints it. */
+/**
+ * A passing test as Playwright's `list` reporter prints it. Tags follow the title and are not
+ * part of the key, so a title that itself ends in an `@word` would never be matched.
+ */
 const PASSED = /✓ +\d+ \[[\w-]+\] › e2e\/(.+?):\d+:\d+ › (.+?)(?: @[\w-]+)* \(([\d.]+)(ms|s|m)\)\s*$/;
 
 /**

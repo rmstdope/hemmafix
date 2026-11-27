@@ -3,14 +3,14 @@ import { ALLOWED, E2E_AUTH_SECRET, E2E_BASE_URL, E2E_DB, E2E_PORT, PEOPLE } from
 import { RUN_ONCE } from "./e2e/support/tags";
 import { databaseUrl } from "./test/database.mjs";
 
+/** Splits a `--shard` run by the time each test takes. */
+const sharding = ["./e2e/support/balanced-shards.ts"] as const;
+
 /**
  * End-to-end tests against the production build (`pnpm build` first, or `pnpm e2e`). The
  * web server gets its own freshly migrated database and a throwaway secret; tests share it,
  * so they run one at a time and reset the database before each test.
  */
-/** Splits a `--shard` run by the time each test takes. */
-const sharding = ["./e2e/support/balanced-shards.ts"] as const;
-
 export default defineConfig({
   testDir: "./e2e",
   fullyParallel: false,
