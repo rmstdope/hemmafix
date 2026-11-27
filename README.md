@@ -71,13 +71,16 @@ en ändring som bara rör `docs/`: se [deploy/README.md](deploy/README.md).
   nymigrerad databas (kopierad från en mall), så filerna kör parallellt utan att se
   varandras rader.
 - **End-to-end** (`e2e/`, Playwright): produktionsbygget i Chromium, i mobil- och
-  desktopformat. Servern får en egen databas och en engångshemlighet. Testerna loggar in utan Google via Better Auths `test-utils`-plugin,
+  desktopformat. Varje worker får en egen server, databas och engångshemlighet, så test
+  som körs samtidigt delar ingenting. Testerna loggar in utan Google via Better Auths `test-utils`-plugin,
   som bara finns i testprocessen: det skriver en riktig session och signerar cookien med
   samma hemlighet. Appen har alltså ingen testinloggning som kan råka vara påslagen.
-  I CI delas sviten i tio delar som körs samtidigt på var sin maskin (se
-  [deploy/README.md](deploy/README.md)); lokalt körs den i ett stycke. Delningen går test för
-  test, så ett test får inte bygga på att ett annat har körts före det (en fil som måste hållas
-  ihop anger `mode: "serial"`).
+  I CI delas sviten i sju delar som körs samtidigt på var sin maskin, två test åt gången i
+  varje (se [deploy/README.md](deploy/README.md)); lokalt körs den i ett stycke, ett test åt
+  gången om inte `E2E_WORKERS` säger annat (använd den, inte `--workers`). Delningen går test
+  för test, så ett test får inte bygga på att ett annat har körts före det (en fil som måste
+  hållas ihop anger `mode: "serial"`). Ett test som bockar av något och sedan klickar vidare
+  loggar in med `logInWithChestTaken`, annars lägger sig dagens kista över sidan.
   Ett test märkt `RUN_ONCE` (`e2e/support/tags.ts`) körs bara i mobilformat: ett som själv
   sätter sin fönsterstorlek innan det laddar något eller inte laddar någon sida, eller ett vars
   utfall fönsterstorleken inte kan ändra (serverregler, myntberäkning, historik), vilket kräver

@@ -219,6 +219,9 @@ test("the sky is there before the person's choice has arrived, and never on the 
 test("a session that ended sends the person to a login page without the sky", async ({ page, context }) => {
   const bo = await logIn(context, "bo", "child");
   await wearJul(bo.id);
+  // No live updates: the refresh that follows the stream opening would redirect before the press,
+  // were it still on its way when the session ends.
+  await page.route("**/api/events", (route) => route.abort());
   await page.goto("/");
   await expect(page.locator("html")).toHaveAttribute("data-sky", "jul");
   await context.clearCookies();
