@@ -169,13 +169,17 @@ test("a page left before its marks arrived does not keep the sky once the person
   // Hemmet opens, but its marks cannot arrive until the person has left it again: Next keeps the
   // page in the document, hidden, and the marks stream into it there.
   const release = await holdLooks();
-  const landed = page.waitForEvent("requestfinished", (r) => r.url().includes("/hemmet?") && !r.headers()["next-router-prefetch"]);
-  await chooseFromMenu(page, "Hemmet");
-  await expect(page.locator("main [aria-busy=true]").locator("visible=true")).toBeVisible();
-  await page.goBack();
-  await hydrated(page);
-  await release();
-  await landed;
+  try {
+    const landed = page.waitForEvent("requestfinished", (r) => r.url().includes("/hemmet?") && !r.headers()["next-router-prefetch"]);
+    await chooseFromMenu(page, "Hemmet");
+    await expect(page.locator("main [aria-busy=true]").locator("visible=true")).toBeVisible();
+    await page.goBack();
+    await hydrated(page);
+    await release();
+    await landed;
+  } finally {
+    await release();
+  }
   await page.getByRole("group", { name: "Visa" }).getByRole("button", { name: "Butik" }).click();
   await page.getByRole("button", { name: "Svart" }).click();
   await expect(page.getByRole("button", { name: "Svart, används" })).toBeVisible();

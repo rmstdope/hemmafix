@@ -11,10 +11,11 @@ import { SCENES } from "./sky/scenes";
  * left in the document, hidden, and runs this effect's cleanup: the attributes come off there,
  * or globals.css would go on matching them.
  *
- * Returns the attributes to render as well: the server's HTML needs them, so a page is marked before
- * React takes it over. Once it has, they are rendered empty, since React also writes what it renders
- * into a page that is already hidden (marks that stream in after the person left it) and runs no
- * effect there; only the effect, which runs only while the page shows, then sets them.
+ * Returns the attributes to render as well. The server's HTML needs them, so a page is marked before
+ * React takes it over. Once it has, they are rendered empty: React also writes what it renders into a
+ * page that is already hidden (marks that stream in after the person left it) and runs no effect
+ * there. What keeps a hidden page unmarked is that only this effect sets them, and it runs only while
+ * the page is shown.
  */
 function useShownAttributes(attributes: Record<string, string>) {
   const ref = useRef<HTMLSpanElement>(null);
