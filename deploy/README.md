@@ -20,7 +20,17 @@ miljövariabler) kräver en separat granskad procedur. Vanliga releaser byter ba
 
 ## CI och publicering
 
-`.github/workflows/ci.yml` körs på varje PR och push till `main`:
+`.github/workflows/ci.yml` körs på varje PR och push till `main`, med ett undantag för ändringar
+som bara rör `docs/` (skisser och dokument):
+
+- En sådan **PR** får sina tre obligatoriska kontroller (`checks`, `e2e`, `production-image`)
+  gröna direkt: jobben startar men hoppar över sina steg (`scripts/ci-needed.sh`).
+- En sådan **push till `main`** startar ingen körning, så ingen image publiceras och inget
+  driftsätts. Det måste vara ingen körning alls: rmstdope-infra tar den senaste lyckade körningen
+  och kräver att den har ett `deployment-manifest`. GitHub avgör det utifrån pushens första 300
+  filer; blir en större push överhoppad av misstag publiceras koden med nästa kodändring.
+
+Annars gäller:
 
 1. **checks**: lint, typkontroll, enhetstester, migreringar mot en tom Postgres,
    kontroll att schema och migreringar stämmer, produktionsbygge.

@@ -6,6 +6,8 @@
 @source not "../../.cerebro";
 @source not "../../.claude";
 @source not "../../.github";
+/* Nor drawings and documents: a change there alone skips CI (scripts/ci-needed.sh). */
+@source not "../../docs";
 
 @custom-variant dark (&:is(.dark *));
 

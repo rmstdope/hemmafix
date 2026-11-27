@@ -818,6 +818,70 @@ describe("editChore", () => {
   const edit = async (choreId: string, fields: Record<string, string>, who = f.adult) =>
     editFrom(await openInstanceOf(choreId), fields, who);
 
+  describe("the order of the undated", () => {
+    const titles = async () => (await open()).map((i) => i.title);
+    const add = async (title: string, extra: Record<string, string> = {}) =>
+      (await createChore(f.adult, once(title, extra))).id;
+
+    it("puts a task whose date is removed last among the undated, however old it is", async () => {
+      const old = await add("Gammal", { dueDate: "2026-01-01" });
+      await add("Första");
+      await add("Andra");
+
+      await edit(old, { title: "Gammal", kind: "once" });
+
+      expect(await titles()).toEqual(["Första", "Andra", "Gammal"]);
+    });
+
+    it("keeps an undated task's place when it is saved again", async () => {
+      const first = await add("Första");
+      await add("Andra");
+
+      await edit(first, { title: "Första", kind: "once" });
+
+      expect(await titles()).toEqual(["Första", "Andra"]);
+    });
+
+    it("keeps a task's place among the undated when it is saved again after losing its date", async () => {
+      const old = await add("Gammal", { dueDate: "2026-01-01" });
+      await edit(old, { title: "Gammal", kind: "once" });
+      await add("Senare tillagd");
+
+      await edit(old, { title: "Gammal", kind: "once" });
+
+      expect(await titles()).toEqual(["Gammal", "Senare tillagd"]);
+    });
+
+    it("moves a task last again when it gets a date and loses it once more", async () => {
+      const first = await add("Första");
+      await add("Andra");
+      await edit(first, { title: "Första", kind: "once", dueDate: "2026-12-24" });
+      expect(await titles()).toEqual(["Första", "Andra"]);
+
+      await edit(first, { title: "Första", kind: "once" });
+
+      expect(await titles()).toEqual(["Andra", "Första"]);
+    });
+
+    it("puts a recurring task made undated and one-off last among the undated", async () => {
+      const { id } = await createChore(f.adult, weekly("Diska"));
+      await add("Lampan");
+
+      await edit(id, { title: "Diska", kind: "once" });
+
+      expect(await titles()).toEqual(["Lampan", "Diska"]);
+    });
+
+    it("leaves dated tasks of the same day in the order they were added", async () => {
+      const first = await add("Första", { dueDate: "2026-12-24" });
+      await add("Andra", { dueDate: "2026-12-24" });
+      await edit(first, { title: "Första", kind: "once" });
+      await edit(first, { title: "Första", kind: "once", dueDate: "2026-12-24" });
+
+      expect(await titles()).toEqual(["Första", "Andra"]);
+    });
+  });
+
   it("refuses a stale form: a one-off ticked off since cannot become recurring with nothing open", async () => {
     const { id } = await createChore(f.adult, once("Putsa fönster"));
     const [only] = await open();

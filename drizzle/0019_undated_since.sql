@@ -1,0 +1,1 @@
+ALTER TABLE "chore_instance" ADD COLUMN "undated_since" timestamp with time zone;

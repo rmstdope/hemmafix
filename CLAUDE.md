@@ -87,7 +87,7 @@ migration must therefore work with the **previous** release's code as well:
 
 ## Testing
 
-Three levels, all run in CI on every pull request:
+Three levels, all run in CI on every pull request that changes anything outside `docs/`:
 
 - **Unit** (`src/**/*.test.ts`, `pnpm test`): pure logic next to the code it covers, no database
   (an accidental import of `src/db` fails loudly).
@@ -102,6 +102,10 @@ Integration and e2e need a local Postgres (README *Kom igång*) and create datab
 `hemmafix_test_*` on `TEST_DATABASE_URL` (else `DATABASE_URL`). A worktree gets a copy of the main
 checkout's `.env` from `install_shell` in `.cerebro/project.conf`. Parallel worktrees get their own
 e2e port through `E2E_PORT`.
+
+A pull request that changes only files under `docs/` still reports the three required checks, but they
+skip their steps (`scripts/ci-needed.sh`). So nothing under `docs/` may be read by the app, its
+tests, its tools or its image.
 
 ## Pre-merge checklist
 
@@ -129,7 +133,8 @@ output through `grep`, since that hides failures. No ESLint or TypeScript inline
 ## Deployment
 
 Every push to `main` builds, smoke-tests and publishes an image, and rmstdope-infra rolls it out to
-hemmafix.rmstdope.eu on its own. A merge is a production release: the producer merges only a
+hemmafix.rmstdope.eu on its own; a push that changes only `docs/` starts no CI run and releases
+nothing. Any other merge is a production release: the producer merges only a
 reviewed pull request with every check green (*Producer review*).
 The host registration in `deploy/runtime/` is frozen: changes there (Postgres version, memory limits,
 secret files, environment) need a separate, reviewed re-registration and are never part of an

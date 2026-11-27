@@ -15,6 +15,8 @@ const eslintConfig = defineConfig([
     // Cerebro's submodule and the fleet's and Claude Code's worktrees are not this app.
     ".cerebro/**",
     ".claude/**",
+    // Drawings and documents: a change there alone skips CI (scripts/ci-needed.sh).
+    "docs/**",
   ]),
 ]);
 
