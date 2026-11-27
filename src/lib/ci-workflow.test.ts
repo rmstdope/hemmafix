@@ -65,7 +65,7 @@ describe("a pull request that changes only docs/", () => {
       for (const step of rest) {
         const condition = /^(?: {8})?if: (.*)$/m.exec(step)?.[1];
         expect(condition, step).toMatch(
-          /^((failure\(\) && )?steps\.changes\.outputs\.run != 'false'|github\.event_name == 'push' && github\.ref == 'refs\/heads\/main')$/,
+          /^((failure\(\) && )?steps\.changes\.outputs\.run != 'false'|(strategy\.job-index == 0 && )?github\.event_name == 'push' && github\.ref == 'refs\/heads\/main')$/,
         );
       }
     });
@@ -156,6 +156,47 @@ describe("an e2e shard's browser", () => {
         "        run: pnpm exec playwright install --only-shell chromium",
       ].join("\n"),
     ]);
+  });
+});
+
+describe("an e2e shard's build cache", () => {
+  const find = (text: string) => steps("e2e-shard").findIndex((step) => step.includes(text));
+  const cacheSteps = () => steps("e2e-shard").filter((step) => step.includes("actions/cache"));
+
+  // A changed dependency starts cold: there is no key that reaches across lockfiles.
+  it("is restored before the build from the newest one for the same dependencies", () => {
+    const restore = steps("e2e-shard")[find("actions/cache/restore")];
+    const prefix = "next-${{ runner.os }}-${{ hashFiles('pnpm-lock.yaml') }}-";
+    expect(restore.replace(/@v\d+/, "")).toBe(
+      [
+        "name: Restore the build cache",
+        "        id: next-cache",
+        "        if: steps.changes.outputs.run != 'false'",
+        "        uses: actions/cache/restore",
+        "        with:",
+        "          path: .next/cache",
+        `          key: ${prefix}\${{ github.sha }}`,
+        `          restore-keys: ${prefix}`,
+      ].join("\n"),
+    );
+    expect(find("actions/cache/restore")).toBeLessThan(find("pnpm run build"));
+  });
+
+  // One writer, and only from main: pull requests read main's cache and add nothing to the
+  // repository's limited cache space.
+  it("is saved by the first shard only, on a push to main, after its tests", () => {
+    expect(cacheSteps()).toHaveLength(2);
+    expect(steps("e2e-shard")[find("actions/cache/save")].replace(/@v\d+/, "")).toBe(
+      [
+        "name: Save the build cache",
+        "        if: strategy.job-index == 0 && github.event_name == 'push' && github.ref == 'refs/heads/main'",
+        "        uses: actions/cache/save",
+        "        with:",
+        "          path: .next/cache",
+        "          key: ${{ steps.next-cache.outputs.cache-primary-key }}",
+      ].join("\n"),
+    );
+    expect(find("actions/cache/save")).toBeGreaterThan(find("test:e2e"));
   });
 });
 
