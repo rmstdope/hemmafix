@@ -1,4 +1,9 @@
-FROM node:26-alpine AS base
+# The one place the Node version is stated, and what Dependabot moves. .nvmrc and @types/node must
+# carry the same major (src/lib/node-version.test.ts). A literal, not an ARG: Dependabot does not
+# update a FROM line whose tag is a build argument.
+FROM node:26-alpine AS node-image
+
+FROM node-image AS base
 # Node 25+ no longer bundles corepack; install it so pnpm still comes from
 # package.json's packageManager. Dependabot cannot see this pin: bump it by hand
 # when a corepack release is needed (e.g. after a registry signing-key rotation).
@@ -15,9 +20,9 @@ COPY . .
 ENV NEXT_TELEMETRY_DISABLED=1
 RUN pnpm build \
  && pnpm exec esbuild scripts/migrate.ts --bundle --platform=node --format=esm \
-      --target=node26 --outfile=dist/migrate.mjs
+      --target="node$(node -p process.versions.node)" --outfile=dist/migrate.mjs
 
-FROM node:26-alpine AS runtime
+FROM node-image AS runtime
 # tzdata: due dates are calendar days in Swedish time.
 RUN apk add --no-cache tzdata
 WORKDIR /app
