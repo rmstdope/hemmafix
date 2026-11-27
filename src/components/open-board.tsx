@@ -6,7 +6,7 @@ import { postponeInstance, undoPostpone, type ActionState } from "@/app/actions"
 import { boardTabs, splitByTab, tabOf, type TabKey } from "@/lib/board-tabs";
 import { focusAfterMove, moveTask, movedText, restoredText } from "@/lib/postpone";
 import { SAVE_FAILED } from "@/lib/routine-texts";
-import type { InstanceView, Member } from "@/server/chores";
+import type { InstanceView, Member, MoveReport } from "@/server/chores";
 import { BoardTabs } from "./board-tabs";
 import { ChoreItem } from "./chore-item";
 import { PostponeContext, type Postpone } from "./postpone";
@@ -72,10 +72,14 @@ export function OpenBoard({
 
   /** Moves the chore at once and sends it; a refused or failed save puts it back and says why. */
   const send = useCallback(
-    (to: { id: string; day: string }, action: () => Promise<ActionState>, saved: (result: ActionState) => void) => {
+    (
+      to: { id: string; day: string },
+      action: () => Promise<ActionState<MoveReport>>,
+      saved: (result: ActionState<MoveReport>) => void,
+    ) => {
       startTransition(async () => {
         move(to);
-        const result = await action().catch((): ActionState => ({ ok: false, error: SAVE_FAILED }));
+        const result = await action().catch((): ActionState<MoveReport> => ({ ok: false, error: SAVE_FAILED }));
         if (result.ok) saved(result);
         else toast.error(result.error ?? SAVE_FAILED);
       });
@@ -97,8 +101,9 @@ export function OpenBoard({
       setLit(from === to ? null : to);
       litTimer.current = setTimeout(() => setLit(null), LIT_MS);
 
-      send({ id, day }, () => postponeInstance(id, day), ({ postponed }) => {
-        if (!postponed) return;
+      send({ id, day }, () => postponeInstance(id, day), ({ report }) => {
+        if (!report) return;
+        const { postponed } = report;
         toast(movedText(title, day), {
           action: {
             label: "Ångra",

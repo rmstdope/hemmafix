@@ -2,6 +2,7 @@
 
 import { useRef, useState } from "react";
 import { buyLook, chooseLook, type ActionState } from "@/app/actions";
+import type { Won } from "@/server/badges";
 import { useOfferCelebrations } from "@/components/coin-shower";
 import { formatCoins } from "@/lib/coins";
 import { buyLookLabel, coinsLeft, LOOKS_TITLES, LOOK_KINDS, looksOf, previewMotionText, previewText, type Look } from "@/lib/looks";
@@ -72,11 +73,11 @@ export function Looks({ name, image, coins, owned, chosen }: Props) {
 
   const buy = async (look: Look) => {
     setBusy(true);
-    const result: ActionState = await buyLook(look.kind, look.key).catch(() => ({ ok: false, error: "Det gick inte att spara. Försök igen." }));
+    const result: ActionState<Won> = await buyLook(look.kind, look.key).catch(() => ({ ok: false, error: "Det gick inte att spara. Försök igen." }));
     setBusy(false);
     if (result.ok) {
       setPreview(null);
-      if (result.badges || result.levelUp) offerCelebrations({ badges: result.badges ?? [], levelUp: result.levelUp });
+      if (result.report) offerCelebrations(result.report);
     } else setError(result.error ?? null);
   };
 

@@ -275,7 +275,7 @@ export function registerTaskTools(server: McpServer, userId: string): void {
         const title = found.title;
         // Claude already confirms writes with the person, so a spent tick is undone without the app's question.
         const result = await chores.uncompleteInstance(actor, instanceId, { confirmDebt: true });
-        return result && "debt" in result ? taskUntickedDebtText(title, result.debt) : taskUntickedText(title);
+        return result.kind === "undone" && result.debt ? taskUntickedDebtText(title, result.debt) : taskUntickedText(title);
       }),
   );
 }
