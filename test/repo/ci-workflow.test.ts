@@ -3,7 +3,8 @@ import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 
 // Only the mistakes in the workflow that would pass unnoticed. A broken step, build or trigger
-// shows itself in the run, and needs no test here.
+// shows itself in the run, and needs no test here. REL-3 asks for more: a pull request that changes
+// only docs/ is rare, so what breaks it shows itself late.
 
 // Read as text: the project has no YAML dependency, and these are the lines that matter.
 const workflow = readFileSync(".github/workflows/ci.yml", "utf8");
@@ -28,21 +29,28 @@ function steps(name: string) {
     .map((step) => step.trimEnd());
 }
 
-describe("a push to main that changes only docs/", () => {
+/** The jobs that do the work behind the required checks; `e2e` only gathers the shards. */
+const workingJobs = ["checks", "e2e-shard", "production-image"];
+
+describe("REL-3: a docs-only merge releases nothing", () => {
   // A run that succeeds without a deployment manifest blocks rmstdope-infra, which takes the
   // latest successful run. So there must be no run at all.
-  it("starts no run, so nothing is published", () => {
+  it("starts no run on its push to main, so nothing is published", () => {
     expect(block(block(workflow, "on", 0), "push", 2)).toBe(
       ['    branches: [main]', '    paths-ignore: ["docs/**"]'].join("\n"),
     );
   });
-});
 
-describe("a required check cannot pass without its work", () => {
-  describe.each(["checks", "e2e-shard", "production-image"])("in the %s job", (name) => {
-    // A skipped job reports as passing, also when it was skipped because something failed.
-    it("runs the job itself", () => {
-      expect(job(name)).not.toMatch(/^ {4}(if|needs):/m);
+  // A required check of a run that never starts stays unreported, and blocks the merge.
+  it("starts a run on its pull request, whatever it changes", () => {
+    expect(block(block(workflow, "on", 0), "pull_request", 2)).toBe("");
+  });
+
+  describe.each(workingJobs)("on its pull request, in the %s job", (name) => {
+    // Without the merge's parent ci-needed.sh cannot tell what changed, and every step runs.
+    it("checks out what ci-needed.sh compares", () => {
+      expect(steps(name)[0]).toMatch(/^uses: actions\/checkout@/);
+      expect(steps(name)[0]).toMatch(/^ {10}fetch-depth: (0|2)$/m);
     });
 
     // On a push to main the output stays unset: a merge commit there could otherwise be skipped.
@@ -57,15 +65,21 @@ describe("a required check cannot pass without its work", () => {
     });
 
     // Unset output is not 'false', so any other comparison would skip work on main.
-    it("skips a later step only on that answer", () => {
+    it("skips every later step on that answer, or leaves it to a push to main", () => {
       for (const step of steps(name).slice(2)) {
         const condition = /^(?: {8})?if: (.*)$/m.exec(step)?.[1];
-        if (condition === undefined) continue;
         expect(condition, step).toMatch(
           /^((failure\(\) && )?steps\.changes\.outputs\.run != 'false'|(strategy\.job-index == 0 && )?github\.event_name == 'push' && github\.ref == 'refs\/heads\/main')$/,
         );
       }
     });
+  });
+});
+
+describe("a required check cannot pass without its work", () => {
+  // A skipped job reports as passing, also when it was skipped because something failed.
+  it.each(workingJobs)("runs the %s job itself", (name) => {
+    expect(job(name)).not.toMatch(/^ {4}(if|needs):/m);
   });
 
   it.each(["checks", "e2e-shard", "e2e", "production-image"])(

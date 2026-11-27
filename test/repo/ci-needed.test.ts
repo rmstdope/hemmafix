@@ -67,7 +67,7 @@ beforeEach(() => {
 
 afterEach(() => rmSync(repo, { recursive: true, force: true }));
 
-describe("whether a pull request needs CI", () => {
+describe("REL-3: whether a pull request needs CI", () => {
   it("skips it when every change is under docs/", () => {
     mergeOf(() => {
       write("docs/ui/mockup.html");
