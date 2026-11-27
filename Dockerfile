@@ -1,5 +1,5 @@
 # The one place the Node version is stated, and what Dependabot moves. .nvmrc and @types/node must
-# carry the same major (src/lib/node-version.test.ts). A literal, not an ARG: Dependabot does not
+# carry the same major (test/repo/node-version.test.ts). A literal, not an ARG: Dependabot does not
 # update a FROM line whose tag is a build argument.
 FROM node:26-alpine AS node-image
 
