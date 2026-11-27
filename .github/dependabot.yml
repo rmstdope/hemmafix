@@ -1,6 +1,6 @@
 version: 2
 # One pull request per ecosystem for the day's patch and minor updates; a major update matches no
-# group and gets its own (src/lib/dependabot.test.ts).
+# group and gets its own (test/repo/dependabot.test.ts).
 updates:
   - package-ecosystem: npm # also covers pnpm (pnpm-lock.yaml)
     directory: /
