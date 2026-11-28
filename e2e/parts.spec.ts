@@ -17,7 +17,7 @@ test("an adult moves between Uppgifter and Listor, and the filter is kept", asyn
   await page.goto("/");
   await expect(page).toHaveTitle("Uppgifter – Hemmafix");
   await expect(page.getByRole("heading", { name: "Uppgifter" })).toBeVisible();
-  await expect(parts(page).getByRole("link")).toHaveText(["Uppgifter", "Listor", "Jag"]);
+  await expect(parts(page).getByRole("link")).toHaveText(["Uppgifter", "Listor", "Kalender", "Jag"]);
   await expect(parts(page).getByRole("link", { name: "Uppgifter" })).toHaveAttribute("aria-current", "page");
 
   await (await filterSelect(page, "Rum")).selectOption({ label: "Kök" });
@@ -77,7 +77,7 @@ test("Gjort keeps the bar, Hemmet has the strip only on a desktop, and ← from 
 test("a child gets the same tabs and no Hemmet", async ({ page, context }) => {
   await logIn(context, "bo", "child");
   await page.goto("/listor");
-  await expect(parts(page).getByRole("link")).toHaveText(["Uppgifter", "Listor", "Jag"]);
+  await expect(parts(page).getByRole("link")).toHaveText(["Uppgifter", "Listor", "Kalender", "Jag"]);
   await expect(await menuItem(page, "Gjort")).toBeVisible();
   await expect(page.getByRole("menuitem", { name: "Hemmet" })).toHaveCount(0);
   await expect(page.getByRole("menuitem", { name: "Logga ut" })).toBeVisible();
@@ -149,15 +149,15 @@ test("the bar is only on the parts: not on login", async ({ page }) => {
   await expect(parts(page)).toHaveCount(0);
 });
 
-test("at 320px the three tabs share the bar and nothing overflows", { tag: RUN_ONCE }, async ({ page, context }) => {
+test("at 320px the four tabs share the bar and nothing overflows", { tag: RUN_ONCE }, async ({ page, context }) => {
   await logIn(context, "anna", "adult");
   await page.setViewportSize({ width: 320, height: 640 });
   await page.goto("/");
-  const [a, b, c] = await parts(page).getByRole("link").all();
-  const [ba, bb, bc] = [(await a!.boundingBox())!, (await b!.boundingBox())!, (await c!.boundingBox())!];
-  expect(Math.abs(ba.width - bb.width)).toBeLessThan(2);
-  expect(Math.abs(ba.width - bc.width)).toBeLessThan(2);
-  expect(ba.height).toBeLessThan(80);
+  const links = await parts(page).getByRole("link").all();
+  expect(links).toHaveLength(4);
+  const boxes = await Promise.all(links.map(async (l) => (await l.boundingBox())!));
+  for (const box of boxes) expect(Math.abs(box.width - boxes[0]!.width)).toBeLessThan(2);
+  expect(boxes[0]!.height).toBeLessThan(80);
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth)).toBe(true);
 });
 

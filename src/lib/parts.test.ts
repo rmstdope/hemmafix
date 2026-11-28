@@ -1,5 +1,11 @@
 import { describe, expect, it } from "vitest";
-import { litPart, parseJagPart, partOf, rememberedPart } from "./parts";
+import { litPart, PARTS, parseJagPart, partOf, rememberedPart } from "./parts";
+
+describe("PARTS", () => {
+  it("has Kalender between Listor and Jag", () => {
+    expect(PARTS.map((p) => p.label)).toEqual(["Uppgifter", "Listor", "Kalender", "Jag"]);
+  });
+});
 
 describe("partOf", () => {
   it("puts the board and its history under Uppgifter", () => {
@@ -9,6 +15,9 @@ describe("partOf", () => {
   it("knows Listor", () => {
     expect(partOf("/listor")).toBe("listor");
     expect(partOf("/listor/6f1c3b0e-5f8a-4c7e-9d2a-1b3c4d5e6f70")).toBe("listor");
+  });
+  it("knows Kalender", () => {
+    expect(partOf("/kalender")).toBe("kalender");
   });
   it("knows Jag", () => {
     expect(partOf("/jag")).toBe("jag");
@@ -22,6 +31,7 @@ describe("rememberedPart", () => {
   it("remembers Listor, and falls back to Uppgifter", () => {
     expect(rememberedPart("listor")).toBe("listor");
     expect(rememberedPart("jag")).toBe("jag");
+    expect(rememberedPart("kalender")).toBe("kalender");
     expect(rememberedPart("uppgifter")).toBe("uppgifter");
     expect(rememberedPart(null)).toBe("uppgifter");
     expect(rememberedPart("junk")).toBe("uppgifter");

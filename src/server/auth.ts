@@ -34,8 +34,10 @@ export const MCP_RESOURCE = `${process.env.BETTER_AUTH_URL || "http://localhost:
 
 export const auth = betterAuth({
   baseURL: process.env.BETTER_AUTH_URL,
-  // The jwt plugin's own /token would sign browser sessions with the access-token key.
-  disabledPaths: ["/token"],
+  // The jwt plugin's own /token would sign browser sessions with the access-token key. The two
+  // Google token routes would hand the browser the person's calendar access, which only the
+  // server uses (calendar.ts).
+  disabledPaths: ["/token", "/get-access-token", "/refresh-token"],
   secret: process.env.BETTER_AUTH_SECRET,
   database: drizzleAdapter(db, { provider: "pg", schema }),
   socialProviders: {
@@ -45,6 +47,9 @@ export const auth = betterAuth({
       prompt: "select_account",
     },
   },
+  // A family member's refresh token can read their calendar, so Google's tokens are stored
+  // encrypted. Rows written before stay readable.
+  account: { encryptOAuthTokens: true },
   session: {
     expiresIn: 60 * 60 * 24 * 60, // 60 days – a family app should rarely ask you to log in.
     updateAge: 60 * 60 * 24,

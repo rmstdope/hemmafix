@@ -38,6 +38,21 @@ Skapa en OAuth-klient av typen *Web application* i Google Cloud Console
 - `http://localhost:3000/api/auth/callback/google`
 - `https://hemmafix.rmstdope.eu/api/auth/callback/google`
 
+**Kalendern** läser Googles familjekalender med varje persons eget konto, och kräver
+i samma Google Cloud-projekt:
+
+- att **Google Calendar API** är aktiverat (APIs & Services → Library),
+- att behörigheten `https://www.googleapis.com/auth/calendar.readonly` finns på
+  samtyckesskärmen (Google Auth Platform → Data Access),
+- att appen är publicerad (*In production*): i läget *Testing* slutar åtkomsten gälla
+  efter sju dagar, och var och en får ge den igen. Utan Googles verifiering visar
+  Google en varning första gången, som går att klicka sig förbi.
+
+Hemmafix kan bara läsa. Händelserna sparas inte; en öppen sida frågar Google igen
+var 15:e sekund. Åtkomsten tas tillbaka i Google-kontot (Säkerhet → anslutningar till
+tredje part), och då ber Hemmafix om den på nytt. Googles token sparas krypterade med
+`BETTER_AUTH_SECRET`; byts den får var och en ge åtkomsten igen.
+
 ## Behörighet
 
 Bara verifierade Google-adresser i `ALLOWED_EMAILS` kan logga in. Första

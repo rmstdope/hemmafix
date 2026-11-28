@@ -58,6 +58,8 @@ export default defineConfig({
       BETTER_AUTH_SECRET: E2E_AUTH_SECRET,
       GOOGLE_CLIENT_ID: "e2e",
       GOOGLE_CLIENT_SECRET: "e2e",
+      // The calendar spec's stand-in for Google (e2e/support/google.ts); nothing listens otherwise.
+      GOOGLE_API_ORIGIN: `http://localhost:${port + 1}`,
       ALLOWED_EMAILS: ALLOWED.map((p) => PEOPLE[p].email).join(","),
       TZ: "Europe/Stockholm",
       PORT: String(port),
