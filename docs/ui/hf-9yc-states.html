@@ -1,0 +1,194 @@
+<!doctype html>
+<!--
+  The house frame of a detailed drawing (cb-buko; the agreed look is docs/ui/cb-buko-tabs.html and
+  cb-buko-states.html). scripts/ux-sheet fills the two marker lines below; nothing else writes here.
+  Every class starts with `ux-' and only `body' is styled by element, so what is drawn inside a tab
+  keeps the product's own look.
+-->
+<html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>The states — Card with time and place · The family calendar in Hemmafix</title>
+<style>
+  body{margin:0;padding:1px 8px;background:#f4f4f5}
+  .ux-page{max-width:980px;margin:14px auto 30px;background:#fff;border:1px solid #e4e4e7;border-radius:10px}
+  .ux-head,.ux-tabs,.ux-intro{font-family:system-ui,-apple-system,sans-serif;line-height:normal;text-align:left;color:#18181b}
+  .ux-head{padding:14px 16px 0}
+  .ux-work{font-size:12px;color:#71717a;text-transform:uppercase;letter-spacing:.04em}
+  .ux-heading{margin:2px 0 10px;font-size:19px}
+  .ux-tabrow{position:relative}
+  .ux-tabrow::before,.ux-tabrow::after{content:"";position:absolute;top:0;bottom:1px;width:44px;pointer-events:none;opacity:0}
+  .ux-tabrow::before{left:0;background:linear-gradient(to left,rgba(255,255,255,0),#fff)}
+  .ux-tabrow::after{right:0;background:linear-gradient(to right,rgba(255,255,255,0),#fff)}
+  .ux-tabrow.ux-more-left::before,.ux-tabrow.ux-more-right::after{opacity:1}
+  .ux-tabs{display:flex;gap:4px;border-bottom:1px solid #e4e4e7;padding:0 16px;overflow-x:auto}
+  .ux-tab{flex:none;border:0;border-radius:0;background:none;margin:0;font:inherit;font-size:14px;padding:8px 12px;color:#52525b;border-bottom:2px solid transparent;cursor:pointer;white-space:nowrap}
+  .ux-tab[aria-selected="true"]{color:#18181b;border-bottom-color:#7c3aed;font-weight:600}
+  .ux-tag{display:inline-block;font-size:11px;border-radius:999px;padding:1px 7px;margin-left:6px;font-weight:600}
+  .ux-rec{background:#ede9fe;color:#5b21b6}
+  .ux-agreed{background:#dcfce7;color:#166534}
+  .ux-panel[hidden]{display:none!important}
+  .ux-intro{padding:12px 16px 4px}
+  .ux-name{margin:0;font-size:16px}
+  .ux-cost{margin:3px 0 0;font-size:13px;color:#52525b}
+  .ux-why{margin:3px 0 0;font-size:13px;color:#5b21b6}
+  .ux-draw{padding:12px 16px 16px}
+</style></head><body>
+
+<style>
+.ph{width:360px;max-width:100%;margin:0 auto;border:1px solid #e5e5e5;border-radius:18px;overflow:hidden;background:#fff;font-family:system-ui,-apple-system,sans-serif;color:#171717;display:flex;flex-direction:column;min-height:600px}
+.hd{padding:18px 16px 8px;font-size:24px;font-weight:700}
+.sub{padding:0 16px 8px;font-size:13px;color:#737373}
+.bd{flex:1;padding:0 16px 16px}
+.day{font-size:13px;font-weight:600;color:#525252;margin:16px 0 6px;text-transform:none}
+.day b{color:#171717}
+.bar{display:flex;border-top:1px solid #e5e5e5;height:56px}
+.bar span{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;font-size:11px;color:#737373;gap:2px}
+.bar span i{width:20px;height:20px;border-radius:4px;background:#d4d4d4;display:block}
+.bar span.on{color:#171717;font-weight:600}.bar span.on i{background:#171717}
+/* A */
+.a-row{display:flex;gap:12px;padding:8px 0;border-bottom:1px solid #f0f0f0;font-size:15px}
+.a-t{width:52px;color:#737373;font-variant-numeric:tabular-nums;flex:none}
+/* B */
+.b-card{border:1px solid #e5e5e5;border-radius:10px;padding:10px 12px;margin-bottom:8px}
+.b-ti{font-size:15px;font-weight:600}
+.b-me{font-size:13px;color:#737373;margin-top:2px}
+.c-card{border:1px solid #e5e5e5;border-radius:10px;padding:10px 12px;margin-bottom:8px;display:flex;align-items:center}
+.c-card div{flex:1}.c-chev{color:#a3a3a3;font-size:18px}
+.c-sheet{border-top:1px solid #e5e5e5;border-radius:16px 16px 0 0;box-shadow:0 -6px 20px rgba(0,0,0,.08);padding:16px;margin:12px -16px -16px;background:#fff}
+.c-sheet h4{margin:0 0 4px;font-size:17px}
+.c-sheet p{margin:6px 0;font-size:14px;color:#404040}
+.c-dim{opacity:.35}
+
+.past{opacity:.45}
+.end{text-align:center;font-size:13px;color:#737373;margin:20px 0 8px}
+.dot{position:relative}.dot em{position:absolute;top:8px;right:28px;width:9px;height:9px;border-radius:50%;background:#e11d48}
+.box{margin-top:32px;text-align:center;border:1px dashed #d4d4d4;border-radius:12px;padding:24px 18px}
+.box p{font-size:14px;color:#525252;margin:0 0 14px}.box .t{font-size:16px;font-weight:600;color:#171717;margin:10px 0 6px}
+.btn{display:inline-block;background:#171717;color:#fff;border-radius:8px;padding:10px 16px;font-size:15px;font-weight:600}
+.btn2{display:inline-block;border:1px solid #d4d4d4;border-radius:8px;padding:9px 16px;font-size:15px;font-weight:600}
+.sk{background:#f0f0f0;border-radius:6px}
+.desk{width:760px;max-width:100%;margin:0 auto;border:1px solid #e5e5e5;border-radius:12px;overflow:hidden;background:#fff;font-family:system-ui,sans-serif;color:#171717}
+.top{display:flex;gap:6px;align-items:center;padding:10px 16px;border-bottom:1px solid #e5e5e5;font-size:14px}
+.top b{margin-right:16px}.top span{padding:6px 12px;border-radius:8px;color:#737373}.top span.on{background:#f5f5f5;color:#171717;font-weight:600}
+.col{max-width:560px;margin:0 auto;padding:8px 16px 24px}
+</style>
+<div class="ux-page">
+<header class="ux-head">
+<div class="ux-work">The family calendar in Hemmafix</div>
+<h1 class="ux-heading">The states — Card with time and place</h1>
+</header>
+<div class="ux-tabrow"><div class="ux-tabs" role="tablist">
+<button type="button" class="ux-tab" role="tab" data-ux-tab="1" id="ux-tab-1" aria-controls="ux-panel-1" aria-selected="true" tabindex="0">Normal</button>
+<button type="button" class="ux-tab" role="tab" data-ux-tab="2" id="ux-tab-2" aria-controls="ux-panel-2" aria-selected="false" tabindex="-1">Not given access</button>
+<button type="button" class="ux-tab" role="tab" data-ux-tab="3" id="ux-tab-3" aria-controls="ux-panel-3" aria-selected="false" tabindex="-1">No family calendar</button>
+<button type="button" class="ux-tab" role="tab" data-ux-tab="4" id="ux-tab-4" aria-controls="ux-panel-4" aria-selected="false" tabindex="-1">Nothing coming up</button>
+<button type="button" class="ux-tab" role="tab" data-ux-tab="5" id="ux-tab-5" aria-controls="ux-panel-5" aria-selected="false" tabindex="-1">Loading</button>
+<button type="button" class="ux-tab" role="tab" data-ux-tab="6" id="ux-tab-6" aria-controls="ux-panel-6" aria-selected="false" tabindex="-1">Couldn&#39;t read</button>
+<button type="button" class="ux-tab" role="tab" data-ux-tab="7" id="ux-tab-7" aria-controls="ux-panel-7" aria-selected="false" tabindex="-1">Computer</button>
+</div></div>
+<section class="ux-panel" role="tabpanel" id="ux-panel-1" aria-labelledby="ux-tab-1">
+<div class="ux-intro">
+<h2 class="ux-name">Normal</h2>
+<p class="ux-cost">Ended events today are dimmed; an event over several days shows under each day; long titles wrap; an untitled event reads (Ingen titel); empty days are left out; the list ends with a quiet line. An event added or changed in Google slides into place on open screens.</p>
+</div>
+<div class="ux-draw">
+<div class="ph"><div class="hd">Kalender</div><div class="bd"><div class="day"><b>Idag</b> · lördag 28 november</div><div class="b-card past"><div class="b-ti">Simskola Elsa</div><div class="b-me">10:00–11:00 · Valhallabadet</div></div><div class="b-card"><div class="b-ti">Kalas hos Ali</div><div class="b-me">15:00–17:30</div></div><div class="b-card"><div class="b-ti">Sportlov i stugan</div><div class="b-me">Heldag · dag 2 av 3 · Sälen</div></div><div class="day"><b>Imorgon</b> · söndag 29 november</div><div class="b-card"><div class="b-ti">Sportlov i stugan</div><div class="b-me">Heldag · dag 3 av 3 · Sälen</div></div><div class="b-card"><div class="b-ti">Farmor fyller 70 — middag på Restaurang Sjöbaren med hela släkten, ta med present</div><div class="b-me">18:00–22:00 · Sjöbaren, Haga Nygata 25</div></div><div class="day"><b>Måndag 30 november</b></div><div class="b-card"><div class="b-ti">Tandläkare Max</div><div class="b-me">08:15–09:00 · Folktandvården Majorna</div></div><div class="b-card"><div class="b-ti">(Ingen titel)</div><div class="b-me">12:00–13:00</div></div><div class="day"><b>Fredag 11 december</b></div><div class="b-card"><div class="b-ti">Luciatåg i skolan</div><div class="b-me">08:00–09:00</div></div><div class="end">Visar de närmaste 14 dagarna.</div></div><div class="bar"><span><i></i>Uppgifter</span><span><i></i>Listor</span><span class="on"><i></i>Kalender</span><span><i></i>Jag</span></div></div>
+</div>
+</section>
+<section class="ux-panel" role="tabpanel" id="ux-panel-2" aria-labelledby="ux-tab-2" hidden>
+<div class="ux-intro">
+<h2 class="ux-name">Not given access</h2>
+<p class="ux-cost">The red dot shows on the Kalender tab, on phone and computer, in every part, until access is given. Back from Google without giving access: the same card again.</p>
+</div>
+<div class="ux-draw">
+<div class="ph"><div class="hd">Kalender</div><div class="bd"><div class="box"><div style="font-size:36px">📅</div><p class="t">Se familjens kalender här</p><p>Ge Hemmafix tillgång till familjekalendern i ditt Google-konto, så ser du vad som händer de närmaste 14 dagarna. Hemmafix kan bara läsa, aldrig ändra.</p><span class="btn">Ge tillgång med Google</span></div></div><div class="bar"><span><i></i>Uppgifter</span><span><i></i>Listor</span><span class="on dot"><i></i>Kalender<em></em></span><span><i></i>Jag</span></div></div>
+</div>
+</section>
+<section class="ux-panel" role="tabpanel" id="ux-panel-3" aria-labelledby="ux-tab-3" hidden>
+<div class="ux-intro">
+<h2 class="ux-name">No family calendar</h2>
+<p class="ux-cost">Access was given, but the Google account has no family calendar. The dot goes away: there is nothing more the person can do in Hemmafix.</p>
+</div>
+<div class="ux-draw">
+<div class="ph"><div class="hd">Kalender</div><div class="bd"><div class="box"><div style="font-size:36px">🔍</div><p class="t">Ingen familjekalender hittades</p><p>Ditt Google-konto har ingen familjekalender. Den finns när du är med i en familjegrupp i Google.</p><span class="btn2">Försök igen</span></div></div><div class="bar"><span><i></i>Uppgifter</span><span><i></i>Listor</span><span class="on"><i></i>Kalender</span><span><i></i>Jag</span></div></div>
+</div>
+</section>
+<section class="ux-panel" role="tabpanel" id="ux-panel-4" aria-labelledby="ux-tab-4" hidden>
+<div class="ux-intro">
+<h2 class="ux-name">Nothing coming up</h2>
+</div>
+<div class="ux-draw">
+<div class="ph"><div class="hd">Kalender</div><div class="bd"><div class="box"><div style="font-size:36px">🌤️</div><p class="t">Inget i kalendern</p><p>Familjekalendern är tom de närmaste 14 dagarna.</p></div></div><div class="bar"><span><i></i>Uppgifter</span><span><i></i>Listor</span><span class="on"><i></i>Kalender</span><span><i></i>Jag</span></div></div>
+</div>
+</section>
+<section class="ux-panel" role="tabpanel" id="ux-panel-5" aria-labelledby="ux-tab-5" hidden>
+<div class="ux-intro">
+<h2 class="ux-name">Loading</h2>
+</div>
+<div class="ux-draw">
+<div class="ph"><div class="hd">Kalender</div><div class="bd"><div class="sk" style="width:160px;height:14px;margin:18px 0 8px"></div><div class="sk" style="height:56px;margin-bottom:8px"></div><div class="sk" style="height:56px"></div><div class="sk" style="width:180px;height:14px;margin:18px 0 8px"></div><div class="sk" style="height:56px;margin-bottom:8px"></div><div class="sk" style="height:56px"></div></div><div class="bar"><span><i></i>Uppgifter</span><span><i></i>Listor</span><span class="on"><i></i>Kalender</span><span><i></i>Jag</span></div></div>
+</div>
+</section>
+<section class="ux-panel" role="tabpanel" id="ux-panel-6" aria-labelledby="ux-tab-6" hidden>
+<div class="ux-intro">
+<h2 class="ux-name">Couldn&#39;t read</h2>
+<p class="ux-cost">Google could not be reached. Försök igen tries once more.</p>
+</div>
+<div class="ux-draw">
+<div class="ph"><div class="hd">Kalender</div><div class="bd"><div class="box"><div style="font-size:36px">⚠️</div><p class="t">Kunde inte hämta kalendern</p><p>Google svarar inte just nu.</p><span class="btn2">Försök igen</span></div></div><div class="bar"><span><i></i>Uppgifter</span><span><i></i>Listor</span><span class="on"><i></i>Kalender</span><span><i></i>Jag</span></div></div>
+</div>
+</section>
+<section class="ux-panel" role="tabpanel" id="ux-panel-7" aria-labelledby="ux-tab-7" hidden>
+<div class="ux-intro">
+<h2 class="ux-name">Computer</h2>
+<p class="ux-cost">The same list in the same narrow column as Listor; Kalender in the top strip.</p>
+</div>
+<div class="ux-draw">
+<div class="desk"><div class="top"><b>Hemmafix</b><span>Uppgifter</span><span>Listor</span><span class="on">Kalender</span><span>Jag</span></div><div class="col"><div class="hd" style="padding-left:0">Kalender</div><div class="day"><b>Idag</b> · lördag 28 november</div><div class="b-card"><div class="b-ti">Kalas hos Ali</div><div class="b-me">15:00–17:30</div></div><div class="day"><b>Imorgon</b> · söndag 29 november</div><div class="b-card"><div class="b-ti">Farmor fyller 70</div><div class="b-me">Heldag</div></div><div class="day"><b>Måndag 30 november</b></div><div class="b-card"><div class="b-ti">Tandläkare Max</div><div class="b-me">08:15–09:00 · Folktandvården Majorna</div></div><div class="end">Visar de närmaste 14 dagarna.</div></div></div><div class="desk" style="margin-top:20px"><div class="top"><b>Hemmafix</b><span>Uppgifter</span><span>Listor</span><span class="dot" style="position:relative">Kalender<em style="top:4px;right:2px"></em></span><span>Jag</span></div><div class="col"><p style="color:#737373;font-size:13px;margin:16px 0">On Uppgifter, someone without access sees the dot on the Kalender tab.</p></div></div>
+</div>
+</section>
+</div>
+<script>
+// Tabs: one panel on screen, the left and right arrow keys move between them, nothing persists.
+(function(){
+  var tabs = Array.prototype.slice.call(document.querySelectorAll('.ux-tabs > .ux-tab'));
+  if (!tabs.length) return;
+  var row = tabs[0].parentNode, wrap = row.parentNode;
+  function selected(){ return tabs.findIndex(function(t){ return t.getAttribute('aria-selected') === 'true'; }); }
+  // A faded edge on whichever side has tabs out of view.
+  function fade(){
+    wrap.classList.toggle('ux-more-left', row.scrollLeft > 1);
+    wrap.classList.toggle('ux-more-right', row.scrollLeft + row.clientWidth < row.scrollWidth - 1);
+  }
+  // Scrolls the row alone: scrollIntoView would move the page too.
+  function reveal(tab){
+    var t = tab.getBoundingClientRect(), r = row.getBoundingClientRect();
+    if (t.left < r.left) row.scrollLeft -= r.left - t.left + 16;
+    else if (t.right > r.right) row.scrollLeft += t.right - r.right + 16;
+    fade();
+  }
+  function select(i){
+    tabs.forEach(function(t, n){
+      t.setAttribute('aria-selected', n === i ? 'true' : 'false');
+      t.tabIndex = n === i ? 0 : -1;
+      document.getElementById(t.getAttribute('aria-controls')).hidden = n !== i;
+    });
+    reveal(tabs[i]);
+  }
+  tabs.forEach(function(t, i){ t.addEventListener('click', function(){ select(i); }); });
+  document.addEventListener('keydown', function(e){
+    var step = e.key === 'ArrowRight' ? 1 : e.key === 'ArrowLeft' ? -1 : 0;
+    if (!step || e.defaultPrevented || e.altKey || e.ctrlKey || e.metaKey || e.shiftKey) return;
+    // A control a drawing carries (a field, a button, a slider) keeps its own arrows.
+    if (e.target.closest && e.target.closest('.ux-draw')) return;
+    e.preventDefault();
+    var focused = tabs.indexOf(document.activeElement) >= 0;
+    var i = (selected() + step + tabs.length) % tabs.length;
+    select(i);
+    if (focused) tabs[i].focus({preventScroll: true});
+  });
+  row.addEventListener('scroll', fade);
+  window.addEventListener('resize', fade);
+  window.addEventListener('load', function(){ reveal(tabs[selected()]); });
+  reveal(tabs[selected()]);
+})();
+</script></body></html>
