@@ -175,7 +175,8 @@ export function ListView({
 
   return (
     <div data-hydrated={hydrated}>
-      <header className="mb-4 flex items-center gap-1">
+      {/* Who sees the list has a row of its own under the name, so ⋯ stays on the name's row and comes first for Tab. */}
+      <header className="mb-4 grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-x-1">
         <Link
           href="/listor"
           aria-label="Tillbaka"
@@ -183,29 +184,7 @@ export function ListView({
         >
           <ArrowLeft className="size-5" />
         </Link>
-        <div className="min-w-0 flex-1">
-          <h1 className="on-sky text-xl font-semibold break-words">{list.name}</h1>
-          <p className="on-sky-muted flex items-start gap-1.5 text-sm text-muted-foreground">
-            {list.privacy ? (
-              <Lock className="mt-0.5 size-4 shrink-0" aria-hidden />
-            ) : (
-              <Users className="mt-0.5 size-4 shrink-0" aria-hidden />
-            )}
-            <span className="min-w-0 break-words">
-              <span data-testid="list-privacy">{list.privacy ?? "Alla i hemmet"}</span>
-              {list.canChangeSharing && (
-                <button
-                  ref={changeSharing}
-                  type="button"
-                  onClick={() => setDialog("sharing")}
-                  className="on-sky -my-3 ml-1 inline-block rounded-lg px-1 py-3 font-medium text-foreground underline outline-none focus-visible:ring-3 focus-visible:ring-ring/50"
-                >
-                  Ändra
-                </button>
-              )}
-            </span>
-          </p>
-        </div>
+        <h1 className="on-sky min-w-0 text-xl font-semibold break-words">{list.name}</h1>
         <Menu
           triggerRef={more}
           label={`Mer för ${list.name}`}
@@ -219,6 +198,26 @@ export function ListView({
         >
           <MoreHorizontal className="size-5" />
         </Menu>
+        <p className="on-sky-muted col-span-2 col-start-2 flex items-start gap-1.5 text-sm text-muted-foreground">
+          {list.privacy ? (
+            <Lock className="mt-0.5 size-4 shrink-0" aria-hidden />
+          ) : (
+            <Users className="mt-0.5 size-4 shrink-0" aria-hidden />
+          )}
+          <span className="min-w-0 break-words">
+            <span data-testid="list-privacy">{list.privacy ?? "Alla i hemmet"}</span>
+            {list.canChangeSharing && (
+              <button
+                ref={changeSharing}
+                type="button"
+                onClick={() => setDialog("sharing")}
+                className="on-sky -my-3 ml-1 inline-block rounded-lg px-1 py-3 font-medium text-foreground underline outline-none focus-visible:ring-3 focus-visible:ring-ring/50"
+              >
+                Ändra
+              </button>
+            )}
+          </span>
+        </p>
       </header>
 
       <input

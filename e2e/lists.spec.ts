@@ -446,12 +446,13 @@ test("long names wrap, nothing overflows, and Tab goes in reading order", { tag:
   await go(page, `/listor/${inkop.id}`);
   await page.getByRole("link", { name: "Tillbaka" }).focus();
   const order: string[] = [];
-  for (let i = 0; i < 7; i++) {
+  for (let i = 0; i < 8; i++) {
     await page.keyboard.press("Tab");
     order.push(await page.evaluate(() => document.activeElement?.getAttribute("aria-label") ?? document.activeElement?.textContent ?? ""));
   }
-  expect(order.slice(0, 6)).toEqual([
+  expect(order.slice(0, 7)).toEqual([
     `Mer för ${long}`,
+    "Ändra",
     "Lägg till…",
     `${long}: bocka av`,
     long,
