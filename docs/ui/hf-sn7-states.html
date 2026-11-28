@@ -1,0 +1,190 @@
+<!doctype html>
+<!--
+  The house frame of a detailed drawing (cb-buko; the agreed look is docs/ui/cb-buko-tabs.html and
+  cb-buko-states.html). scripts/ux-sheet fills the two marker lines below; nothing else writes here.
+  Every class starts with `ux-' and only `body' is styled by element, so what is drawn inside a tab
+  keeps the product's own look.
+-->
+<html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>The states — words under the name, switch and faces · Keeping a list private and sharing it with chosen people</title>
+<style>
+  body{margin:0;padding:1px 8px;background:#f4f4f5}
+  .ux-page{max-width:980px;margin:14px auto 30px;background:#fff;border:1px solid #e4e4e7;border-radius:10px}
+  .ux-head,.ux-tabs,.ux-intro{font-family:system-ui,-apple-system,sans-serif;line-height:normal;text-align:left;color:#18181b}
+  .ux-head{padding:14px 16px 0}
+  .ux-work{font-size:12px;color:#71717a;text-transform:uppercase;letter-spacing:.04em}
+  .ux-heading{margin:2px 0 10px;font-size:19px}
+  .ux-tabrow{position:relative}
+  .ux-tabrow::before,.ux-tabrow::after{content:"";position:absolute;top:0;bottom:1px;width:44px;pointer-events:none;opacity:0}
+  .ux-tabrow::before{left:0;background:linear-gradient(to left,rgba(255,255,255,0),#fff)}
+  .ux-tabrow::after{right:0;background:linear-gradient(to right,rgba(255,255,255,0),#fff)}
+  .ux-tabrow.ux-more-left::before,.ux-tabrow.ux-more-right::after{opacity:1}
+  .ux-tabs{display:flex;gap:4px;border-bottom:1px solid #e4e4e7;padding:0 16px;overflow-x:auto}
+  .ux-tab{flex:none;border:0;border-radius:0;background:none;margin:0;font:inherit;font-size:14px;padding:8px 12px;color:#52525b;border-bottom:2px solid transparent;cursor:pointer;white-space:nowrap}
+  .ux-tab[aria-selected="true"]{color:#18181b;border-bottom-color:#7c3aed;font-weight:600}
+  .ux-tag{display:inline-block;font-size:11px;border-radius:999px;padding:1px 7px;margin-left:6px;font-weight:600}
+  .ux-rec{background:#ede9fe;color:#5b21b6}
+  .ux-agreed{background:#dcfce7;color:#166534}
+  .ux-panel[hidden]{display:none!important}
+  .ux-intro{padding:12px 16px 4px}
+  .ux-name{margin:0;font-size:16px}
+  .ux-cost{margin:3px 0 0;font-size:13px;color:#52525b}
+  .ux-why{margin:3px 0 0;font-size:13px;color:#5b21b6}
+  .ux-draw{padding:12px 16px 16px}
+</style></head><body>
+
+<style>
+.ph{width:340px;max-width:100%;border:1px solid #d4d4d8;border-radius:22px;background:#fff;padding:16px;box-sizing:border-box;font-family:system-ui,sans-serif;color:#18181b;font-size:15px}
+.row-wrap{display:flex;flex-wrap:wrap;gap:20px;align-items:flex-start}
+.cap{font-size:12px;color:#71717a;margin:0 0 6px}
+.h1{font-size:22px;font-weight:700;margin:4px 0 12px}
+.lrow{display:flex;align-items:center;gap:8px;border:1px solid #e4e4e7;border-radius:12px;padding:10px 12px;margin-bottom:8px;min-height:34px}
+.lrow .n{flex:1;font-weight:500}.lrow .c{font-size:13px;color:#71717a}
+.sub{font-size:12px;color:#71717a;font-weight:400;display:block;margin-top:2px}
+.av{display:inline-flex;width:28px;height:28px;border-radius:50%;align-items:center;justify-content:center;font-size:12px;font-weight:600;color:#fff;flex-shrink:0}
+.a1{background:#2563eb}.a2{background:#db2777}.a3{background:#16a34a}.a4{background:#d97706}
+.av.sm{width:22px;height:22px;font-size:10px;margin-left:-6px;border:2px solid #fff}
+.lock{display:inline-block;width:14px;height:14px;vertical-align:-2px}
+.hdr{display:flex;align-items:center;gap:8px}.hdr .t{flex:1;font-size:20px;font-weight:600}
+.field{border:1px solid #d4d4d8;border-radius:12px;padding:10px 12px;color:#a1a1aa;margin:10px 0}
+.item{border:1px solid #e4e4e7;border-radius:12px;padding:10px 12px;margin-bottom:8px;display:flex;gap:10px;align-items:center}
+.box{width:18px;height:18px;border:2px solid #a1a1aa;border-radius:50%}
+.sheet{border-top:1px solid #e4e4e7;margin:0 -16px -16px;padding:16px;border-radius:18px 18px 0 0;box-shadow:0 -6px 18px rgba(0,0,0,.08)}
+.st{font-weight:700;font-size:17px;margin-bottom:10px}
+.btn{display:inline-block;background:#18181b;color:#fff;border-radius:12px;padding:10px 16px;font-weight:600}
+.right{display:flex;justify-content:flex-end;margin-top:12px}
+.dim{color:#71717a;font-size:13px}
+.radio{display:flex;align-items:center;gap:10px;padding:10px 4px}
+.rd{width:18px;height:18px;border:2px solid #a1a1aa;border-radius:50%;box-sizing:border-box}.rd.on{border:6px solid #18181b}
+.cb{width:20px;height:20px;border:2px solid #a1a1aa;border-radius:5px;box-sizing:border-box;display:flex;align-items:center;justify-content:center;font-size:13px;color:#fff}.cb.on{background:#18181b;border-color:#18181b}
+.mem{display:flex;align-items:center;gap:10px;padding:8px 4px 8px 28px}
+.chip{display:inline-flex;align-items:center;gap:6px;border:1px solid #d4d4d8;border-radius:999px;padding:4px 10px 4px 4px;margin:0 6px 6px 0;font-size:14px}
+.chip.on{border-color:#18181b;background:#18181b;color:#fff}
+.seg{display:flex;border:1px solid #d4d4d8;border-radius:10px;overflow:hidden;margin:6px 0 10px}.seg span{flex:1;text-align:center;padding:8px;font-size:14px}.seg .on{background:#18181b;color:#fff}
+.sw{width:40px;height:24px;border-radius:12px;background:#18181b;position:relative}.sw:after{content:"";position:absolute;right:3px;top:3px;width:18px;height:18px;border-radius:50%;background:#fff}
+.chg{font-size:13px;text-decoration:underline;color:#18181b}
+.acc{display:flex;align-items:center;gap:6px;font-size:13px;color:#52525b;margin:-2px 0 10px}
+</style>
+<style>.sw.off{background:#d4d4d8}.sw.off:after{right:auto;left:3px}.toast{border:1px solid #e4e4e7;border-radius:12px;padding:12px 14px;box-shadow:0 6px 18px rgba(0,0,0,.12);font-size:14px;margin-top:12px;background:#fff}</style>
+<div class="ux-page">
+<header class="ux-head">
+<div class="ux-work">Keeping a list private and sharing it with chosen people</div>
+<h1 class="ux-heading">The states — words under the name, switch and faces</h1>
+</header>
+<div class="ux-tabrow"><div class="ux-tabs" role="tablist">
+<button type="button" class="ux-tab" role="tab" data-ux-tab="1" id="ux-tab-1" aria-controls="ux-panel-1" aria-selected="true" tabindex="0">Ny lista</button>
+<button type="button" class="ux-tab" role="tab" data-ux-tab="2" id="ux-tab-2" aria-controls="ux-panel-2" aria-selected="false" tabindex="-1">Your private list</button>
+<button type="button" class="ux-tab" role="tab" data-ux-tab="3" id="ux-tab-3" aria-controls="ux-panel-3" aria-selected="false" tabindex="-1">Shared with you</button>
+<button type="button" class="ux-tab" role="tab" data-ux-tab="4" id="ux-tab-4" aria-controls="ux-panel-4" aria-selected="false" tabindex="-1">Making it public</button>
+<button type="button" class="ux-tab" role="tab" data-ux-tab="5" id="ux-tab-5" aria-controls="ux-panel-5" aria-selected="false" tabindex="-1">No longer shared with you</button>
+<button type="button" class="ux-tab" role="tab" data-ux-tab="6" id="ux-tab-6" aria-controls="ux-panel-6" aria-selected="false" tabindex="-1">Couldn&#39;t save</button>
+</div></div>
+<section class="ux-panel" role="tabpanel" id="ux-panel-1" aria-labelledby="ux-tab-1">
+<div class="ux-intro">
+<h2 class="ux-name">Ny lista</h2>
+<p class="ux-cost">The switch starts off, so a new list is public as it is today. Faces only appear once it is on. With nobody picked, only you see the list.</p>
+</div>
+<div class="ux-draw">
+<div class="row-wrap"><div><p class="cap">Opens like this</p><div class="ph"><div class="sheet" style="margin-top:0"><div class="st">Ny lista</div><div class="field">Namn</div><div style="display:flex;align-items:center;justify-content:space-between;margin:8px 0"><span>Privat lista</span><span class="sw off"></span></div><div class="dim">Alla i hemmet ser listan.</div><div class="right"><span class="btn">Skapa</span></div></div></div></div>
+<div><p class="cap">Switch on, nobody picked yet</p><div class="ph"><div class="sheet" style="margin-top:0"><div class="st">Ny lista</div><div class="field" style="color:#18181b">Julklappar till mamma</div><div style="display:flex;align-items:center;justify-content:space-between;margin:8px 0"><span>Privat lista</span><span class="sw"></span></div><div class="dim">Bara du ser listan. Dela med:</div><div style="margin-top:6px"><span class="chip "><span class="av a2">A</span>Anna</span>
+<span class="chip "><span class="av a4">K</span>Kalle</span>
+<span class="chip "><span class="av a3">S</span>Sara</span></div><div class="right"><span class="btn">Skapa</span></div></div></div></div></div>
+</div>
+</section>
+<section class="ux-panel" role="tabpanel" id="ux-panel-2" aria-labelledby="ux-tab-2" hidden>
+<div class="ux-intro">
+<h2 class="ux-name">Your private list</h2>
+<p class="ux-cost">You are &#39;du&#39;, you come first, and the others follow in alphabetical order. The line wraps when there are many names.</p>
+</div>
+<div class="ux-draw">
+<div class="row-wrap"><div><p class="cap">Listor</p><div class="ph"><div class="h1">Listor</div><div class="lrow"><span class="n">Önskelista<span class="sub"><svg class="lock" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><rect x="4" y="11" width="16" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg> Privat · bara du</span></span><span class="c">0 av 3</span></div><div class="lrow"><span class="n">Julklappar till mamma<span class="sub"><svg class="lock" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><rect x="4" y="11" width="16" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg> Privat · du och Sara</span></span><span class="c">2 av 5</span></div><div class="lrow"><span class="n">Kalaset<span class="sub"><svg class="lock" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><rect x="4" y="11" width="16" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg> Privat · du, Anna, Kalle och Sara</span></span><span class="c">1 av 9</span></div></div></div>
+<div><p class="cap">Ändra opens Vem ser listan?</p><div class="ph"><div class="sheet" style="margin-top:0"><div class="st">Vem ser listan?</div><div style="display:flex;align-items:center;justify-content:space-between;margin:8px 0"><span>Privat lista</span><span class="sw"></span></div><div class="dim">Dela med:</div><div style="margin-top:6px"><span class="chip "><span class="av a2">A</span>Anna</span>
+<span class="chip "><span class="av a4">K</span>Kalle</span>
+<span class="chip on"><span class="av a3">S</span>Sara</span></div><div class="right"><span class="btn">Spara</span></div></div></div></div></div>
+</div>
+</section>
+<section class="ux-panel" role="tabpanel" id="ux-panel-3" aria-labelledby="ux-tab-3" hidden>
+<div class="ux-intro">
+<h2 class="ux-name">Shared with you</h2>
+<p class="ux-cost">Sara sees Henrik&#39;s list. She can add, tick and rename, but there is no Ändra on the line and no Ta bort lista in ⋯.</p>
+</div>
+<div class="ux-draw">
+<div class="row-wrap"><div><p class="cap">Sara's Listor</p><div class="ph"><div class="h1">Listor</div><div class="lrow"><span class="n">Julklappar till mamma<span class="sub"><svg class="lock" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><rect x="4" y="11" width="16" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg> Privat · Henrik och du</span></span><span class="c">2 av 5</span></div></div></div>
+<div><p class="cap">Sara's list page</p><div class="ph"><div class="hdr"><span>←</span><span class="t">Julklappar till mamma</span><span>⋯</span></div><div class="acc"><svg class="lock" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><rect x="4" y="11" width="16" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg> Privat · Henrik och du</div><div class="field">Lägg till…</div><div class="item"><span class="box"></span>Halsduk</div></div></div></div>
+</div>
+</section>
+<section class="ux-panel" role="tabpanel" id="ux-panel-4" aria-labelledby="ux-tab-4" hidden>
+<div class="ux-intro">
+<h2 class="ux-name">Making it public</h2>
+<p class="ux-cost">Turning the switch off hides the faces. Spara makes the list everyone&#39;s at once, live.</p>
+</div>
+<div class="ux-draw">
+<div class="row-wrap"><div><div class="ph"><div class="sheet" style="margin-top:0"><div class="st">Vem ser listan?</div><div style="display:flex;align-items:center;justify-content:space-between;margin:8px 0"><span>Privat lista</span><span class="sw off"></span></div><div class="dim">Alla i hemmet ser listan.</div><div class="right"><span class="btn">Spara</span></div></div></div></div></div>
+</div>
+</section>
+<section class="ux-panel" role="tabpanel" id="ux-panel-5" aria-labelledby="ux-tab-5" hidden>
+<div class="ux-intro">
+<h2 class="ux-name">No longer shared with you</h2>
+<p class="ux-cost">Henrik stops sharing while Sara has the list open. Her page goes back to Listor live and says why. The list is gone from her Listor, and an old link takes her to Listor with the same message.</p>
+</div>
+<div class="ux-draw">
+<div class="row-wrap"><div><p class="cap">Sara's screen, live</p><div class="ph"><div class="h1">Listor</div><div class="lrow"><span class="n">Handla</span><span class="c">4 av 6</span></div><div class="toast">Julklappar till mamma delas inte längre med dig.</div></div></div></div>
+</div>
+</section>
+<section class="ux-panel" role="tabpanel" id="ux-panel-6" aria-labelledby="ux-tab-6" hidden>
+<div class="ux-intro">
+<h2 class="ux-name">Couldn&#39;t save</h2>
+<p class="ux-cost">As everywhere in the app: the sheet stays open with your choice kept, and the usual message appears.</p>
+</div>
+<div class="ux-draw">
+<div class="row-wrap"><div><div class="ph"><div class="sheet" style="margin-top:0"><div class="st">Vem ser listan?</div><div style="display:flex;align-items:center;justify-content:space-between;margin:8px 0"><span>Privat lista</span><span class="sw"></span></div><div class="dim">Dela med:</div><div style="margin-top:6px"><span class="chip on"><span class="av a2">A</span>Anna</span>
+<span class="chip "><span class="av a4">K</span>Kalle</span>
+<span class="chip on"><span class="av a3">S</span>Sara</span></div><div class="right"><span class="btn">Spara</span></div><div class="toast">Det gick inte att spara. Försök igen.</div></div></div></div></div>
+</div>
+</section>
+</div>
+<script>
+// Tabs: one panel on screen, the left and right arrow keys move between them, nothing persists.
+(function(){
+  var tabs = Array.prototype.slice.call(document.querySelectorAll('.ux-tabs > .ux-tab'));
+  if (!tabs.length) return;
+  var row = tabs[0].parentNode, wrap = row.parentNode;
+  function selected(){ return tabs.findIndex(function(t){ return t.getAttribute('aria-selected') === 'true'; }); }
+  // A faded edge on whichever side has tabs out of view.
+  function fade(){
+    wrap.classList.toggle('ux-more-left', row.scrollLeft > 1);
+    wrap.classList.toggle('ux-more-right', row.scrollLeft + row.clientWidth < row.scrollWidth - 1);
+  }
+  // Scrolls the row alone: scrollIntoView would move the page too.
+  function reveal(tab){
+    var t = tab.getBoundingClientRect(), r = row.getBoundingClientRect();
+    if (t.left < r.left) row.scrollLeft -= r.left - t.left + 16;
+    else if (t.right > r.right) row.scrollLeft += t.right - r.right + 16;
+    fade();
+  }
+  function select(i){
+    tabs.forEach(function(t, n){
+      t.setAttribute('aria-selected', n === i ? 'true' : 'false');
+      t.tabIndex = n === i ? 0 : -1;
+      document.getElementById(t.getAttribute('aria-controls')).hidden = n !== i;
+    });
+    reveal(tabs[i]);
+  }
+  tabs.forEach(function(t, i){ t.addEventListener('click', function(){ select(i); }); });
+  document.addEventListener('keydown', function(e){
+    var step = e.key === 'ArrowRight' ? 1 : e.key === 'ArrowLeft' ? -1 : 0;
+    if (!step || e.defaultPrevented || e.altKey || e.ctrlKey || e.metaKey || e.shiftKey) return;
+    // A control a drawing carries (a field, a button, a slider) keeps its own arrows.
+    if (e.target.closest && e.target.closest('.ux-draw')) return;
+    e.preventDefault();
+    var focused = tabs.indexOf(document.activeElement) >= 0;
+    var i = (selected() + step + tabs.length) % tabs.length;
+    select(i);
+    if (focused) tabs[i].focus({preventScroll: true});
+  });
+  row.addEventListener('scroll', fade);
+  window.addEventListener('resize', fade);
+  window.addEventListener('load', function(){ reveal(tabs[selected()]); });
+  reveal(tabs[selected()]);
+})();
+</script></body></html>
