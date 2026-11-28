@@ -1,7 +1,9 @@
 import type { z } from "zod";
-import type { listOrder } from "./validation";
+import { firstName } from "./mcp-texts";
+import type { listOrder, listSharing } from "./validation";
 
 export type ListOrder = z.infer<typeof listOrder>;
+export type ListSharing = z.infer<typeof listSharing>;
 
 /** The orders of the Listor overview, in menu order; the first is where everyone starts. */
 export const LIST_ORDERS = ["alfabetiskt", "andrad", "skapad"] as const satisfies readonly ListOrder[];
@@ -21,6 +23,26 @@ export function sortLists<T extends Sortable>(lists: readonly T[], order: ListOr
   return [...lists].sort(
     order === "alfabetiskt" ? byName : order === "andrad" ? newestFirst("updatedAt") : newestFirst("createdAt"),
   );
+}
+
+type Named = { id: string; name: string };
+
+/** The other members of the home, who a list may be shared with, A–Ö by first name. */
+export function shareChoices<T extends Named>(members: readonly T[], viewerId: string): T[] {
+  return members
+    .filter((m) => m.id !== viewerId)
+    .sort((a, b) => collator.compare(firstName(a.name), firstName(b.name)));
+}
+
+/** Who sees a private list, to one of them: the creator first, then "du", then the rest A–Ö. */
+export function privacyLine(viewerId: string, creator: Named | null, shared: readonly Named[]): string {
+  const others = shareChoices(shared, viewerId)
+    .filter((m) => m.id !== creator?.id)
+    .map((m) => firstName(m.name));
+  const first = creator && creator.id !== viewerId ? [firstName(creator.name)] : [];
+  const names = [...first, "du", ...others];
+  if (names.length === 1) return "Privat · bara du";
+  return `Privat · ${names.slice(0, -1).join(", ")} och ${names.at(-1)}`;
 }
 
 /** What a list row says about its items. */
