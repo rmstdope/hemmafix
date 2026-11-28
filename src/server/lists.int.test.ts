@@ -2,9 +2,9 @@ import { eq } from "drizzle-orm";
 import { randomUUID } from "node:crypto";
 import { beforeEach, describe, expect, it } from "vitest";
 import { db } from "@/db";
-import { household, membership } from "@/db/schema";
+import { household, list, membership, user } from "@/db/schema";
 import { UserError } from "@/lib/errors";
-import { createFamily } from "../../test/integration/factories";
+import { createFamily, createUser } from "../../test/integration/factories";
 import {
   addItem,
   clearDone,
@@ -14,12 +14,15 @@ import {
   getList,
   listLists,
   getListOrder,
+  lostListName,
   removeItem,
   renameList,
   restoreItems,
   setItemDone,
   setListOrder,
+  setListSharing,
 } from "./lists";
+import type { Actor } from "./household";
 
 let f: Awaited<ReturnType<typeof createFamily>>;
 
@@ -241,5 +244,174 @@ describe("sort order", () => {
   it("refuses an order that does not exist", async () => {
     await expect(setListOrder(f.adult, "slump" as never)).rejects.toThrow();
     expect((await db.select().from(membership).where(eq(membership.userId, f.adult.userId)))[0]!.listOrder).toBeNull();
+  });
+});
+
+/** A second adult and child in the home: Cia and Dan. */
+async function moreFamily() {
+  const [cia, dan] = [await createUser("Cia"), await createUser("Dan")];
+  await db.insert(membership).values([
+    { userId: cia.id, householdId: f.homeId, role: "adult" },
+    { userId: dan.id, householdId: f.homeId, role: "child" },
+  ]);
+  return {
+    cia: { userId: cia.id, householdId: f.homeId, role: "adult" } as const,
+    dan: { userId: dan.id, householdId: f.homeId, role: "child" } as const,
+  };
+}
+const only = (...users: { userId: string }[]) => ({ isPrivate: true, shareWith: users.map((u) => u.userId) });
+const everyone = { isPrivate: false, shareWith: [] };
+const names = async (actor: Actor) => (await listLists(actor)).map((l) => l.name).sort();
+const unowned = async (name: string) =>
+  (await db.insert(list).values({ householdId: f.homeId, name }).returning())[0]!.id;
+
+describe("private lists", () => {
+  it("are seen by their creator and the people they are shared with only, adults left out too", async () => {
+    const { cia, dan } = await moreFamily();
+    const { id } = await createList(f.child, "Julklappar", only(dan));
+    await add(id, "Halsduk", f.child);
+    await createList(f.adult, "Inköp");
+
+    expect(await names(f.child)).toEqual(["Inköp", "Julklappar"]);
+    expect(await names(dan)).toEqual(["Inköp", "Julklappar"]);
+    expect(await getList(dan, id)).toMatchObject({ name: "Julklappar", items: [{ text: "Halsduk" }] });
+    for (const outsider of [f.adult, cia, f.neighbour]) {
+      expect((await names(outsider)).includes("Julklappar")).toBe(false);
+      expect(await getList(outsider, id)).toBeNull();
+    }
+  });
+
+  it("say who sees them, and what the person may do", async () => {
+    const { id } = await createList(f.child, "Julklappar", only(f.adult));
+    expect((await listLists(f.child))[0]!.privacy).toBe("Privat · du och Anna");
+    expect(await getList(f.adult, id)).toMatchObject({
+      privacy: "Privat · Bo och du",
+      canChangeSharing: false,
+      canDelete: false,
+    });
+    expect(await getList(f.child, id)).toMatchObject({
+      sharing: { isPrivate: true, shareWith: [f.adult.userId] },
+      canChangeSharing: true,
+      canDelete: true,
+    });
+    const open = await createList(f.adult, "Inköp");
+    expect(await getList(f.child, open.id)).toMatchObject({ privacy: null, canChangeSharing: false, canDelete: true });
+  });
+
+  it("are public when nothing is said, and ignore picks for a public list", async () => {
+    const a = await createList(f.adult, "A");
+    const b = await createList(f.adult, "B", { isPrivate: false, shareWith: [f.child.userId] });
+    for (const { id } of [a, b]) {
+      expect((await getList(f.child, id))!.sharing).toEqual(everyone);
+    }
+  });
+
+  it("refuse every change from someone who does not see them, as for a list that is gone", async () => {
+    const { id } = await createList(f.adult, "Hemligt");
+    const item = await add(id, "Mjölk");
+    await setListSharing(f.adult, id, only());
+    for (const attempt of [
+      () => renameList(f.child, id, "Mitt"),
+      () => addItem(f.child, id, randomUUID(), "Skräp"),
+      () => editItem(f.child, id, item, "Skräp"),
+      () => setItemDone(f.child, id, item, true),
+      () => removeItem(f.child, id, item),
+      () => clearDone(f.child, id, [item]),
+      () => restoreItems(f.child, id, []),
+      () => setListSharing(f.child, id, everyone),
+    ]) {
+      await expect(attempt()).rejects.toThrow("Listan finns inte längre.");
+    }
+    await deleteList(f.child, id);
+    expect(await getList(f.adult, id)).toMatchObject({ name: "Hemligt", items: [{ text: "Mjölk" }] });
+  });
+
+  it("let a person they are shared with work on the contents, but not remove them or change who sees them", async () => {
+    const { id } = await createList(f.adult, "Julklappar", only(f.child));
+    const item = await add(id, "Halsduk", f.child);
+    await editItem(f.child, id, item, "Mössa");
+    await setItemDone(f.child, id, item, true);
+    await clearDone(f.child, id, [item]);
+    await renameList(f.child, id, "Klappar");
+    await expect(deleteList(f.child, id)).rejects.toThrow("Bara den som gjort listan kan ta bort den.");
+    await expect(setListSharing(f.child, id, everyone)).rejects.toThrow(
+      "Bara den som gjort listan kan ändra vem som ser den.",
+    );
+    expect(await getList(f.adult, id)).toMatchObject({ name: "Klappar", sharing: only(f.child) });
+    await deleteList(f.adult, id);
+    expect(await getList(f.adult, id)).toBeNull();
+  });
+
+  it("are shared, unshared, made public and private again by their creator, without moving in Senast ändrad", async () => {
+    const { cia } = await moreFamily();
+    const { id } = await createList(f.child, "Kalas");
+    const before = await changedAt(id);
+    await tick();
+    await setListSharing(f.child, id, only(f.adult, f.child));
+    expect((await getList(f.child, id))!.sharing).toEqual(only(f.adult));
+    expect(await getList(cia, id)).toBeNull();
+    await setListSharing(f.child, id, only(cia));
+    expect(await getList(f.adult, id)).toBeNull();
+    await setListSharing(f.child, id, everyone);
+    expect(await getList(f.adult, id)).toMatchObject({ sharing: everyone, canChangeSharing: false });
+    await setListSharing(f.child, id, only());
+    expect(await getList(cia, id)).toBeNull();
+    expect((await getList(f.child, id))!.updatedAt.getTime()).toBe(before);
+  });
+
+  it("cannot be shared with someone outside the home", async () => {
+    await expect(createList(f.adult, "A", only(f.neighbour))).rejects.toThrow("Personen finns inte i hemmet");
+    expect(await listLists(f.adult)).toEqual([]);
+    const { id } = await createList(f.adult, "B", only(f.child));
+    await expect(setListSharing(f.adult, id, only(f.neighbour))).rejects.toThrow("Personen finns inte i hemmet");
+    expect((await getList(f.adult, id))!.sharing).toEqual(only(f.child));
+  });
+
+  it("without a recorded creator are public, and the adult who makes one private becomes its creator", async () => {
+    const { cia } = await moreFamily();
+    const id = await unowned("Gammal");
+    expect(await getList(f.child, id)).toMatchObject({ privacy: null, canChangeSharing: false });
+    await expect(setListSharing(f.child, id, only())).rejects.toThrow("ändra vem som ser den");
+    // Saving it as public claims nothing.
+    await setListSharing(f.adult, id, everyone);
+    expect(await getList(cia, id)).toMatchObject({ canChangeSharing: true });
+    await setListSharing(f.adult, id, only(f.child));
+    expect(await getList(cia, id)).toBeNull();
+    await setListSharing(f.adult, id, everyone);
+    expect(await getList(cia, id)).toMatchObject({ canChangeSharing: false });
+  });
+
+  it("tell the name only to someone who has lost sight of them, as it was then", async () => {
+    const { cia } = await moreFamily();
+    const { id } = await createList(f.adult, "Julklappar", only(f.child));
+    // Never saw it: nothing to tell.
+    expect(await lostListName(cia, id)).toBeNull();
+    expect(await lostListName(f.child, id)).toBeNull();
+    await setListSharing(f.adult, id, only());
+    await renameList(f.adult, id, "Cykel till Bo");
+    expect(await lostListName(f.child, id)).toBe("Julklappar");
+    expect(await lostListName(cia, id)).toBeNull();
+    // Sharing again takes the notice away; losing it again brings the name of that day.
+    await setListSharing(f.adult, id, only(f.child));
+    expect(await lostListName(f.child, id)).toBeNull();
+    await setListSharing(f.adult, id, only());
+    expect(await lostListName(f.child, id)).toBe("Cykel till Bo");
+    await setListSharing(f.adult, id, everyone);
+    expect(await lostListName(f.child, id)).toBeNull();
+    // Public to private takes it from everyone else.
+    await setListSharing(f.adult, id, only());
+    expect(await lostListName(cia, id)).toBe("Cykel till Bo");
+    expect(await lostListName(f.neighbour, id)).toBeNull();
+    expect(await lostListName(f.child, "nonsens")).toBeNull();
+    await deleteList(f.adult, id);
+    expect(await lostListName(cia, id)).toBeNull();
+  });
+
+  it("stay hidden from the others when their creator is gone", async () => {
+    const { cia } = await moreFamily();
+    const { id } = await createList(cia, "Ensam", only(f.child));
+    await db.delete(user).where(eq(user.id, cia.userId));
+    expect(await getList(f.adult, id)).toBeNull();
+    expect(await getList(f.child, id)).toMatchObject({ privacy: "Privat · bara du", canDelete: false });
   });
 });
