@@ -1,0 +1,162 @@
+<!doctype html>
+<!--
+  The house frame of a detailed drawing (cb-buko; the agreed look is docs/ui/cb-buko-tabs.html and
+  cb-buko-states.html). scripts/ux-sheet fills the two marker lines below; nothing else writes here.
+  Every class starts with `ux-' and only `body' is styled by element, so what is drawn inside a tab
+  keeps the product's own look.
+-->
+<html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>What does the chooser look like? · Keeping a list private and sharing it with chosen people</title>
+<style>
+  body{margin:0;padding:1px 8px;background:#f4f4f5}
+  .ux-page{max-width:980px;margin:14px auto 30px;background:#fff;border:1px solid #e4e4e7;border-radius:10px}
+  .ux-head,.ux-tabs,.ux-intro{font-family:system-ui,-apple-system,sans-serif;line-height:normal;text-align:left;color:#18181b}
+  .ux-head{padding:14px 16px 0}
+  .ux-work{font-size:12px;color:#71717a;text-transform:uppercase;letter-spacing:.04em}
+  .ux-heading{margin:2px 0 10px;font-size:19px}
+  .ux-tabrow{position:relative}
+  .ux-tabrow::before,.ux-tabrow::after{content:"";position:absolute;top:0;bottom:1px;width:44px;pointer-events:none;opacity:0}
+  .ux-tabrow::before{left:0;background:linear-gradient(to left,rgba(255,255,255,0),#fff)}
+  .ux-tabrow::after{right:0;background:linear-gradient(to right,rgba(255,255,255,0),#fff)}
+  .ux-tabrow.ux-more-left::before,.ux-tabrow.ux-more-right::after{opacity:1}
+  .ux-tabs{display:flex;gap:4px;border-bottom:1px solid #e4e4e7;padding:0 16px;overflow-x:auto}
+  .ux-tab{flex:none;border:0;border-radius:0;background:none;margin:0;font:inherit;font-size:14px;padding:8px 12px;color:#52525b;border-bottom:2px solid transparent;cursor:pointer;white-space:nowrap}
+  .ux-tab[aria-selected="true"]{color:#18181b;border-bottom-color:#7c3aed;font-weight:600}
+  .ux-tag{display:inline-block;font-size:11px;border-radius:999px;padding:1px 7px;margin-left:6px;font-weight:600}
+  .ux-rec{background:#ede9fe;color:#5b21b6}
+  .ux-agreed{background:#dcfce7;color:#166534}
+  .ux-panel[hidden]{display:none!important}
+  .ux-intro{padding:12px 16px 4px}
+  .ux-name{margin:0;font-size:16px}
+  .ux-cost{margin:3px 0 0;font-size:13px;color:#52525b}
+  .ux-why{margin:3px 0 0;font-size:13px;color:#5b21b6}
+  .ux-draw{padding:12px 16px 16px}
+</style></head><body>
+
+<style>
+.ph{width:340px;max-width:100%;border:1px solid #d4d4d8;border-radius:22px;background:#fff;padding:16px;box-sizing:border-box;font-family:system-ui,sans-serif;color:#18181b;font-size:15px}
+.row-wrap{display:flex;flex-wrap:wrap;gap:20px;align-items:flex-start}
+.cap{font-size:12px;color:#71717a;margin:0 0 6px}
+.h1{font-size:22px;font-weight:700;margin:4px 0 12px}
+.lrow{display:flex;align-items:center;gap:8px;border:1px solid #e4e4e7;border-radius:12px;padding:10px 12px;margin-bottom:8px;min-height:34px}
+.lrow .n{flex:1;font-weight:500}.lrow .c{font-size:13px;color:#71717a}
+.sub{font-size:12px;color:#71717a;font-weight:400;display:block;margin-top:2px}
+.av{display:inline-flex;width:28px;height:28px;border-radius:50%;align-items:center;justify-content:center;font-size:12px;font-weight:600;color:#fff;flex-shrink:0}
+.a1{background:#2563eb}.a2{background:#db2777}.a3{background:#16a34a}.a4{background:#d97706}
+.av.sm{width:22px;height:22px;font-size:10px;margin-left:-6px;border:2px solid #fff}
+.lock{display:inline-block;width:14px;height:14px;vertical-align:-2px}
+.hdr{display:flex;align-items:center;gap:8px}.hdr .t{flex:1;font-size:20px;font-weight:600}
+.field{border:1px solid #d4d4d8;border-radius:12px;padding:10px 12px;color:#a1a1aa;margin:10px 0}
+.item{border:1px solid #e4e4e7;border-radius:12px;padding:10px 12px;margin-bottom:8px;display:flex;gap:10px;align-items:center}
+.box{width:18px;height:18px;border:2px solid #a1a1aa;border-radius:50%}
+.sheet{border-top:1px solid #e4e4e7;margin:0 -16px -16px;padding:16px;border-radius:18px 18px 0 0;box-shadow:0 -6px 18px rgba(0,0,0,.08)}
+.st{font-weight:700;font-size:17px;margin-bottom:10px}
+.btn{display:inline-block;background:#18181b;color:#fff;border-radius:12px;padding:10px 16px;font-weight:600}
+.right{display:flex;justify-content:flex-end;margin-top:12px}
+.dim{color:#71717a;font-size:13px}
+.radio{display:flex;align-items:center;gap:10px;padding:10px 4px}
+.rd{width:18px;height:18px;border:2px solid #a1a1aa;border-radius:50%;box-sizing:border-box}.rd.on{border:6px solid #18181b}
+.cb{width:20px;height:20px;border:2px solid #a1a1aa;border-radius:5px;box-sizing:border-box;display:flex;align-items:center;justify-content:center;font-size:13px;color:#fff}.cb.on{background:#18181b;border-color:#18181b}
+.mem{display:flex;align-items:center;gap:10px;padding:8px 4px 8px 28px}
+.chip{display:inline-flex;align-items:center;gap:6px;border:1px solid #d4d4d8;border-radius:999px;padding:4px 10px 4px 4px;margin:0 6px 6px 0;font-size:14px}
+.chip.on{border-color:#18181b;background:#18181b;color:#fff}
+.seg{display:flex;border:1px solid #d4d4d8;border-radius:10px;overflow:hidden;margin:6px 0 10px}.seg span{flex:1;text-align:center;padding:8px;font-size:14px}.seg .on{background:#18181b;color:#fff}
+.sw{width:40px;height:24px;border-radius:12px;background:#18181b;position:relative}.sw:after{content:"";position:absolute;right:3px;top:3px;width:18px;height:18px;border-radius:50%;background:#fff}
+.chg{font-size:13px;text-decoration:underline;color:#18181b}
+.acc{display:flex;align-items:center;gap:6px;font-size:13px;color:#52525b;margin:-2px 0 10px}
+</style>
+<div class="ux-page">
+<header class="ux-head">
+<div class="ux-work">Keeping a list private and sharing it with chosen people</div>
+<h1 class="ux-heading">What does the chooser look like?</h1>
+</header>
+<div class="ux-tabrow"><div class="ux-tabs" role="tablist">
+<button type="button" class="ux-tab" role="tab" data-ux-tab="A" id="ux-tab-A" aria-controls="ux-panel-A" aria-selected="false" tabindex="-1">A — Two choices, then names<span class="ux-tag ux-rec">Recommended</span></button>
+<button type="button" class="ux-tab" role="tab" data-ux-tab="B" id="ux-tab-B" aria-controls="ux-panel-B" aria-selected="true" tabindex="0">B — Switch and faces<span class="ux-tag ux-agreed">Agreed</span></button>
+<button type="button" class="ux-tab" role="tab" data-ux-tab="C" id="ux-tab-C" aria-controls="ux-panel-C" aria-selected="false" tabindex="-1">C — One row, then a pick</button>
+</div></div>
+<section class="ux-panel" role="tabpanel" id="ux-panel-A" aria-labelledby="ux-tab-A" hidden>
+<div class="ux-intro">
+<h2 class="ux-name">A — Two choices, then names<span class="ux-tag ux-rec">Recommended</span></h2>
+<p class="ux-cost">Taller sheet; names listed one per row</p>
+<p class="ux-why">Recommended: The usual share-pattern: a clear either/or, then big rows with names that are easy to tap and to read</p>
+</div>
+<div class="ux-draw">
+<div class="row-wrap"><div><p class="cap">Ny lista</p><div class="ph"><div class="sheet" style="margin-top:0"><div class="st">Ny lista</div><div class="field" style="color:#18181b">Julklappar till mamma</div>
+<div class="dim" style="margin-top:6px">Vem ser listan?</div>
+<div class="radio"><span class="rd"></span>Alla i hemmet</div><div class="radio"><span class="rd on"></span>Bara jag och de jag väljer</div>
+<div class="mem"><span class="cb"></span><span class="av a2">A</span>Anna</div><div class="mem"><span class="cb"></span><span class="av a4">K</span>Kalle</div><div class="mem"><span class="cb on">✓</span><span class="av a3">S</span>Sara</div>
+<div class="right"><span class="btn">Skapa</span></div></div></div></div></div>
+</div>
+</section>
+<section class="ux-panel" role="tabpanel" id="ux-panel-B" aria-labelledby="ux-tab-B">
+<div class="ux-intro">
+<h2 class="ux-name">B — Switch and faces<span class="ux-tag ux-agreed">Agreed</span></h2>
+<p class="ux-cost">Shorter; names only under the faces</p>
+</div>
+<div class="ux-draw">
+<div class="row-wrap"><div><p class="cap">Ny lista</p><div class="ph"><div class="sheet" style="margin-top:0"><div class="st">Ny lista</div><div class="field" style="color:#18181b">Julklappar till mamma</div>
+<div style="display:flex;align-items:center;justify-content:space-between;margin:8px 0"><span>Privat lista</span><span class="sw"></span></div>
+<div class="dim">Dela med</div><div style="margin-top:6px"><span class="chip"><span class="av a2">A</span>Anna</span><span class="chip"><span class="av a4">K</span>Kalle</span><span class="chip on"><span class="av a3">S</span>Sara</span></div>
+<div class="right"><span class="btn">Skapa</span></div></div></div></div></div>
+</div>
+</section>
+<section class="ux-panel" role="tabpanel" id="ux-panel-C" aria-labelledby="ux-tab-C" hidden>
+<div class="ux-intro">
+<h2 class="ux-name">C — One row, then a pick</h2>
+<p class="ux-cost">Ny lista stays small; choosing people is a second step</p>
+</div>
+<div class="ux-draw">
+<div class="row-wrap"><div><p class="cap">Ny lista</p><div class="ph"><div class="sheet" style="margin-top:0"><div class="st">Ny lista</div><div class="field" style="color:#18181b">Julklappar till mamma</div>
+<div class="seg"><span>Alla i hemmet</span><span class="on">Privat</span></div><div class="dim">Bara du ser listan. <span class="chg">Dela med…</span></div>
+<div class="right"><span class="btn">Skapa</span></div></div></div></div>
+<div><p class="cap">Dela med… (second sheet)</p><div class="ph"><div class="sheet" style="margin-top:0"><div class="st">Dela med</div>
+<div class="mem" style="padding-left:4px"><span class="cb"></span><span class="av a2">A</span>Anna</div><div class="mem" style="padding-left:4px"><span class="cb"></span><span class="av a4">K</span>Kalle</div><div class="mem" style="padding-left:4px"><span class="cb on">✓</span><span class="av a3">S</span>Sara</div><div class="right"><span class="btn">Klar</span></div></div></div></div></div>
+</div>
+</section>
+</div>
+<script>
+// Tabs: one panel on screen, the left and right arrow keys move between them, nothing persists.
+(function(){
+  var tabs = Array.prototype.slice.call(document.querySelectorAll('.ux-tabs > .ux-tab'));
+  if (!tabs.length) return;
+  var row = tabs[0].parentNode, wrap = row.parentNode;
+  function selected(){ return tabs.findIndex(function(t){ return t.getAttribute('aria-selected') === 'true'; }); }
+  // A faded edge on whichever side has tabs out of view.
+  function fade(){
+    wrap.classList.toggle('ux-more-left', row.scrollLeft > 1);
+    wrap.classList.toggle('ux-more-right', row.scrollLeft + row.clientWidth < row.scrollWidth - 1);
+  }
+  // Scrolls the row alone: scrollIntoView would move the page too.
+  function reveal(tab){
+    var t = tab.getBoundingClientRect(), r = row.getBoundingClientRect();
+    if (t.left < r.left) row.scrollLeft -= r.left - t.left + 16;
+    else if (t.right > r.right) row.scrollLeft += t.right - r.right + 16;
+    fade();
+  }
+  function select(i){
+    tabs.forEach(function(t, n){
+      t.setAttribute('aria-selected', n === i ? 'true' : 'false');
+      t.tabIndex = n === i ? 0 : -1;
+      document.getElementById(t.getAttribute('aria-controls')).hidden = n !== i;
+    });
+    reveal(tabs[i]);
+  }
+  tabs.forEach(function(t, i){ t.addEventListener('click', function(){ select(i); }); });
+  document.addEventListener('keydown', function(e){
+    var step = e.key === 'ArrowRight' ? 1 : e.key === 'ArrowLeft' ? -1 : 0;
+    if (!step || e.defaultPrevented || e.altKey || e.ctrlKey || e.metaKey || e.shiftKey) return;
+    // A control a drawing carries (a field, a button, a slider) keeps its own arrows.
+    if (e.target.closest && e.target.closest('.ux-draw')) return;
+    e.preventDefault();
+    var focused = tabs.indexOf(document.activeElement) >= 0;
+    var i = (selected() + step + tabs.length) % tabs.length;
+    select(i);
+    if (focused) tabs[i].focus({preventScroll: true});
+  });
+  row.addEventListener('scroll', fade);
+  window.addEventListener('resize', fade);
+  window.addEventListener('load', function(){ reveal(tabs[selected()]); });
+  reveal(tabs[selected()]);
+})();
+</script></body></html>
