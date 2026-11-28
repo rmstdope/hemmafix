@@ -18,7 +18,7 @@ import * as looks from "@/server/looks";
 import * as weeks from "@/server/weeks";
 import * as rewards from "@/server/rewards";
 import type { Won } from "@/server/badges";
-import type { ItemView, ListOrder } from "@/lib/lists";
+import type { ItemView, ListOrder, ListSharing } from "@/lib/lists";
 
 /** Everything an action reports back to the app: a task's own reports, and what a purchase won. */
 type Report = chores.TaskReport | Won;
@@ -191,16 +191,20 @@ export async function addRoutine(_prev: ActionState, formData: FormData): Promis
 }
 
 // ---------------------------------------------------------------------------
-// Lists: shared by the whole home, every member may do all of it (src/server/lists.ts)
+// Lists: public to the whole home or private to the people chosen (src/server/lists.ts)
 // ---------------------------------------------------------------------------
 
 /** Resolves with the new list's id, so the page can open it. */
-export async function createList(name: string): Promise<ActionState> {
+export async function createList(name: string, sharing?: ListSharing): Promise<ActionState> {
   let id: string | undefined;
   const result = await act(async (m) => {
-    id = (await lists.createList(m, name)).id;
+    id = (await lists.createList(m, name, sharing)).id;
   });
   return result.ok ? { ok: true, id } : result;
+}
+
+export async function setListSharing(id: string, sharing: ListSharing) {
+  return act((m) => lists.setListSharing(m, id, sharing));
 }
 
 export async function renameList(id: string, name: string) {

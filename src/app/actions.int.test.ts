@@ -7,6 +7,7 @@ import { chore, choreInstance, highFive, household, lookPurchase, oauthClient, o
 import type { CurrentMember } from "@/server/dal";
 import { createFamily } from "../../test/integration/factories";
 import { addDays, todayIso } from "@/lib/dates";
+import type { ListSharing } from "@/lib/lists";
 
 let current: CurrentMember | null = null;
 vi.mock("@/server/dal", () => ({ getCurrentMember: async () => current }));
@@ -353,9 +354,40 @@ describe("when logged out", () => {
       await actions.clearListDone(id, []),
       await actions.restoreListItems(id, []),
       await actions.setListOrder("skapad"),
+      await actions.setListSharing(id, { isPrivate: true, shareWith: [] }),
     ];
     expect(results.every((r) => !r.ok)).toBe(true);
     expect((await lists.getList(f.adult, id))!.name).toBe("Inköp");
+  });
+});
+
+describe("a list's privacy", () => {
+  it("is chosen when it is made and changed by its creator, and tells the home", async () => {
+    as(f.child);
+    const made = await actions.createList("Julklappar", { isPrivate: true, shareWith: [] });
+    expect(made.ok).toBe(true);
+    expect(await lists.getList(f.adult, made.id!)).toBeNull();
+
+    const notify = vi.spyOn(chores, "notifyHouseholdChanged");
+    expect(await actions.setListSharing(made.id!, { isPrivate: true, shareWith: [f.adult.userId] })).toEqual({ ok: true });
+    expect(notify).toHaveBeenCalledWith(f.homeId);
+    notify.mockRestore();
+    expect((await lists.getList(f.adult, made.id!))!.name).toBe("Julklappar");
+
+    as(f.adult);
+    expect(await actions.setListSharing(made.id!, { isPrivate: false, shareWith: [] })).toEqual({
+      ok: false,
+      error: "Bara den som gjort listan kan ändra vem som ser den.",
+    });
+  });
+
+  it("refuses sharing that is not a choice", async () => {
+    as(f.adult);
+    const { id } = await lists.createList(f.adult, "Inköp");
+    for (const bad of [{ isPrivate: "yes", shareWith: [] }, { isPrivate: true }, null]) {
+      expect((await actions.setListSharing(id, bad as unknown as ListSharing)).ok).toBe(false);
+    }
+    expect((await lists.getList(f.child, id))!.sharing.isPrivate).toBe(false);
   });
 });
 
