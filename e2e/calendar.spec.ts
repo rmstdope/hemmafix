@@ -66,8 +66,9 @@ for (const [person, role] of [
 ] as const) {
   test(`${role === "adult" ? "an adult" : "a child"} sees the coming days, read only`, async ({ page, context, google }) => {
     google.events = [
-      timed("Simskola", 0, "00:00", "00:01", "Valhallabadet"),
-      timed("Kalas hos Ali", 0, "23:58", "23:59"),
+      // Over as the day begins, and not over until it ends: the same at any time of day.
+      timed("Simskola", 0, "00:00", "00:00", "Valhallabadet"),
+      timed("Kalas hos Ali", 0, "00:01", "00:00", undefined, 1),
       allDay("Sportlov i stugan", -1, 3, "Sälen"),
       timed(undefined, 1, "12:00", "13:00"),
       timed("Luciatåg", 14, "08:00", "09:00"),
@@ -86,8 +87,8 @@ for (const [person, role] of [
     const today = page.getByRole("main").getByRole("list").first().getByRole("listitem");
     await expect(today).toHaveText([
       "Sportlov i stuganHeldag · dag 2 av 3 · Sälen",
-      "Simskola00:00–00:01 · Valhallabadet",
-      "Kalas hos Ali23:58–23:59",
+      "Simskola00:00–00:00 · Valhallabadet",
+      "Kalas hos Ali00:01–00:00",
     ]);
     await expect(card(page, "Sportlov")).toHaveCount(2);
     await expect(card(page, "(Ingen titel)")).toHaveText("(Ingen titel)12:00–13:00");

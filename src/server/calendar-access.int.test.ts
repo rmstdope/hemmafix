@@ -46,18 +46,17 @@ const post = (path: string, body: object) =>
     }),
   );
 
-/** Presses the button, and comes back from Google having granted `scope`. */
-async function giveAccess(scope: string) {
-  const started = await post("/link-social", CALENDAR_LINK_REQUEST);
+/** Starts a trip to Google at `path`, and comes back with `answer` from its token endpoint. */
+async function viaGoogle(path: string, body: object, answer: object) {
+  const started = await post(path, body);
   const { url } = (await started.json()) as { url: string };
   const google = new URL(url);
   vi.stubGlobal(
     "fetch",
     async () =>
-      new Response(
-        JSON.stringify({ access_token: "access", refresh_token: "the-refresh-token", expires_in: 3600, scope, id_token: idToken }),
-        { headers: { "content-type": "application/json" } },
-      ),
+      new Response(JSON.stringify({ access_token: "access", expires_in: 3600, id_token: idToken, ...answer }), {
+        headers: { "content-type": "application/json" },
+      }),
   );
   const jar = [cookie, ...started.headers.getSetCookie().map((c) => c.split(";")[0])].join("; ");
   const back = await auth.handler(
@@ -65,6 +64,14 @@ async function giveAccess(scope: string) {
   );
   return { google, back };
 }
+
+/** Presses the button, and comes back from Google having granted `scope`. */
+const giveAccess = (scope: string) =>
+  viaGoogle("/link-social", CALENDAR_LINK_REQUEST, { refresh_token: "the-refresh-token", scope });
+
+/** An ordinary login: Google gives no refresh token, and names only the login's scopes. */
+const logInAgain = () =>
+  viaGoogle("/sign-in/social", { provider: "google", callbackURL: "/" }, { scope: "openid email profile" });
 const stored = async () => (await db.select().from(account).where(eq(account.userId, "anna")))[0]!;
 
 describe("giving access to the calendar", () => {
@@ -102,6 +109,18 @@ describe("giving access to the calendar", () => {
     });
     expect(await calendarNeedsAccess(anna)).toBe(false);
     expect(sent).toBe("the-refresh-token");
+  });
+
+  it("keeps the grant through a later login", async () => {
+    await giveAccess(`openid ${CALENDAR_SCOPE}`);
+    const granted = await stored();
+
+    const { back } = await logInAgain();
+
+    expect(back.headers.get("location")).toBe("/");
+    const row = await stored();
+    expect(row.scope).toContain(CALENDAR_SCOPE);
+    expect(row.refreshToken).toBe(granted.refreshToken);
   });
 });
 

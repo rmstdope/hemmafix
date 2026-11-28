@@ -19,8 +19,16 @@ function at(days: number, time: string) {
 }
 
 let made = 0;
-export function timed(summary: string | undefined, days: number, from: string, to: string, location?: string): GoogleEvent {
-  return { id: `event-${++made}`, summary, location, start: at(days, from), end: at(days, to) };
+export function timed(
+  summary: string | undefined,
+  days: number,
+  from: string,
+  to: string,
+  location?: string,
+  /** The day it ends, when that is not the day it starts. */
+  endDays = days,
+): GoogleEvent {
+  return { id: `event-${++made}`, summary, location, start: at(days, from), end: at(endDays, to) };
 }
 /** An all-day event from `days` from today, `length` days long. */
 export function allDay(summary: string, days: number, length = 1, location?: string): GoogleEvent {
