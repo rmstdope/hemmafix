@@ -571,9 +571,45 @@ export const list = pgTable(
       .notNull()
       .references(() => household.id, { onDelete: "cascade" }),
     name: text("name").notNull(),
+    /** Who made it; null on lists from before private lists, which are all public. */
+    creatorId: text("creator_id").references(() => user.id, { onDelete: "set null" }),
+    /** A private list is seen only by its creator and its shares (src/lib/permissions.ts). */
+    isPrivate: boolean("is_private").notNull().default(false),
     ...timestamps,
   },
   (t) => [index("list_household_idx").on(t.householdId)],
+);
+
+/** Who a private list is shared with, besides its creator. */
+export const listShare = pgTable(
+  "list_share",
+  {
+    listId: uuid("list_id")
+      .notNull()
+      .references(() => list.id, { onDelete: "cascade" }),
+    userId: text("user_id")
+      .notNull()
+      .references(() => user.id, { onDelete: "cascade" }),
+  },
+  (t) => [primaryKey({ columns: [t.listId, t.userId] })],
+);
+
+/**
+ * Who could see a list and no longer can, so their old link may say it is no longer shared.
+ * `name` is the list's name when they lost it: a later name is not theirs to read.
+ */
+export const listLostAccess = pgTable(
+  "list_lost_access",
+  {
+    listId: uuid("list_id")
+      .notNull()
+      .references(() => list.id, { onDelete: "cascade" }),
+    userId: text("user_id")
+      .notNull()
+      .references(() => user.id, { onDelete: "cascade" }),
+    name: text("name").notNull(),
+  },
+  (t) => [primaryKey({ columns: [t.listId, t.userId] })],
 );
 
 /**

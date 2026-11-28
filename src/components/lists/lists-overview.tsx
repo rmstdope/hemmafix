@@ -1,6 +1,6 @@
 "use client";
 
-import { ArrowDownUp, ChevronRight } from "lucide-react";
+import { ArrowDownUp, ChevronRight, Lock } from "lucide-react";
 import Link from "next/link";
 import { PageHeader } from "@/components/page-header";
 import { useRouter } from "next/navigation";
@@ -18,19 +18,30 @@ import { expectFocusIn } from "./focus-new";
 import { Menu } from "./menu";
 import { FloatingAdd } from "@/components/sheet";
 import { NewListSheet } from "./new-list-sheet";
+import type { ShareChoice } from "./sharing-picker";
 import { useHydrated } from "./use-hydrated";
 
-type Row = { id: string; name: string; createdAt: Date; updatedAt: Date; openCount: number; totalCount: number };
+type Row = {
+  id: string;
+  name: string;
+  createdAt: Date;
+  updatedAt: Date;
+  openCount: number;
+  totalCount: number;
+  privacy: string | null;
+};
 
-/** Listor: the page header with the sort button, the home's lists in this person's order, and the round + for Ny lista. */
+/** Listor: the page header with the sort button, the lists this person sees in their order, and the round + for Ny lista. */
 export function ListsOverview({
   lists,
   order,
+  choices,
   subtitle,
   children,
 }: {
   lists: Row[];
   order: ListOrder;
+  choices: ShareChoice[];
   subtitle?: string;
   children?: ReactNode;
 }) {
@@ -74,7 +85,15 @@ export function ListsOverview({
           {sortLists(lists, shown).map((l) => (
             <li key={l.id}>
               <Link href={`/listor/${l.id}`} className="flex min-h-14 items-center gap-3 rounded-xl border bg-card px-3 py-2">
-                <span className="min-w-0 flex-1 font-medium break-words">{l.name}</span>
+                <span className="min-w-0 flex-1">
+                  <span className="block font-medium break-words">{l.name}</span>
+                  {l.privacy && (
+                    <span className="flex items-start gap-1 text-xs text-muted-foreground">
+                      <Lock className="mt-0.5 size-3 shrink-0" aria-hidden />
+                      <span className="min-w-0 break-words">{l.privacy}</span>
+                    </span>
+                  )}
+                </span>
                 <span className="shrink-0 text-sm text-muted-foreground">{countLabel(l.openCount, l.totalCount)}</span>
                 <ChevronRight className="size-4 shrink-0 text-muted-foreground" aria-hidden />
               </Link>
@@ -87,12 +106,13 @@ export function ListsOverview({
 
       {making && (
         <NewListSheet
+          choices={choices}
           opener={newButton}
           onClose={() => setMaking(false)}
-          onSubmit={async (name) => {
+          onSubmit={async (name, sharing) => {
             let id: string | undefined;
             const ok = await attempt(async () => {
-              const result = await createList(name);
+              const result = await createList(name, sharing);
               id = result.id;
               return result;
             });

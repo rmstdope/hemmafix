@@ -525,3 +525,38 @@ describe("0019: when an uppgift lost its date", () => {
     await sql`insert into chore_instance (chore_id, household_id) values (${c!.id}, ${home!.id})`;
   });
 });
+
+describe("0020: private lists", () => {
+  beforeEach(reset);
+
+  it("leaves existing lists public with no creator, and the previous release still reads, adds and removes lists", async () => {
+    await migrateUpTo(sql, "0019_undated_since");
+    const [home] = await sql`insert into household (name) values ('Hemma') returning id`;
+    const [old] = await sql`insert into list (household_id, name) values (${home!.id}, 'Inköp') returning id`;
+
+    await migrateUpTo(sql, "0020_private_lists");
+
+    expect(await sql`select creator_id, is_private from list`).toEqual([{ creator_id: null, is_private: false }]);
+    const [added] = await sql`insert into list (household_id, name) values (${home!.id}, 'Packa') returning id, is_private`;
+    expect(added!.is_private).toBe(false);
+    await sql`delete from list where id in (${old!.id}, ${added!.id})`;
+  });
+
+  it("takes a list's shares and lost viewers with it, and keeps a list whose creator is gone", async () => {
+    await migrateUpTo(sql, "0020_private_lists");
+    const [home] = await sql`insert into household (name) values ('Hemma') returning id`;
+    await sql`insert into "user" (id, name, email, email_verified) values
+      ('a', 'Anna', 'a@example.com', true), ('b', 'Bo', 'b@example.com', true)`;
+    const [l] = await sql`insert into list (household_id, name, creator_id, is_private)
+      values (${home!.id}, 'Julklappar', 'a', true) returning id`;
+    await sql`insert into list_share (list_id, user_id) values (${l!.id}, 'b')`;
+    await sql`insert into list_lost_access (list_id, user_id, name) values (${l!.id}, 'b', 'Julklappar')`;
+
+    await sql`delete from "user" where id = 'a'`;
+    expect(await sql`select creator_id, is_private from list`).toEqual([{ creator_id: null, is_private: true }]);
+
+    await sql`delete from list`;
+    expect(await sql`select count(*)::int as n from list_share`).toEqual([{ n: 0 }]);
+    expect(await sql`select count(*)::int as n from list_lost_access`).toEqual([{ n: 0 }]);
+  });
+});

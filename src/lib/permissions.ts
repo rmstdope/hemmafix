@@ -26,14 +26,17 @@ const ADULTS_ONLY = new Set<Action>([
   "reward:manage",
   "reward:give",
   "app:connect",
+  "list:claim",
 ]);
 
 export type Action =
   | "household:rename"
   | "room:manage"
   | "routine:manage"
-  /** Everything on the household's shared lists: lists and their items. */
+  /** Everything on the lists a person sees: lists and their items. */
   | "list:edit"
+  /** Make a list without a recorded creator private, and so become its creator. */
+  | "list:claim"
   | "member:set-role"
   | "task:create"
   | "task:edit"
@@ -82,4 +85,24 @@ export class ForbiddenError extends UserError {
 
 export function assertCan(actor: { role: Role }, action: Action): void {
   if (!can(actor.role, action)) throw new ForbiddenError();
+}
+
+/** What decides who sees a list and what they may do with it. */
+export type ListAccess = { isPrivate: boolean; creatorId: string | null; sharedWith: readonly string[] };
+type Person = { userId: string; role: Role };
+
+/** A private list is seen by its creator and its shares only, adults included. */
+export function canSeeList(person: Person, list: ListAccess): boolean {
+  return !list.isPrivate || list.creatorId === person.userId || list.sharedWith.includes(person.userId);
+}
+
+/** Whether a list is private, and who it is shared with, is the creator's to change. */
+export function canChangeListSharing(person: Person, list: ListAccess): boolean {
+  if (list.creatorId !== null) return list.creatorId === person.userId;
+  return !list.isPrivate && can(person.role, "list:claim");
+}
+
+/** Anyone removes a public list; a private one only its creator. */
+export function canDeleteList(person: Person, list: ListAccess): boolean {
+  return !list.isPrivate || list.creatorId === person.userId;
 }
