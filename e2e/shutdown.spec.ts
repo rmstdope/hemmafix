@@ -107,3 +107,31 @@ test("the server exits promptly on SIGTERM when an event stream is asked for aft
     socket.destroy();
   });
 });
+
+// Every page asks about the calendar access as it loads, and Kalender reads Google again and again,
+// so a deploy often finds one of these under way. Its answer must not leave the connection open.
+for (const path of ["/api/calendar/access", "/api/calendar"]) {
+  test(`the server exits promptly on SIGTERM while ${path} is being asked`, { tag: RUN_ONCE }, async ({ context }) => {
+    await withServer(async (server, exited) => {
+      await logIn(context, "anna", "adult");
+      const cookie = await cookieHeader(context);
+
+      const socket = connect(PORT, "localhost");
+      await once(socket, "connect");
+      let received = "";
+      socket.on("data", (chunk) => (received += chunk));
+      socket.on("error", () => {});
+      socket.write(`GET ${path} HTTP/1.1\r\nHost: localhost:${PORT}\r\nCookie: ${cookie}\r\n`);
+
+      const signalled = Date.now();
+      server.kill("SIGTERM");
+      await expect.poll(refusesConnections).toBe(true);
+      socket.write("\r\n");
+      await expect.poll(() => received).toContain('"');
+
+      await expectPromptExit(server, exited, signalled);
+      expect(received).toMatch(/^HTTP\/1\.1 200/);
+      socket.destroy();
+    });
+  });
+}

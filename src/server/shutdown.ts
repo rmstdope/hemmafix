@@ -36,3 +36,11 @@ export function onShutdown(close: Closer): () => void {
   shutdown.closers.add(close);
   return () => shutdown.closers.delete(close);
 }
+
+/**
+ * Headers for an answer that may be given after the server was told to stop. A connection that was
+ * busy then is otherwise kept open once answered, and the server waits until it times out.
+ */
+export function lastAnswerHeaders(): Record<string, string> {
+  return watchShutdown().reason ? { Connection: "close" } : {};
+}
