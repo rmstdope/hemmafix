@@ -5,7 +5,7 @@ import "server-only";
 import { decryptOAuthToken } from "better-auth/oauth2";
 import { and, eq } from "drizzle-orm";
 import { db } from "@/db";
-import { account } from "@/db/schema";
+import { account, user } from "@/db/schema";
 import { CALENDAR_DAYS, agenda, hasCalendarScope, withoutCalendarScope, type CalendarView } from "@/lib/calendar";
 import { addDays, todayIso } from "@/lib/dates";
 import { assertCan, type Role } from "@/lib/permissions";
@@ -44,7 +44,9 @@ async function accessTokenFor(grant: Grant): Promise<string> {
   if (kept && kept.refreshToken === grant.refreshToken && Date.now() < kept.until) return kept.accessToken;
   let refreshToken: string;
   try {
-    refreshToken = await decryptOAuthToken(grant.refreshToken, await auth.$context);
+    // The context's own type names this app's options, which Better Auth's helper does not take.
+    const context = (await auth.$context) as unknown as Parameters<typeof decryptOAuthToken>[1];
+    refreshToken = await decryptOAuthToken(grant.refreshToken, context);
   } catch {
     // Written under another secret: unusable, and giving access again repairs it.
     throw new AccessWithdrawn("The stored refresh token cannot be read");
@@ -86,6 +88,12 @@ export async function calendarNeedsAccess(viewer: Viewer): Promise<boolean> {
     logFailure(error);
   }
   return false;
+}
+
+/** The address Google preselects when the person is asked for access: the one they log in with. */
+export async function loginHintFor(viewer: Viewer): Promise<string | undefined> {
+  const [row] = await db.select({ email: user.email }).from(user).where(eq(user.id, viewer.userId)).limit(1);
+  return row?.email;
 }
 
 export async function readCalendar(viewer: Viewer, now = new Date()): Promise<CalendarView> {

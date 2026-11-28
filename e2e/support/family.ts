@@ -11,6 +11,7 @@ import { drizzle } from "drizzle-orm/postgres-js";
 import type { BrowserContext } from "@playwright/test";
 import postgres from "postgres";
 import { BADGE_KEYS } from "../../src/lib/badges";
+import { CALENDAR_SCOPE } from "../../src/lib/calendar";
 import { addDays, todayIso } from "../../src/lib/dates";
 import * as schema from "../../src/db/schema";
 import { databaseUrl } from "../../test/database.mjs";
@@ -117,6 +118,18 @@ export async function logIn(
   }
   await context.addCookies(await test.getCookies({ userId: user.id, domain: "localhost" }));
   return user;
+}
+
+/** Gives the person's Google account calendar access, as coming back from Google does. */
+export async function grantCalendar(userId: string) {
+  await db.insert(schema.account).values({
+    id: crypto.randomUUID(),
+    accountId: `google-${userId}`,
+    providerId: "google",
+    userId,
+    refreshToken: `e2e-refresh-${crypto.randomUUID()}`,
+    scope: `openid,${CALENDAR_SCOPE}`,
+  });
 }
 
 export async function closeDatabase() {
