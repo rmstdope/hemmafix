@@ -48,6 +48,11 @@ finns på ett ställe, `src/lib/permissions.ts`, och kontrolleras på servern i 
 action. Hemmet har alltid minst en vuxen. Datamodellen stöder flera hushåll – inbjudningar
 ersätter listan längre fram.
 
+**Privata listor:** en lista kan göras privat. Då ser bara den som gjort den, och de
+hen delar den med, listan – vuxna inräknade. Bara den som gjort den ändrar vem som ser
+den och tar bort den. Versioner av appen från före privata listor visar dem för hela
+hemmet, så rulla inte tillbaka förbi den versionen för hand.
+
 **Ta bort någons åtkomst:** ta bort adressen ur `ALLOWED_EMAILS` och starta om
 appen. Listan kontrolleras vid varje anrop, så personen blir utloggad direkt.
 Hen syns fortfarande som medlem (och kan ha uppgifter tilldelade) tills
