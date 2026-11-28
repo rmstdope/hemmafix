@@ -1,12 +1,15 @@
 import Link from "next/link";
 import { cache, Suspense } from "react";
 import { ListView } from "@/components/lists/list-view";
+import { LostAccess } from "@/components/lists/lost-access";
 import { LiveUpdates } from "@/components/live-updates";
 import { PageCorner } from "@/components/page-corner";
 import { PageHeader } from "@/components/page-header";
+import { shareChoices } from "@/lib/lists";
 import { getHousehold } from "@/server/chores";
 import { requireMember } from "@/server/dal";
-import { getList } from "@/server/lists";
+import { listMembersWithRoles } from "@/server/household";
+import { getList, lostListName } from "@/server/lists";
 
 type Props = { params: Promise<{ id: string }> };
 
@@ -32,15 +35,19 @@ export default function ListPage({ params }: Props) {
 }
 
 async function Content({ params }: Props) {
-  const { member, list } = await readList((await params).id);
+  const { id } = await params;
+  const { member, list } = await readList(id);
   if (list) {
+    const members = await listMembersWithRoles(member.householdId);
     return (
       <>
         <LiveUpdates />
-        <ListView list={list} userId={member.userId} />
+        <ListView list={list} userId={member.userId} choices={shareChoices(members, member.userId)} />
       </>
     );
   }
+  const lost = await lostListName(member, id);
+  if (lost !== null) return <LostAccess id={id} name={lost} />;
   const home = await getHousehold(member.householdId);
   return (
     <>

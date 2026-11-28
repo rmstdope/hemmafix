@@ -3,7 +3,9 @@ import { ListsOverview } from "@/components/lists/lists-overview";
 import { LiveUpdates } from "@/components/live-updates";
 import { PageCorner } from "@/components/page-corner";
 import { getHousehold } from "@/server/chores";
+import { shareChoices } from "@/lib/lists";
 import { requireMember } from "@/server/dal";
+import { listMembersWithRoles } from "@/server/household";
 import { getListOrder, listLists } from "@/server/lists";
 
 export const metadata = { title: "Listor – Hemmafix" };
@@ -20,15 +22,21 @@ export default function ListorPage() {
 
 async function Listor() {
   const member = await requireMember();
-  const [home, lists, order] = await Promise.all([
+  const [home, lists, order, members] = await Promise.all([
     getHousehold(member.householdId),
     listLists(member),
     getListOrder(member),
+    listMembersWithRoles(member.householdId),
   ]);
   return (
     <>
       <LiveUpdates />
-      <ListsOverview lists={lists} order={order} subtitle={home?.name}>
+      <ListsOverview
+        lists={lists}
+        order={order}
+        choices={shareChoices(members, member.userId)}
+        subtitle={home?.name}
+      >
         <div className="sm:hidden">
           <PageCorner />
         </div>

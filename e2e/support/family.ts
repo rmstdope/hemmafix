@@ -314,6 +314,14 @@ export async function seedConnection(opts: {
   return family;
 }
 
+/** A member of the home who never logs in, so there is someone more to share with. */
+export async function addMember(name: string, role: schema.MemberRole = "child") {
+  const id = crypto.randomUUID();
+  await db.insert(schema.user).values({ id, name, email: `${id}@e2e.test`, emailVerified: true });
+  await db.insert(schema.membership).values({ userId: id, householdId: await homeId(), role });
+  return { id };
+}
+
 /**
  * Adds a list straight into the database. `items` are given oldest first, so the last one is
  * first on the page; `done` items sit in Klart. Timestamps default to now.
@@ -322,12 +330,18 @@ export async function seedList(
   name: string,
   items: (string | { text: string; done?: boolean })[] = [],
   at?: { createdAt?: Date; updatedAt?: Date },
+  /** Who made it, and for a private list whom it is shared with; unset means public with no creator. */
+  access: { creatorId?: string; isPrivate?: boolean; shareWith?: string[] } = {},
 ) {
   const householdId = await homeId();
+  const { shareWith = [], ...owner } = access;
   const [created] = await db
     .insert(schema.list)
-    .values({ householdId, name, ...at })
+    .values({ householdId, name, ...at, ...owner })
     .returning();
+  if (shareWith.length > 0) {
+    await db.insert(schema.listShare).values(shareWith.map((userId) => ({ listId: created!.id, userId })));
+  }
   for (const [i, item] of items.entries()) {
     const { text, done } = typeof item === "string" ? { text: item, done: false } : { done: false, ...item };
     await db

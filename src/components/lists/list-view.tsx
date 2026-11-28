@@ -1,6 +1,6 @@
 "use client";
 
-import { ArrowLeft, Check, MoreHorizontal, RotateCcw, X } from "lucide-react";
+import { ArrowLeft, Check, Lock, MoreHorizontal, RotateCcw, Users, X } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
@@ -23,16 +23,19 @@ import {
   renameList,
   restoreListItems,
   setListItemDone,
+  setListSharing,
   type ActionState,
 } from "@/app/actions";
 import { attempt } from "@/components/attempt";
-import { applyItemChange, clearedNotice, type ItemChange, type ItemView } from "@/lib/lists";
+import { applyItemChange, clearedNotice, type ItemChange, type ItemView, type ListSharing } from "@/lib/lists";
 import { cn } from "@/lib/utils";
 import { takeFocus } from "./focus-new";
 import { Menu } from "./menu";
 import { Modal } from "./modal";
 import { useHydrated } from "./use-hydrated";
 import { NameDialog } from "./name-dialog";
+import type { ShareChoice } from "./sharing-picker";
+import { SharingSheet } from "./sharing-sheet";
 
 type Focus = { box: string } | "field" | null;
 
@@ -55,13 +58,23 @@ const subscribeKlart = (notify: () => void) => {
   };
 };
 
-/** A list's page: the field, the open items, Klart, and ⋯ for renaming and removing the list. */
+/** A list's page: who sees it, the field, the open items, Klart, and ⋯ for renaming and removing the list. */
 export function ListView({
   list,
   userId,
+  choices,
 }: {
-  list: { id: string; name: string; items: ItemView[] };
+  list: {
+    id: string;
+    name: string;
+    items: ItemView[];
+    privacy: string | null;
+    sharing: ListSharing;
+    canChangeSharing: boolean;
+    canDelete: boolean;
+  };
   userId: string;
+  choices: ShareChoice[];
 }) {
   const router = useRouter();
   const [, startTransition] = useTransition();
@@ -69,9 +82,10 @@ export function ListView({
   const [text, setText] = useState("");
   // Where focus goes once the change is on screen; read after every render, used once.
   const focusNext = useRef<Focus>(null);
-  const [dialog, setDialog] = useState<"rename" | "delete" | null>(null);
+  const [dialog, setDialog] = useState<"rename" | "delete" | "sharing" | null>(null);
   const input = useRef<HTMLInputElement>(null);
   const more = useRef<HTMLButtonElement>(null);
+  const changeSharing = useRef<HTMLButtonElement>(null);
   const key = klartKey(userId, list.id);
   const hydrated = useHydrated();
   const klartOpen = useSyncExternalStore(subscribeKlart, () => readKlart(key), () => false);
@@ -169,14 +183,38 @@ export function ListView({
         >
           <ArrowLeft className="size-5" />
         </Link>
-        <h1 className="on-sky min-w-0 flex-1 text-xl font-semibold break-words">{list.name}</h1>
+        <div className="min-w-0 flex-1">
+          <h1 className="on-sky text-xl font-semibold break-words">{list.name}</h1>
+          <p className="on-sky-muted flex items-start gap-1.5 text-sm text-muted-foreground">
+            {list.privacy ? (
+              <Lock className="mt-0.5 size-4 shrink-0" aria-hidden />
+            ) : (
+              <Users className="mt-0.5 size-4 shrink-0" aria-hidden />
+            )}
+            <span className="min-w-0 break-words">
+              <span data-testid="list-privacy">{list.privacy ?? "Alla i hemmet"}</span>
+              {list.canChangeSharing && (
+                <button
+                  ref={changeSharing}
+                  type="button"
+                  onClick={() => setDialog("sharing")}
+                  className="on-sky -my-3 ml-1 inline-block rounded-lg px-1 py-3 font-medium text-foreground underline outline-none focus-visible:ring-3 focus-visible:ring-ring/50"
+                >
+                  Ändra
+                </button>
+              )}
+            </span>
+          </p>
+        </div>
         <Menu
           triggerRef={more}
           label={`Mer för ${list.name}`}
           triggerClassName="on-sky-muted flex size-11 items-center justify-center rounded-lg text-muted-foreground"
           items={[
             { label: "Byt namn", onSelect: () => setDialog("rename") },
-            { label: "Ta bort lista", destructive: true, onSelect: () => setDialog("delete") },
+            ...(list.canDelete
+              ? [{ label: "Ta bort lista", destructive: true, onSelect: () => setDialog("delete") }]
+              : []),
           ]}
         >
           <MoreHorizontal className="size-5" />
@@ -263,6 +301,15 @@ export function ListView({
           opener={more}
           onClose={closeDialog}
           onSubmit={(name) => attempt(() => renameList(list.id, name))}
+        />
+      )}
+      {dialog === "sharing" && (
+        <SharingSheet
+          initial={list.sharing}
+          choices={choices}
+          opener={changeSharing}
+          onClose={closeDialog}
+          onSubmit={(sharing) => attempt(() => setListSharing(list.id, sharing))}
         />
       )}
       {dialog === "delete" && (
