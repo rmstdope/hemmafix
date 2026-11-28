@@ -69,7 +69,9 @@ export type Action =
   /** Choose one's own order for the lists. */
   | "list:order"
   /** Take back a high five one has given. */
-  | "high-five:take-back";
+  | "high-five:take-back"
+  /** See the family calendar's coming events, read with one's own Google access. */
+  | "calendar:view";
 
 export function can(role: Role, action: Action): boolean {
   return role === "adult" || !ADULTS_ONLY.has(action);

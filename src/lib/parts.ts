@@ -2,6 +2,7 @@
 export const PARTS = [
   { key: "uppgifter", label: "Uppgifter", href: "/" },
   { key: "listor", label: "Listor", href: "/listor" },
+  { key: "kalender", label: "Kalender", href: "/kalender" },
   { key: "jag", label: "Jag", href: "/jag" },
 ] as const;
 
@@ -11,13 +12,14 @@ export type PartKey = (typeof PARTS)[number]["key"];
 export function partOf(pathname: string): PartKey | null {
   if (pathname === "/" || pathname === "/gjort") return "uppgifter";
   if (pathname === "/listor" || pathname.startsWith("/listor/")) return "listor";
+  if (pathname === "/kalender") return "kalender";
   if (pathname === "/jag") return "jag";
   return null;
 }
 
 /** The part Gjort or Hemmet was opened from, as stored in the session; Uppgifter when unknown. */
 export function rememberedPart(raw: string | null): PartKey {
-  return raw === "listor" || raw === "jag" ? raw : "uppgifter";
+  return PARTS.find((p) => p.key === raw)?.key ?? "uppgifter";
 }
 
 /** Whether a path is Hemmet or one of its pages (a routine's). */

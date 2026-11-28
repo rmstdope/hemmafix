@@ -37,6 +37,7 @@ const RULES: Record<Action, "V" | "V+B"> = {
   "note:close": "V+B",
   "list:order": "V+B",
   "high-five:take-back": "V+B",
+  "calendar:view": "V+B",
 };
 
 describe("can", () => {
